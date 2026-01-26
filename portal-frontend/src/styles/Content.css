@@ -1,0 +1,24 @@
+.content {
+    flex: 1;
+    display: block;
+    margin: 0px 0px 2rem 32.2rem;
+    background-color: rgb(244, 245, 247);
+    height: calc(100vh - 40px);
+    box-shadow: 0 4px 20px rgba(31, 41, 55, 0.2);
+    padding-left: 4.5rem;
+}
+
+.content .description {
+    gap: 0.5rem;
+}
+
+.content .description h1 {
+    font-size: 3.6rem;
+    font-weight: bold;
+    color: black;
+}
+
+.content .description h2 {
+    font-size: 2rem;
+    color: rgb(110, 110, 110);
+}
