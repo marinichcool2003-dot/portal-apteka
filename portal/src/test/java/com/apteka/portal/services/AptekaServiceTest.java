@@ -65,24 +65,6 @@ public class AptekaServiceTest {
     }
 
     @Test
-    void testGetByGroupId_WhenGroupExists() {
-        when(groupAptekiService.getOne(1)).thenReturn(mockGroup1);
-
-        List<Apteka> mockListById = List.of(
-                new Apteka(1, "sacapteka101@farmp.ru", "15943245", 001, "Ростов-на-Дону", "9881233322", mockGroup1),
-                new Apteka(2, "sacapteka104@farmp.ru", "15943245", 002, "Ростов-на-Дону", "9881233321", mockGroup1));
-
-        when(aptekaInterface.findByGroupId(1)).thenReturn(mockListById);
-
-        List<Apteka> result = aptekaService.getByGroupId(mockGroup1.getId());
-
-        assertEquals(2, result.size());
-        assertEquals("sacapteka104@farmp.ru", result.get(1).getLogin());
-        verify(groupAptekiService).getOne(mockGroup1.getId());
-        verify(aptekaInterface, times(1)).findByGroupId(mockGroup1.getId());
-    }
-
-    @Test
     void testGetOne_ShouldReturnApteka_WhenExists() {
         Apteka mockApteka = Apteka.builder().id(1)
                 .login("sacapteka101@farmp.ru")

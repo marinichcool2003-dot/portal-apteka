@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.apteka.portal.models.Task;
@@ -15,7 +16,7 @@ import com.apteka.portal.models.TaskStatus;
 public interface TaskInterface extends JpaRepository<Task, Long> {
 
     List<Task> findByAptekaId(Integer aptekaId);
-    
+
     List<Task> findByClientId(UUID clientId);
 
     List<Task> findByGroupId(Integer groupId);
@@ -24,16 +25,16 @@ public interface TaskInterface extends JpaRepository<Task, Long> {
     List<Task> findByCreatedByClient(UUID createdByClientId);
 
     @Query("""
-        SELECT t FROM Task t
-        WHERE (:clientId IS NULL OR t.client.id = :clientId)
-        AND (:createdByAptekaId IS NULL OR t.apteka.id = :createdByAptekaId)
-        AND (:createdByClientId IS NULL OR t.createdByClient.id = :createdByClientId)
-        AND (:groupId IS NULL OR t.group.id = :groupId)
-        AND (:status IS NULL OR t.status = :status)
-        AND (:priority IS NULL OR t.priority = :priority)
-        AND (:fromDate IS NULL OR t.date >= :fromDate)
-        AND (:toDate IS NULL OR t.date <= :toDate)
-    """)
+                SELECT t FROM Task t
+                WHERE (:clientId IS NULL OR t.client.id = :clientId)
+                AND (:createdByAptekaId IS NULL OR t.apteka.id = :createdByAptekaId)
+                AND (:createdByClientId IS NULL OR t.createdByClient.id = :createdByClientId)
+                AND (:groupId IS NULL OR t.group.id = :groupId)
+                AND (:status IS NULL OR t.status = :status)
+                AND (:priority IS NULL OR t.priority = :priority)
+                AND (:fromDate IS NULL OR t.date >= :fromDate)
+                AND (:toDate IS NULL OR t.date <= :toDate)
+            """)
     List<Task> filter(
             UUID clientId,
             Integer aptekaId,
@@ -42,6 +43,14 @@ public interface TaskInterface extends JpaRepository<Task, Long> {
             Integer groupId,
             TaskStatus status,
             Date fromDate,
-            Date toDate
-    );
+            Date toDate);
+
+    @Query("""
+                SELECT t FROM Task t
+                JOIN t.client c
+                JOIN c.group g
+                WHERE g.id =:groupId AND t.status =: status
+            """)
+    List<Task> findByGroupClient(@Param("groupId") Integer groupId,
+            @Param("status") TaskStatus status);
 }

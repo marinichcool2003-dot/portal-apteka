@@ -1,4 +1,4 @@
-import { useTasks } from "../hooks/GetAllTask"
+import { useTasks } from "../../hooks/GetAllTask"
 
 import '../styles/TaskTable.css'
 

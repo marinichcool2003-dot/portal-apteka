@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class ClientController {
     private final ClientService clientService;
 
     @GetMapping
+    @PreAuthorize("hasRole('LEGEND') or hasRole('ADMIN')")
     public ResponseEntity<List<Client>> getAll() {
         return ResponseEntity.ok(clientService.getAll());
     }
@@ -40,6 +42,7 @@ public class ClientController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('LEGEND') or hasRole('ADMIN')")
     public ResponseEntity<Client> create(@RequestBody ClientRequestDTO clientRequestDTO) throws IOException{
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -60,6 +63,16 @@ public class ClientController {
                     clientAvatarRequestDTO.avatar()));
     }
 
+    @PatchMapping("/changeRole/{id}")
+    public ResponseEntity<Client> updateRole(@PathVariable UUID id, @RequestBody String code) {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(clientService.updateRole(
+                    id, 
+                    code
+                ));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<Client> update(@PathVariable UUID id, @RequestBody ClientRequestDTO clientRequestDTO){
         return ResponseEntity
@@ -73,6 +86,7 @@ public class ClientController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('LEGEND')")
     public ResponseEntity<Void> delete(@PathVariable UUID id){
         clientService.delete(id);
         return ResponseEntity

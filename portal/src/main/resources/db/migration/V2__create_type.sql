@@ -13,6 +13,7 @@ CREATE TYPE task_priority AS ENUM (
 
 CREATE TYPE client_role AS ENUM (
     'USER',
+    'LEGEND',
     'ADMIN',
     'MANAGER',
     'SPEC'

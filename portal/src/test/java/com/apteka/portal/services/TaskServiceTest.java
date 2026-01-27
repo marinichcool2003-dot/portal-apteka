@@ -72,7 +72,7 @@ public class TaskServiceTest {
         mockApteka = new Apteka(1, "sacapteka101@farmp.ru", "15943245", 001, "Ростов-на-Дону", "9881233322", mockGroupApteki);
         mockGroupTask = new GroupTask(1, "Группа 1");
         UUID newUUID = UUID.randomUUID();
-        mockClient = new Client(newUUID, "Birdux", "1234_Af!848", "Гетманцев Даниил Олегович", Role.LEGEND, mockgroupClient);
+        mockClient = new Client(newUUID, "Birdux", "1234_Af!848", "Гетманцев Даниил Олегович", Role.LEGEND, mockgroupClient, "url/avatar");
         task1 = new Task(
                 1L,
                 "Заголовок1",

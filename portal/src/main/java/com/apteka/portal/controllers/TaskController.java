@@ -72,6 +72,15 @@ public class TaskController {
                                 .thenApply(ResponseEntity::ok);
         }
 
+        @GetMapping("/byClientGroup/{id}")
+        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByGroupClient(@PathVariable Integer id, @RequestBody String status) {
+                return taskService.getByGroupClient(id, status)
+                        .thenApply(tasks -> tasks.stream()
+                                        .map(TaskResponseDTO::from)
+                                        .toList())
+                        .thenApply(ResponseEntity::ok);
+        }
+
         @GetMapping("/byCreatedClient/{id}")
         public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByCreatedByClient(
                         @PathVariable UUID createdByClientId) {

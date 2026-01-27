@@ -1,15 +1,13 @@
 import FilterSearch from "./FilterSearch"
 import TaskTable from "./TaskTable"
+import MainDescription from "../MainDescription"
 
 import '../styles/Content.css'
 
 export default function Content() {
     return (
         <div className="content">
-            <div className="description">
-                <h1>Управление задачами</h1>
-                <h2>Просмотр и управление задачами</h2>
-            </div>
+            <MainDescription/>
             <FilterSearch />
             <TaskTable />
         </div>

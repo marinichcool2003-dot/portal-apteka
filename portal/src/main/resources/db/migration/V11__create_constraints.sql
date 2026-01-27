@@ -34,6 +34,10 @@ ALTER TABLE task
 ADD CONSTRAINT fk_created_by_client
 FOREIGN KEY (created_by_client_id) REFERENCES client(id);
 
+ALTER TABLE task_picture
+ADD CONSTRAINT fk_task_picture
+FOREIGN KEY (task_id) REFERENCES task(id);
+
 ALTER TABLE task
 ADD CONSTRAINT chk_creator_not_null
 CHECK (

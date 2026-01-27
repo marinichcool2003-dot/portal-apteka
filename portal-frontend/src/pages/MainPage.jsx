@@ -1,6 +1,6 @@
 import FirstNav from "../components/FirstNav"
 import SecondNav from "../components/SecondNav"
-import Content from "../components/Content"
+import Content from "../components/mainPage/Content"
 
 import '../styles/index.css'
 

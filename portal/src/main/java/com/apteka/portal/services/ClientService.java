@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ClientService {
+public class ClientService implements UserDetailsService{
 
     private final GroupClientService groupClientService;
     private final ClientInterface clientInterface;
@@ -35,6 +38,12 @@ public class ClientService {
     public List<Client> findByRole(String code){
         Role role = Role.fromCode(code);
         return clientInterface.findByRole(role.name());
+    }
+
+    @Transactional
+    public UserDetails loadUserByUsername(String login) throws UsernameNotFoundException {
+        return clientInterface.findByLogin(login)
+            .orElseThrow(() -> new UsernameNotFoundException("Клиент не найден " + login));
     }
 
     @SuppressWarnings("null")
@@ -61,6 +70,16 @@ public class ClientService {
             .avatarURL("/uploads/avatars/clients/default.png")
             .build();
         return clientInterface.save(newClient);
+    }
+
+    @Transactional
+    public Client updateRole(UUID id, String code) {
+        Client upClient = getOne(id);
+        Role role = Role.fromCode(code);
+
+        upClient.setRole(role);
+
+        return clientInterface.save(upClient);
     }
 
     @Transactional

@@ -33,6 +33,7 @@ public class TaskService {
     private final TaskInterface taskInterface;
     private final GroupTaskService groupTaskService;
     private final ClientService clientService;
+    private final GroupClientService groupClientService;
 
     @Async
     @Transactional(readOnly = true)
@@ -91,7 +92,6 @@ public class TaskService {
         });
     }
 
-
     // Фильтр задач
     @Async
     @Transactional(readOnly = true)
@@ -114,6 +114,18 @@ public class TaskService {
                     status,
                     fromDate,
                     toDate);
+        });
+    }
+
+    @Async
+    @Transactional(readOnly = true)
+    public CompletableFuture<List<Task>> getByGroupClient(Integer groupId, String statusDescription) {
+        groupClientService.getOne(groupId);
+        TaskStatus status = TaskStatus.fromDescription(statusDescription);
+
+        return CompletableFuture.supplyAsync(() -> {
+            log.info("Поиск задач по группе ID={} (в потоке: {})", groupId, Thread.currentThread());
+            return taskInterface.findByGroupClient(groupId, status);
         });
     }
 
