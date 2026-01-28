@@ -5,6 +5,6 @@ public record TaskRequestAptekaDTO(
     String description,
     String comments,
     Integer aptekaId,
-    Integer groupId
+    Integer workTaskId
 ) 
 {}

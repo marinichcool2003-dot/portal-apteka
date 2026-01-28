@@ -1,4 +1,4 @@
 CREATE TABLE IF NOT EXISTS group_task(
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL
-)
+);

@@ -1,6 +1,10 @@
 ALTER TABLE task 
-ADD CONSTRAINT fk_group_task
-FOREIGN KEY (group_id) REFERENCES group_task(id);
+ADD CONSTRAINT fk_work_type_task
+FOREIGN KEY (work_type_id) REFERENCES work_type(id);
+
+ALTER TABLE work_type 
+ADD CONSTRAINT fk_work_type_group
+FOREIGN KEY (group_task_id) REFERENCES group_task(id);
 
 ALTER TABLE apteka 
 ADD CONSTRAINT fk_group_apteki

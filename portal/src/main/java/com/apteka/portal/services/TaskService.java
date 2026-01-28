@@ -16,9 +16,9 @@ import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
-import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
+import com.apteka.portal.models.WorkTask;
 import com.apteka.portal.repository.TaskInterface;
 
 import lombok.RequiredArgsConstructor;
@@ -31,9 +31,10 @@ public class TaskService {
 
     private final AptekaService aptekaService;
     private final TaskInterface taskInterface;
-    private final GroupTaskService groupTaskService;
+    private final WorkTaskService workTaskService;
     private final ClientService clientService;
     private final GroupClientService groupClientService;
+    private final GroupTaskService groupTaskService;
 
     @Async
     @Transactional(readOnly = true)
@@ -134,7 +135,7 @@ public class TaskService {
     @Async
     @Transactional
     public CompletableFuture<Task> create(String title, String description, String comments, Integer aptekaId,
-            Integer groupId) {
+            Integer workTaskId) {
         log.info("Создание новой задачи для аптеки: ID={} (в потоке: {})", aptekaId, Thread.currentThread().getName());
         return CompletableFuture.supplyAsync(() -> {
 
@@ -144,7 +145,7 @@ public class TaskService {
                 throw new InvalidTaskDescriptionException();
 
             Apteka apteka = aptekaService.getOne(aptekaId);
-            GroupTask group = groupTaskService.getOne(groupId);
+            WorkTask workTask = workTaskService.getOne(workTaskId);
 
             Task task = Task.builder()
                     .title(title.strip())
@@ -152,7 +153,7 @@ public class TaskService {
                     .comments(comments != null ? comments.strip() : null)
                     .date(new Date())
                     .apteka(apteka)
-                    .group(group)
+                    .workTask(workTask)
                     .build();
 
             return taskInterface.save(task);
@@ -164,7 +165,7 @@ public class TaskService {
     @Async
     @Transactional
     public CompletableFuture<Task> create(String title, String description, String comments, UUID clientId,
-            Integer groupId) {
+            Integer workTaskId) {
         log.info("Создание новой задачи для сотрудника: ID={} (в потоке: {})", clientId,
                 Thread.currentThread().getName());
         return CompletableFuture.supplyAsync(() -> {
@@ -175,7 +176,7 @@ public class TaskService {
                 throw new InvalidTaskDescriptionException();
 
             Client client = clientService.getOne(clientId);
-            GroupTask group = groupTaskService.getOne(groupId);
+            WorkTask workTask = workTaskService.getOne(workTaskId);
 
             Task task = Task.builder()
                     .title(title.strip())
@@ -183,7 +184,7 @@ public class TaskService {
                     .comments(comments != null ? comments.strip() : null)
                     .date(new Date())
                     .createdByClient(client)
-                    .group(group)
+                    .workTask(workTask)
                     .build();
 
             return taskInterface.save(task);

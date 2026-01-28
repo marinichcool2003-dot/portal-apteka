@@ -6,4 +6,4 @@ CREATE TABLE IF NOT EXISTS apteka(
     adress VARCHAR(255),
     phone_number VARCHAR(10) UNIQUE,
     group_id INT NOT NULL
-)
+);

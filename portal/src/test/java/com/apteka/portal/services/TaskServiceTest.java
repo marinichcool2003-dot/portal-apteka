@@ -307,7 +307,7 @@ public class TaskServiceTest {
                 .date(task1.getDate())
                 .status(TaskStatus.OPEN)
                 .apteka(task1.getApteka())
-                .group(task1.getGroup())
+                .workTask(task1.getWorkTask())
                 .build();
 
         when(taskInterface.save(any(Task.class))).thenReturn(updated);

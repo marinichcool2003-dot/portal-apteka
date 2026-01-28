@@ -7,7 +7,7 @@ public record TaskRequestClientDTO(
     String description,
     String comments,
     UUID createdByClient,
-    Integer groupId
+    Integer workTaskId
 ) 
 {}
 

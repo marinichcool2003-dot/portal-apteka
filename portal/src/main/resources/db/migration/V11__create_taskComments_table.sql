@@ -4,4 +4,4 @@ CREATE TABLE IF NOT EXISTS task_comments(
     task_id SERIAL NOT NULL,
     client_id UUID,
     apteka_id INT
-)
+);

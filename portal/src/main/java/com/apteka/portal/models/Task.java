@@ -67,7 +67,7 @@ public class Task {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
-    private GroupTask group;
+    private WorkTask workTask;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
@@ -76,7 +76,7 @@ public class Task {
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<TaskComments> employeeComments;
 
-    public Task(Long id, String title, String description, String comments, Date date, TaskStatus status, Apteka apteka, GroupTask group) {
+    public Task(Long id, String title, String description, String comments, Date date, TaskStatus status, Apteka apteka, WorkTask workTask) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -84,6 +84,6 @@ public class Task {
         this.date = date;
         this.status = status;
         this.apteka = apteka;
-        this.group = group;
+        this.workTask = workTask;
     }
 }

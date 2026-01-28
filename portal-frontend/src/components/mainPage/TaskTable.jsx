@@ -21,6 +21,7 @@ export default function TaskTable() {
                             <th className="task-list-title">Приоритет</th>
                             <th className="task-list-title">Автор</th>
                             <th className="task-list-title">Тип работ</th>
+                            <th className="task-list-title">Вид работ</th>
                             <th className="task-list-title">Тема</th>
                             <th className="task-list-title">Дата</th>
                             <th className="task-list-title">Исполнитель</th>
@@ -41,7 +42,8 @@ export default function TaskTable() {
                                     </span>
                                 </td>
                                 <td className="task-list-item">{task.aptekaLogin || '—'}</td>
-                                <td className="task-list-item">{task.group || '—'}</td>
+                                <td className="task-list-item">{task.group}</td>
+                                <td className="task-list-item">{task.workTask}</td>
                                 <td className="task-list-item">{task.title}</td>
                                 <td className="task-list-item">{new Date(task.date).toLocaleDateString()}</td>
                                 <td className="task-list-item">{task.clientFullName || '—'}</td>

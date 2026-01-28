@@ -1,4 +1,4 @@
 CREATE TABLE IF NOT EXISTS group_client(
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL
-)
+);

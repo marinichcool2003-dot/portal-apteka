@@ -12,6 +12,7 @@ public record TaskResponseDTO(
         Date date,
         String status,
         String priority,
+        String workTask,
         String group,
         String aptekaLogin,
         String clientFullName
@@ -25,7 +26,8 @@ public record TaskResponseDTO(
                 task.getDate(),
                 task.getStatus().getDescription(),
                 task.getPriority().getDescription(),
-                task.getGroup().getName(),
+                task.getWorkTask().getName(),
+                task.getWorkTask().getGroupTask().getName(),
                 task.getApteka() != null ? task.getApteka().getLogin() : null,
                 task.getClient() != null ? task.getClient().getFullName() : null
         );

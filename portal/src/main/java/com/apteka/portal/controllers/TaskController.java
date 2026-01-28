@@ -99,7 +99,7 @@ public class TaskController {
                                 taskRequestDTO.description(),
                                 taskRequestDTO.comments(),
                                 taskRequestDTO.aptekaId(),
-                                taskRequestDTO.groupId())
+                                taskRequestDTO.workTaskId())
                                 .thenApply(task -> ResponseEntity
                                                 .status(HttpStatus.CREATED)
                                                 .body(TaskResponseDTO.from(task)));
@@ -113,7 +113,7 @@ public class TaskController {
                                 taskRequestDTO.description(),
                                 taskRequestDTO.comments(),
                                 taskRequestDTO.createdByClient(),
-                                taskRequestDTO.groupId())
+                                taskRequestDTO.workTaskId())
                                 .thenApply(task -> ResponseEntity
                                                 .status(HttpStatus.CREATED)
                                                 .body(TaskResponseDTO.from(task)));
