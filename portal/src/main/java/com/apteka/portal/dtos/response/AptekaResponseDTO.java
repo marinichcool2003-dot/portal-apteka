@@ -17,8 +17,8 @@ public record AptekaResponseDTO(
             apteka.getLogin(), 
             apteka.getAdress(),
             apteka.getPhoneNumber(),
-            apteka.getGroup() != null ? apteka.getGroup().getId() : null,
-            apteka.getGroup() != null ? apteka.getGroup().getName() : null
+            apteka.getGroupApteki() != null ? apteka.getGroupApteki().getId() : null,
+            apteka.getGroupApteki() != null ? apteka.getGroupApteki().getName() : null
         );
     }
 }

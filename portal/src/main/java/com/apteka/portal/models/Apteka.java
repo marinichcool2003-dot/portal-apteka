@@ -46,7 +46,7 @@ public class Apteka {
 
     @ManyToOne
     @JoinColumn(name = "group_id")
-    private GroupApteki group;
+    private GroupApteki groupApteki;
 
     // @Column
     // private String otpCode;

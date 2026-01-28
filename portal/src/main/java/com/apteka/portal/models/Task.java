@@ -59,31 +59,24 @@ public class Task {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_apteka_id")
-    private Apteka apteka;
+    private Apteka createdByApteka;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_client_id")
     private Client createdByClient;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id")
-    private WorkTask workTask;
+    @JoinColumn(name = "work_type_id", nullable = false)
+    private WorkType workType;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "client_id", nullable = false)
-    private Client client;
+    @JoinColumn(name = "assigned_client_id")
+    private Client assignedClient;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_apteka_id")
+    private Apteka assignedApteka;
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<TaskComments> employeeComments;
-
-    public Task(Long id, String title, String description, String comments, Date date, TaskStatus status, Apteka apteka, WorkTask workTask) {
-        this.id = id;
-        this.title = title;
-        this.description = description;
-        this.comments = comments;
-        this.date = date;
-        this.status = status;
-        this.apteka = apteka;
-        this.workTask = workTask;
-    }
 }

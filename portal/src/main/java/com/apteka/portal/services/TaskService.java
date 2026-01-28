@@ -17,270 +17,300 @@ import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.Task;
+import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
-import com.apteka.portal.models.WorkTask;
+import com.apteka.portal.models.WorkType;
 import com.apteka.portal.repository.TaskInterface;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class TaskService {
 
     private static final Logger log = LoggerFactory.getLogger(TaskService.class);
 
+    private final TaskInterface taskRepository;
     private final AptekaService aptekaService;
-    private final TaskInterface taskInterface;
-    private final WorkTaskService workTaskService;
     private final ClientService clientService;
-    private final GroupClientService groupClientService;
+    private final WorkTaskService workTaskService;
     private final GroupTaskService groupTaskService;
+    private final GroupClientService groupClientService;
 
+    // ==================================================
+    // GET
+    // ==================================================
+
+    //===================================================
+    // Получение всех задач
+    //===================================================
     @Async
     @Transactional(readOnly = true)
     public CompletableFuture<List<Task>> getAll() {
-        log.info("Загрузка всех задач (выполняется в потоке: {})", Thread.currentThread().getName());
-        return CompletableFuture.completedFuture(taskInterface.findAll());
+        log.info("Получение всех задач | поток {}", Thread.currentThread().getName());
+        return CompletableFuture.completedFuture(taskRepository.findAll());
     }
 
-    @SuppressWarnings("null")
+    //===================================================
+    // Получение одной задачи
+    //===================================================
     @Async
     @Transactional(readOnly = true)
     public CompletableFuture<Task> getOne(Long id) {
-        log.info("Поиск задачи с ID={} (в потоке: {})", id, Thread.currentThread().getName());
-        return CompletableFuture.supplyAsync(() -> taskInterface.findById(id)
-                .orElseThrow(() -> new TaskNotFoundException(id)));
+        log.info("Получение задачи id={} | поток {}", id, Thread.currentThread().getName());
+
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFoundException(id));
+
+        return CompletableFuture.completedFuture(task);
     }
 
+    //===================================================
+    // Получение задач назначенных аптеке
+    //===================================================
     @Async
     @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByApteka(Integer aptekaId) {
-        log.info("Загрузка задач для аптеки ID={} (в потоке: {})", aptekaId, Thread.currentThread().getName());
-        return CompletableFuture.supplyAsync(() -> {
-            aptekaService.getOne(aptekaId);
-            return taskInterface.findByAptekaId(aptekaId);
-        });
+    public CompletableFuture<List<Task>> getByAssignedApteka(Integer assignedAptekaId) {
+        aptekaService.getOne(assignedAptekaId);
+        return CompletableFuture.completedFuture(
+                taskRepository.findByAssignedAptekaId(assignedAptekaId));
     }
 
+    //===================================================
+    // Получение задач назначенных сотруднику
+    //===================================================
     @Async
     @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByClient(UUID clientId) {
-        return CompletableFuture.supplyAsync(() -> {
-            log.info("Поиск задач для исполнителя ID={} (в потоке: {})", clientId, Thread.currentThread());
-            clientService.getOne(clientId);
-            return taskInterface.findByClientId(clientId);
-        });
+    public CompletableFuture<List<Task>> getByAssignedClient(UUID assignedClientId) {
+        clientService.getOne(assignedClientId);
+        return CompletableFuture.completedFuture(
+                taskRepository.findByAssignedClientId(assignedClientId));
     }
 
-    @Async
-    @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByGroup(Integer groupId) {
-        return CompletableFuture.supplyAsync(() -> {
-            log.info("Поиск по типу задачи ID={} (в потоке: {})", groupId, Thread.currentThread());
-            groupTaskService.getOne(groupId);
-            return taskInterface.findByGroupId(groupId);
-        });
-    }
-
+    //===================================================
+    // Получение задач созданных сотрудником
+    //===================================================
     @Async
     @Transactional(readOnly = true)
     public CompletableFuture<List<Task>> getByCreatedByClient(UUID createdByClientId) {
-        return CompletableFuture.supplyAsync(() -> {
-            log.info("Поиск созданных специалистом задач ID={} (в потоке: {})", createdByClientId,
-                    Thread.currentThread());
-            clientService.getOne(createdByClientId);
-            return taskInterface.findByCreatedByClient(createdByClientId);
-        });
+        clientService.getOne(createdByClientId);
+        return CompletableFuture.completedFuture(
+                taskRepository.findByCreatedByClient(createdByClientId));
     }
 
-    // Фильтр задач
+    //===================================================
+    // Получение задач созданных аптекой
+    //===================================================
     @Async
     @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> filter(UUID clientId,
-            Integer aptekaId,
-            UUID createdByClientId,
-            Integer groupId,
-            TaskStatus status,
-            Date fromDate,
-            Date toDate) {
-
-        return CompletableFuture.supplyAsync(() -> {
-            log.info("Фильтр по задаче (в потоке: {})", Thread.currentThread());
-
-            return taskInterface.filter(clientId,
-                    aptekaId,
-                    aptekaId,
-                    createdByClientId,
-                    groupId,
-                    status,
-                    fromDate,
-                    toDate);
-        });
+    public CompletableFuture<List<Task>> getByCreatedByApteka(Integer createdByAptekaId) {
+        aptekaService.getOne(createdByAptekaId);
+        return CompletableFuture.completedFuture(
+                taskRepository.findByCreatedByApteka(createdByAptekaId));
     }
 
+    //===================================================
+    // Получение задач по группе
+    //===================================================
+    @Async
+    @Transactional(readOnly = true)
+    public CompletableFuture<List<Task>> getByGroup(Integer groupId) {
+        groupTaskService.getOne(groupId);
+        return CompletableFuture.completedFuture(
+                taskRepository.findByGroupId(groupId));
+    }
+
+
+    //===================================================
+    // Получение задач по группе сотрудников
+    //===================================================
     @Async
     @Transactional(readOnly = true)
     public CompletableFuture<List<Task>> getByGroupClient(Integer groupId, String statusDescription) {
         groupClientService.getOne(groupId);
+
         TaskStatus status = TaskStatus.fromDescription(statusDescription);
 
-        return CompletableFuture.supplyAsync(() -> {
-            log.info("Поиск задач по группе ID={} (в потоке: {})", groupId, Thread.currentThread());
-            return taskInterface.findByGroupClient(groupId, status);
-        });
+        return CompletableFuture.completedFuture(
+                taskRepository.findByGroupClient(groupId, status));
     }
 
-    // Создание задачи аптекой для сотрудника
-    @SuppressWarnings("null")
+    // ==================================================
+    // FILTER
+    // ==================================================
+
+    @Async
+    @Transactional(readOnly = true)
+    public CompletableFuture<List<Task>> filter(
+            UUID clientId,
+            Integer aptekaId,
+            UUID createdByClientId,
+            Integer workTaskId,
+            TaskStatus status,
+            TaskPriority priority,
+            Date fromDate,
+            Date toDate) {
+
+        log.info("Фильтр задач | поток {}", Thread.currentThread().getName());
+
+        return CompletableFuture.completedFuture(
+                taskRepository.filter(
+                        clientId,
+                        aptekaId,
+                        createdByClientId,
+                        workTaskId,
+                        status,
+                        priority,
+                        fromDate,
+                        toDate));
+    }
+
+    // ==================================================
+    // CREATE
+    // ==================================================
+
     @Async
     @Transactional
-    public CompletableFuture<Task> create(String title, String description, String comments, Integer aptekaId,
-            Integer workTaskId) {
-        log.info("Создание новой задачи для аптеки: ID={} (в потоке: {})", aptekaId, Thread.currentThread().getName());
-        return CompletableFuture.supplyAsync(() -> {
+    public CompletableFuture<Task> createByAptekaToClient(
+            String title,
+            String description,
+            String comments,
+            Integer aptekaId,
+            Integer workTypeId,
+            UUID clientId) {
 
-            if (title == null || title.isBlank())
-                throw new InvalidTaskTitleException();
-            if (description == null || description.isBlank())
-                throw new InvalidTaskDescriptionException();
+        validate(title, description);
 
-            Apteka apteka = aptekaService.getOne(aptekaId);
-            WorkTask workTask = workTaskService.getOne(workTaskId);
+        Apteka apteka = aptekaService.getOne(aptekaId);
+        WorkType workType = workTaskService.getOne(workTypeId);
+        Client client = clientService.getOne(clientId);
 
-            Task task = Task.builder()
-                    .title(title.strip())
-                    .description(description.strip())
-                    .comments(comments != null ? comments.strip() : null)
-                    .date(new Date())
-                    .apteka(apteka)
-                    .workTask(workTask)
-                    .build();
+        Task task = Task.builder()
+                .title(title.strip())
+                .description(description.strip())
+                .comments(comments != null ? comments.strip() : null)
+                .date(new Date())
+                .status(TaskStatus.OPEN)
+                .createdByApteka(apteka)
+                .assignedClient(client)
+                .workType(workType)
+                .build();
 
-            return taskInterface.save(task);
-        });
+        return CompletableFuture.completedFuture(taskRepository.save(task));
     }
 
-    // Создание задачи сотрудником для сотрудника
-    @SuppressWarnings("null")
     @Async
     @Transactional
-    public CompletableFuture<Task> create(String title, String description, String comments, UUID clientId,
+    public CompletableFuture<Task> createByClientToClient(
+            String title,
+            String description,
+            String comments,
+            UUID creatorClient,
+            UUID assignedClient,
             Integer workTaskId) {
-        log.info("Создание новой задачи для сотрудника: ID={} (в потоке: {})", clientId,
-                Thread.currentThread().getName());
-        return CompletableFuture.supplyAsync(() -> {
 
-            if (title == null || title.isBlank())
-                throw new InvalidTaskTitleException();
-            if (description == null || description.isBlank())
-                throw new InvalidTaskDescriptionException();
+        validate(title, description);
 
-            Client client = clientService.getOne(clientId);
-            WorkTask workTask = workTaskService.getOne(workTaskId);
+        Client creator = clientService.getOne(creatorClient);
+        Client assigner = clientService.getOne(assignedClient);
+        WorkType workTask = workTaskService.getOne(workTaskId);
 
-            Task task = Task.builder()
-                    .title(title.strip())
-                    .description(description.strip())
-                    .comments(comments != null ? comments.strip() : null)
-                    .date(new Date())
-                    .createdByClient(client)
-                    .workTask(workTask)
-                    .build();
+        Task task = Task.builder()
+                .title(title.strip())
+                .description(description.strip())
+                .comments(comments != null ? comments.strip() : null)
+                .date(new Date())
+                .status(TaskStatus.OPEN)
+                .createdByClient(client)
+                .workTask(workTask)
+                .build();
 
-            return taskInterface.save(task);
-        });
+        return CompletableFuture.completedFuture(taskRepository.save(task));
     }
 
-    // Открытие задачи
+    // ==================================================
+    // STATUS
+    // ==================================================
+
     @Async
     @Transactional
     public CompletableFuture<Task> openTask(Long id) {
-        log.info("Изменение статуса задачи ID={} на статус \"OPEN\" (в потоке: {})", id,
-                Thread.currentThread().getName());
-
-        return getOne(id).thenApply(task -> {
-            task.setStatus(TaskStatus.OPEN);
-            return taskInterface.save(task);
-        });
+        return changeStatus(id, TaskStatus.OPEN);
     }
 
-    // Закрытие задачи
-    @Async
-    @Transactional
-    public CompletableFuture<Task> closeTask(Long id) {
-        log.info("Закрытие задачи ID={} (в потоке: {})", id, Thread.currentThread().getName());
-
-        return getOne(id).thenApply(task -> {
-            task.setStatus(TaskStatus.CLOSED);
-            return taskInterface.save(task);
-        });
-    }
-
-    // Задача в процессе
     @Async
     @Transactional
     public CompletableFuture<Task> processedTask(Long id) {
-        log.info("Изменение статуса задачи ID={} на статус \"PROCESED\" (в потоке: {})", id,
-                Thread.currentThread().getName());
-
-        return getOne(id).thenApply(task -> {
-            task.setStatus(TaskStatus.PROCESSED);
-            return taskInterface.save(task);
-        });
+        return changeStatus(id, TaskStatus.PROCESSED);
     }
 
-    // Задача отклонена
+    @Async
+    @Transactional
+    public CompletableFuture<Task> closeTask(Long id) {
+        return changeStatus(id, TaskStatus.CLOSED);
+    }
+
     @Async
     @Transactional
     public CompletableFuture<Task> deniedTask(Long id) {
-        log.info("Изменение статуса задачи ID={} на статус \"DENIED\" (в потоке: {})", id,
-                Thread.currentThread().getName());
-
-        return getOne(id).thenApply(task -> {
-            task.setStatus(TaskStatus.DENIED);
-            return taskInterface.save(task);
-        });
+        return changeStatus(id, TaskStatus.DENIED);
     }
+
+    private CompletableFuture<Task> changeStatus(Long id, TaskStatus status) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFoundException(id));
+
+        task.setStatus(status);
+
+        return CompletableFuture.completedFuture(taskRepository.save(task));
+    }
+
+    // ==================================================
+    // UPDATE / DELETE
+    // ==================================================
 
     @Async
     @Transactional
-    public CompletableFuture<Task> setClient(Long id, UUID clientId) {
-        log.info("Распределение задачи ID={} сотруднику ID={} (в потоке: {})", id, clientId,
-                Thread.currentThread().getName());
-        return getOne(id).thenApply(task -> {
-            task.setClient(clientService.getOne(clientId));
-            return taskInterface.save(task);
-        });
+    public CompletableFuture<Task> update(
+            Long id,
+            String title,
+            String description,
+            String comments) {
+
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFoundException(id));
+
+        if (title != null && !title.isBlank())
+            task.setTitle(title.strip());
+
+        if (description != null && !description.isBlank())
+            task.setDescription(description.strip());
+
+        if (comments != null)
+            task.setComments(comments.strip());
+
+        return CompletableFuture.completedFuture(taskRepository.save(task));
     }
 
-    @SuppressWarnings("null")
-    @Async
-    @Transactional
-    public CompletableFuture<Task> update(Long id, String title, String description, String comments) {
-        log.info("Обновление задачи с ID={} (в потоке: {})", id, Thread.currentThread().getName());
-
-        return getOne(id).thenApply(task -> {
-            if (title != null && !title.isBlank())
-                task.setTitle(title.strip());
-            if (description != null)
-                task.setDescription(description.strip());
-            if (comments != null)
-                task.setComments(comments.strip());
-            return taskInterface.save(task);
-        });
-    }
-
-    @SuppressWarnings("null")
     @Async
     @Transactional
     public CompletableFuture<Void> delete(Long id) {
-        log.info("Удаление задачи с ID={} (в потоке: {})", id, Thread.currentThread().getName());
 
-        return CompletableFuture.runAsync(() -> {
-            if (!taskInterface.existsById(id)) {
-                throw new TaskNotFoundException(id);
-            }
-            taskInterface.deleteById(id);
-        });
+        if (!taskRepository.existsById(id)) {
+            throw new TaskNotFoundException(id);
+        }
+
+        taskRepository.deleteById(id);
+
+        return CompletableFuture.completedFuture(null);
+    }
+
+    private void validate(String title, String description) {
+        if (title == null || title.isBlank())
+            throw new InvalidTaskTitleException();
+
+        if (description == null || description.isBlank())
+            throw new InvalidTaskDescriptionException();
     }
 }

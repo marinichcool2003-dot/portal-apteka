@@ -53,7 +53,7 @@ public class Client implements UserDetails {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
-    private GroupClient group;
+    private GroupClient groupClient;
 
     @Column(name = "avatar_url")
     private String avatarURL;

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.apteka.portal.dtos.request.TaskRequestAptekaDTO;
@@ -30,6 +31,13 @@ import lombok.RequiredArgsConstructor;
 public class TaskController {
         private final TaskService taskService;
 
+        // ==================================================
+        // GET
+        // ==================================================
+
+        //===================================================
+        // Получение всех задач
+        //===================================================
         @GetMapping
         public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getAll() {
                 return taskService.getAll()
@@ -39,51 +47,64 @@ public class TaskController {
                                 .thenApply(ResponseEntity::ok);
         }
 
+        //===================================================
+        // Получение одной задачи
+        //===================================================
         @GetMapping("/{id}")
         public CompletableFuture<ResponseEntity<TaskResponseDTO>> getOne(@PathVariable Long id) {
                 return taskService.getOne(id)
                                 .thenApply(task -> ResponseEntity.ok(TaskResponseDTO.from(task)));
         }
 
-        @GetMapping("/byApteka/{id}")
-        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByApteka(@PathVariable Integer aptekaId) {
-                return taskService.getByApteka(aptekaId)
+        //===================================================
+        // Получение задач назначенных аптеке
+        //===================================================
+        @GetMapping("/by-assigned-apteka/{assignedAptekaId}")
+        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByAssignedApteka(
+                        @PathVariable Integer assignedAptekaId) {
+
+                return taskService.getByAssignedApteka(assignedAptekaId)
                                 .thenApply(tasks -> tasks.stream()
                                                 .map(TaskResponseDTO::from)
                                                 .toList())
                                 .thenApply(ResponseEntity::ok);
         }
 
-        @GetMapping("/byClient/{id}")
-        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByClient(@PathVariable UUID clientId) {
-                return taskService.getByClient(clientId)
+        //===================================================
+        // Получение задач назначенных сотруднику
+        //===================================================
+        @GetMapping("/by-assigned-client/{assignedClientId}")
+        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByAssignedClient(
+                        @PathVariable UUID assignedClientId) {
+
+                return taskService.getByAssignedClient(assignedClientId)
                                 .thenApply(tasks -> tasks.stream()
                                                 .map(TaskResponseDTO::from)
                                                 .toList())
                                 .thenApply(ResponseEntity::ok);
         }
 
-        @GetMapping("/byGroup/{id}")
-        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByGroup(@PathVariable Integer groupId) {
-                return taskService.getByGroup(groupId)
+        //===================================================
+        // Получение задач созданных аптекой
+        //===================================================
+        @GetMapping("/by-created-apteka/{createdByAptekaId}")
+        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByCreatedByApteka(
+                        @PathVariable Integer createdByAptekaId) {
+
+                return taskService.getByCreatedByApteka(createdByAptekaId)
                                 .thenApply(tasks -> tasks.stream()
                                                 .map(TaskResponseDTO::from)
                                                 .toList())
                                 .thenApply(ResponseEntity::ok);
         }
 
-        @GetMapping("/byClientGroup/{id}")
-        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByGroupClient(@PathVariable Integer id, @RequestBody String status) {
-                return taskService.getByGroupClient(id, status)
-                        .thenApply(tasks -> tasks.stream()
-                                        .map(TaskResponseDTO::from)
-                                        .toList())
-                        .thenApply(ResponseEntity::ok);
-        }
-
-        @GetMapping("/byCreatedClient/{id}")
+        //===================================================
+        // Получение задач созданных сотрудником
+        //===================================================
+        @GetMapping("/by-created-client/{createdByClientId}")
         public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByCreatedByClient(
                         @PathVariable UUID createdByClientId) {
+
                 return taskService.getByCreatedByClient(createdByClientId)
                                 .thenApply(tasks -> tasks.stream()
                                                 .map(TaskResponseDTO::from)
@@ -91,83 +112,111 @@ public class TaskController {
                                 .thenApply(ResponseEntity::ok);
         }
 
-        @PostMapping("/byApteka")
-        public CompletableFuture<ResponseEntity<TaskResponseDTO>> create(
-                        @RequestBody TaskRequestAptekaDTO taskRequestDTO) {
-                return taskService.create(
-                                taskRequestDTO.title(),
-                                taskRequestDTO.description(),
-                                taskRequestDTO.comments(),
-                                taskRequestDTO.aptekaId(),
-                                taskRequestDTO.workTaskId())
+        @GetMapping("/by-group/{groupId}")
+        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByGroup(
+                        @PathVariable Integer groupId) {
+
+                return taskService.getByGroup(groupId)
+                                .thenApply(tasks -> tasks.stream()
+                                                .map(TaskResponseDTO::from)
+                                                .toList())
+                                .thenApply(ResponseEntity::ok);
+        }
+
+        @GetMapping("/by-client-group/{groupId}")
+        public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByGroupClient(
+                        @PathVariable Integer groupId,
+                        @RequestParam String status) {
+
+                return taskService.getByGroupClient(groupId, status)
+                                .thenApply(tasks -> tasks.stream()
+                                                .map(TaskResponseDTO::from)
+                                                .toList())
+                                .thenApply(ResponseEntity::ok);
+        }
+
+        // ==================================================
+        // CREATE
+        // ==================================================
+
+        @PostMapping("/by-apteka")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> createByApteka(
+                        @RequestBody TaskRequestAptekaDTO dto) {
+
+                return taskService.createByApteka(
+                                dto.title(),
+                                dto.description(),
+                                dto.comments(),
+                                dto.aptekaId(),
+                                dto.workTaskId())
                                 .thenApply(task -> ResponseEntity
                                                 .status(HttpStatus.CREATED)
                                                 .body(TaskResponseDTO.from(task)));
         }
 
-        @PostMapping("/byClient")
-        public CompletableFuture<ResponseEntity<TaskResponseDTO>> create(
-                        @RequestBody TaskRequestClientDTO taskRequestDTO) {
-                return taskService.create(
-                                taskRequestDTO.title(),
-                                taskRequestDTO.description(),
-                                taskRequestDTO.comments(),
-                                taskRequestDTO.createdByClient(),
-                                taskRequestDTO.workTaskId())
+        @PostMapping("/by-client")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> createByClient(
+                        @RequestBody TaskRequestClientDTO dto) {
+
+                return taskService.createByClient(
+                                dto.title(),
+                                dto.description(),
+                                dto.comments(),
+                                dto.createdByClient(),
+                                dto.workTaskId())
                                 .thenApply(task -> ResponseEntity
                                                 .status(HttpStatus.CREATED)
                                                 .body(TaskResponseDTO.from(task)));
         }
 
-        @PatchMapping("/open-task/{id}")
+        // ==================================================
+        // STATUS
+        // ==================================================
+
+        @PatchMapping("/open/{id}")
         public CompletableFuture<ResponseEntity<String>> openTask(@PathVariable Long id) {
                 return taskService.openTask(id)
-                                .thenApply(task -> ResponseEntity
-                                                .ok()
-                                                .body("Задача {" + task.getId() + "} успешно открыта!"));
+                                .thenApply(task -> ResponseEntity.ok("Задача {" + task.getId() + "} открыта"));
         }
 
-        @PatchMapping("/close-task/{id}")
-        public CompletableFuture<ResponseEntity<String>> closeTask(@PathVariable Long id) {
-                return taskService.closeTask(id)
-                                .thenApply(task -> ResponseEntity
-                                                .ok()
-                                                .body("Задача {" + task.getId() + "} успешно закрыта!"));
-        }
-
-        @PatchMapping("/processed-task/{id}")
+        @PatchMapping("/processed/{id}")
         public CompletableFuture<ResponseEntity<String>> processedTask(@PathVariable Long id) {
                 return taskService.processedTask(id)
-                                .thenApply(task -> ResponseEntity
-                                                .ok()
-                                                .body("Задача {" + task.getId() + "} в процессе выполнения!"));
+                                .thenApply(task -> ResponseEntity.ok("Задача {" + task.getId() + "} в процессе"));
         }
 
-        @PatchMapping("/denied-task/{id}")
+        @PatchMapping("/close/{id}")
+        public CompletableFuture<ResponseEntity<String>> closeTask(@PathVariable Long id) {
+                return taskService.closeTask(id)
+                                .thenApply(task -> ResponseEntity.ok("Задача {" + task.getId() + "} закрыта"));
+        }
+
+        @PatchMapping("/denied/{id}")
         public CompletableFuture<ResponseEntity<String>> deniedTask(@PathVariable Long id) {
                 return taskService.deniedTask(id)
-                                .thenApply(task -> ResponseEntity
-                                                .ok()
-                                                .body("Задача {" + task.getId() + "} отклонена!"));
+                                .thenApply(task -> ResponseEntity.ok("Задача {" + task.getId() + "} отклонена"));
         }
 
+        // ==================================================
+        // UPDATE / DELETE
+        // ==================================================
+
         @PutMapping("/{id}")
-        public CompletableFuture<ResponseEntity<TaskResponseDTO>> update(@PathVariable Long id,
-                        @RequestBody TaskUpdateRequestDTO taskUpdateRequestDTO) {
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> update(
+                        @PathVariable Long id,
+                        @RequestBody TaskUpdateRequestDTO dto) {
+
                 return taskService.update(
-                                id, taskUpdateRequestDTO.title(),
-                                taskUpdateRequestDTO.description(),
-                                taskUpdateRequestDTO.comments())
-                                .thenApply(task -> ResponseEntity
-                                                .ok()
-                                                .body(TaskResponseDTO.from(task)));
+                                id,
+                                dto.title(),
+                                dto.description(),
+                                dto.comments())
+                                .thenApply(task -> ResponseEntity.ok(TaskResponseDTO.from(task)));
         }
 
         @DeleteMapping("/{id}")
         public CompletableFuture<ResponseEntity<Void>> delete(@PathVariable Long id) {
                 return taskService.delete(id)
-                                .thenApply(v -> ResponseEntity
-                                                .noContent()
-                                                .build());
+                                .thenApply(v -> ResponseEntity.noContent().build());
         }
 }

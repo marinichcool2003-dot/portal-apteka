@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS task (
     status task_status NOT NULL DEFAULT 'OPEN',
     priority task_priority NOT NULL DEFAULT 'LOW', 
     work_type_id INT NOT NULL,
-    client_id UUID NOT NULL,
+    group_client_id INT,
+    assigned_client_id UUID,
+    assigned_apteka_id INT,
     created_by_apteka_id INT,
     created_by_client_id UUID   
 );

@@ -14,8 +14,10 @@ public record TaskResponseDTO(
         String priority,
         String workTask,
         String group,
-        String aptekaLogin,
-        String clientFullName
+        String createdByAptekaLogin,
+        String createdByClientFullName,
+        String assignedAptekaLogin,
+        String assignedClientFullName
 ) {
     public static TaskResponseDTO from(Task task) {
         return new TaskResponseDTO(
@@ -26,10 +28,12 @@ public record TaskResponseDTO(
                 task.getDate(),
                 task.getStatus().getDescription(),
                 task.getPriority().getDescription(),
-                task.getWorkTask().getName(),
-                task.getWorkTask().getGroupTask().getName(),
-                task.getApteka() != null ? task.getApteka().getLogin() : null,
-                task.getClient() != null ? task.getClient().getFullName() : null
+                task.getWorkType().getName(),
+                task.getWorkType().getGroupTask().getName(),
+                task.getCreatedByApteka() != null ? task.getCreatedByApteka().getLogin() : null,
+                task.getCreatedByClient() != null ? task.getCreatedByClient().getFullName() : null,
+                task.getAssignedApteka() != null ? task.getAssignedApteka().getLogin() : null,
+                task.getAssignedClient() != null ? task.getAssignedClient().getFullName() : null
         );
     }
 }

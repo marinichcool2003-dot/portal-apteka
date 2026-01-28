@@ -62,13 +62,13 @@ public class AptekaService {
         if (aptekaInterface.existsByLogin(login))
             throw new DublicateAptekaLoginException(login);
 
-        GroupApteki group = groupAptekiService.getOne(groupId);
+        GroupApteki groupApteki = groupAptekiService.getOne(groupId);
 
         Apteka apteka = Apteka.builder()
                 .login(login)
                 .password(passwordEncoder.encode(password))
                 .number(number)
-                .group(group)
+                .groupApteki(groupApteki)
                 .build();
 
         return aptekaInterface.save(apteka);

@@ -15,12 +15,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "work_task")
+@Table(name = "work_type")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class WorkTask {
+public class WorkType {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")

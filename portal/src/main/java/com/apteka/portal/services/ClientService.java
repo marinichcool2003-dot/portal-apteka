@@ -66,7 +66,7 @@ public class ClientService implements UserDetailsService{
             .password(password)
             .fullName(fullName)
             .role(role)
-            .group(group)
+            .groupClient(group)
             .avatarURL("/uploads/avatars/clients/default.png")
             .build();
         return clientInterface.save(newClient);

@@ -5,8 +5,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.apteka.portal.exceptions.WorkTaskNotFoundException;
-import com.apteka.portal.models.WorkTask;
-import com.apteka.portal.repository.WorkTaskInterface;
+import com.apteka.portal.models.WorkType;
+import com.apteka.portal.repository.WorkTypeInterface;
 
 import lombok.RequiredArgsConstructor;
 
@@ -14,13 +14,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @SuppressWarnings("null")
 public class WorkTaskService {
-    private final WorkTaskInterface workTaskInterface;
+    private final WorkTypeInterface workTaskInterface;
 
-    public List<WorkTask> getAll() {
+    public List<WorkType> getAll() {
         return workTaskInterface.findAll();
     }
 
-    public WorkTask getOne(Integer id) {
+    public WorkType getOne(Integer id) {
         return workTaskInterface.findById(id)
             .orElseThrow(() -> new WorkTaskNotFoundException(id));
     }

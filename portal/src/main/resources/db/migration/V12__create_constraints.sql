@@ -2,6 +2,10 @@ ALTER TABLE task
 ADD CONSTRAINT fk_work_type_task
 FOREIGN KEY (work_type_id) REFERENCES work_type(id);
 
+ALTER TABLE task 
+ADD CONSTRAINT fk_group_client_task
+FOREIGN KEY (group_client_id) REFERENCES group_client(id);
+
 ALTER TABLE work_type 
 ADD CONSTRAINT fk_work_type_group
 FOREIGN KEY (group_task_id) REFERENCES group_task(id);
@@ -12,7 +16,11 @@ FOREIGN KEY (group_id) REFERENCES group_apteki(id);
 
 ALTER TABLE task 
 ADD CONSTRAINT fk_client_task
-FOREIGN KEY (client_id) REFERENCES client(id);
+FOREIGN KEY (assigned_client_id) REFERENCES client(id);
+
+ALTER TABLE task 
+ADD CONSTRAINT fk_apteka_task
+FOREIGN KEY (assigned_apteka_id) REFERENCES apteka(id);
 
 ALTER TABLE task_comments
 ADD CONSTRAINT fk_task_comments_task
