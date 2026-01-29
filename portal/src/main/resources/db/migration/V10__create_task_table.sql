@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS task (
     priority task_priority NOT NULL DEFAULT 'LOW', 
     work_type_id INT NOT NULL,
     group_client_id INT,
+    group_apteki_id INT,
     assigned_client_id UUID,
     assigned_apteka_id INT,
     created_by_apteka_id INT,

@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.apteka.portal.models.Apteka;
@@ -18,9 +19,9 @@ public interface AptekaInterface extends JpaRepository<Apteka, Integer> {
     @Query("""
     SELECT a FROM Apteka a
     WHERE (:login IS NULL OR LOWER(a.login) LIKE LOWER(CONCAT(:login, '%')))
-    AND (:groupId IS NULL OR a.group.id = :groupId)
+    AND (:groupId IS NULL OR a.groupApteki.id = :groupId)
     AND (:number IS NULL OR a.number = :number)
     AND (:phoneNumber IS NULL OR LOWER(a.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
     """)
-    List<Apteka> filter(String login, Integer groupId, Integer number, String phoneNumber);
+    List<Apteka> filter(@Param("login") String login, @Param("groupId") Integer groupId, @Param("number") Integer number, @Param("phoneNumber") String phoneNumber);
 }

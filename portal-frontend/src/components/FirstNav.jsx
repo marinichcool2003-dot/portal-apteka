@@ -1,9 +1,9 @@
-import logo from '../assets/logo.png'
-import question from '../assets/Вопрос.svg'
-import menu from '../assets/Иконка меню.svg'
-import plus from '../assets/Плюс.svg'
-import lupa from '../assets/Лупа.svg'
-import avatar from '../assets/Котик.png'
+import logo from '../assets/static-images/logo.png'
+import question from '../assets/static-images/Вопрос.svg'
+import menu from '../assets/static-images/Иконка меню.svg'
+import plus from '../assets/static-images/Плюс.svg'
+import lupa from '../assets/static-images/Лупа.svg'
+import avatar from '../assets/static-images/Котик.png'
 
 import '../styles/FirstNavStyle.css'
 

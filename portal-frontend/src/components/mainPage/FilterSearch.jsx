@@ -1,8 +1,8 @@
 import { useState } from 'react'
 
-import search from '../assets/Лупа для поиска.svg'
+import search from '../../assets/static-images/Лупа для поиска.svg'
 
-import '../styles/FilterSearch.css'
+import '../../styles/mainPage/FilterSearch.css'
 
 export default function FilterSearch() {
 
@@ -30,9 +30,9 @@ export default function FilterSearch() {
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
                 >
-                    <option value="ALL">Все задачи</option>
-                    <option value="MY TASKS">Мои задачи</option>
-                    <option value="MY CREATED TASKS">Мои составленные задачи</option>
+                    <option className="select-item" value="ALL">Все задачи</option>
+                    <option className="select-item" value="MY TASKS">Мои задачи</option>
+                    <option className="select-item" value="MY CREATED TASKS">Мои составленные задачи</option>
                 </select>
             </div>
         </div>

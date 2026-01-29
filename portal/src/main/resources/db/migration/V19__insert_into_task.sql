@@ -1,6 +1,6 @@
 TRUNCATE TABLE task RESTART IDENTITY CASCADE;
 
-INSERT INTO task (title, description, comments, date, status, priority, work_type_id, client_id, created_by_apteka_id, created_by_client_id) VALUES
+INSERT INTO task (title, description, comments, date, status, priority, work_type_id, assigned_client_id, created_by_apteka_id, created_by_client_id) VALUES
     -- Группа 1: Программное обеспечение
     ('Ошибка в базе данных', 'Не работает синхронизация данных между филиалами', 'Проблема возникает при массовом импорте', '2024-01-15 10:30:00', 'OPEN', 'HIGH', 1, (SELECT id FROM client WHERE login = 'ivanov_i'), 1, NULL),
     ('Обновление ПО касс', 'Требуется обновить ПО на всех кассовых аппаратах', 'Нужно согласовать время обновления', '2024-01-16 14:20:00', 'PROCESSED', 'MIDDLE', 1, (SELECT id FROM client WHERE login = 'petrova_a'), 2, NULL),

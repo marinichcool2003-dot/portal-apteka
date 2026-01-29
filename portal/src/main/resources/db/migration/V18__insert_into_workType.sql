@@ -1,4 +1,5 @@
 TRUNCATE TABLE work_type RESTART IDENTITY CASCADE;
+
 INSERT INTO work_type VALUES
     (1, 'Алгоритм', 1),
     (2, 'Принтер', 2),

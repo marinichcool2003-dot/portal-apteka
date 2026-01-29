@@ -17,8 +17,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.apteka.portal.dtos.request.TaskRequestAptekaDTO;
-import com.apteka.portal.dtos.request.TaskRequestClientDTO;
+import com.apteka.portal.dtos.request.TaskRequestCreatedByAptekaToClientDTO;
+import com.apteka.portal.dtos.request.TaskRequestCreatedByAptekaToGroupClient;
+import com.apteka.portal.dtos.request.TaskRequestCreatedByClientToClientDTO;
+import com.apteka.portal.dtos.request.TaskRequestCreatedByClientToClientInGroupDTO;
 import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.services.TaskService;
@@ -112,6 +114,9 @@ public class TaskController {
                                 .thenApply(ResponseEntity::ok);
         }
 
+        //===================================================
+        // Получение задач по группе
+        //===================================================
         @GetMapping("/by-group/{groupId}")
         public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByGroup(
                         @PathVariable Integer groupId) {
@@ -123,6 +128,9 @@ public class TaskController {
                                 .thenApply(ResponseEntity::ok);
         }
 
+        //===================================================
+        // Получение задач по группе сотрудников
+        //===================================================
         @GetMapping("/by-client-group/{groupId}")
         public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByGroupClient(
                         @PathVariable Integer groupId,
@@ -139,31 +147,76 @@ public class TaskController {
         // CREATE
         // ==================================================
 
-        @PostMapping("/by-apteka")
-        public CompletableFuture<ResponseEntity<TaskResponseDTO>> createByApteka(
-                        @RequestBody TaskRequestAptekaDTO dto) {
+        // ==================================================
+        // Создание задачи аптекой для сотрудника
+        // ==================================================
+        @PostMapping("/by-apteka-to-client")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> createByAptekaToClient(
+                        @RequestBody TaskRequestCreatedByAptekaToClientDTO dto) {
 
-                return taskService.createByApteka(
+                return taskService.createByAptekaToClient(
                                 dto.title(),
                                 dto.description(),
                                 dto.comments(),
-                                dto.aptekaId(),
-                                dto.workTaskId())
+                                dto.createByAptekaId(),
+                                dto.workTypeId(),
+                                dto.assignedClientId())
                                 .thenApply(task -> ResponseEntity
                                                 .status(HttpStatus.CREATED)
                                                 .body(TaskResponseDTO.from(task)));
         }
 
-        @PostMapping("/by-client")
-        public CompletableFuture<ResponseEntity<TaskResponseDTO>> createByClient(
-                        @RequestBody TaskRequestClientDTO dto) {
-
-                return taskService.createByClient(
+        // ==================================================
+        // Создание задачи аптекой для группы сотрудников
+        // ==================================================
+        @PostMapping("/by-apteka-to-group-client")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> createByAptekaToGroupClient(
+                        @RequestBody TaskRequestCreatedByAptekaToGroupClient dto) {
+                return taskService.createByAptekaToGroupClient(
                                 dto.title(),
                                 dto.description(),
                                 dto.comments(),
-                                dto.createdByClient(),
-                                dto.workTaskId())
+                                dto.createdAptekaId(),
+                                dto.assignedGroupClientId(),
+                                dto.workTypeId())
+                                .thenApply(task -> ResponseEntity
+                                                .status(HttpStatus.CREATED)
+                                                .body(TaskResponseDTO.from(task)));
+        }
+
+        // ==================================================
+        // Создание задачи сотрудником для сотрудника любой группы
+        // ==================================================
+        @PostMapping("/by-client-to-client")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> createByClient(
+                        @RequestBody TaskRequestCreatedByClientToClientDTO dto) {
+
+                return taskService.createByClientToClient(
+                                dto.title(),
+                                dto.description(),
+                                dto.comments(),
+                                dto.creatorClient(),
+                                dto.assignedClient(),
+                                dto.workTypeId())
+                                .thenApply(task -> ResponseEntity
+                                                .status(HttpStatus.CREATED)
+                                                .body(TaskResponseDTO.from(task)));
+        }
+
+        // ==================================================
+        // Создание задачи сотрудником для сотрудника только внутри группы
+        // ==================================================
+        @PostMapping("/by-client-to-client-in-group")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> createByClientToClientInGroup(
+                        @RequestBody TaskRequestCreatedByClientToClientInGroupDTO dto) {
+
+                return taskService.createByClientToClientInGroup(
+                                dto.title(),
+                                dto.description(),
+                                dto.comments(),
+                                dto.creatorClient(),
+                                dto.assignedClient(),
+                                dto.workTypeId())
                                 .thenApply(task -> ResponseEntity
                                                 .status(HttpStatus.CREATED)
                                                 .body(TaskResponseDTO.from(task)));
@@ -173,34 +226,23 @@ public class TaskController {
         // STATUS
         // ==================================================
 
-        @PatchMapping("/open/{id}")
-        public CompletableFuture<ResponseEntity<String>> openTask(@PathVariable Long id) {
-                return taskService.openTask(id)
-                                .thenApply(task -> ResponseEntity.ok("Задача {" + task.getId() + "} открыта"));
-        }
-
-        @PatchMapping("/processed/{id}")
-        public CompletableFuture<ResponseEntity<String>> processedTask(@PathVariable Long id) {
-                return taskService.processedTask(id)
-                                .thenApply(task -> ResponseEntity.ok("Задача {" + task.getId() + "} в процессе"));
-        }
-
-        @PatchMapping("/close/{id}")
-        public CompletableFuture<ResponseEntity<String>> closeTask(@PathVariable Long id) {
-                return taskService.closeTask(id)
-                                .thenApply(task -> ResponseEntity.ok("Задача {" + task.getId() + "} закрыта"));
-        }
-
-        @PatchMapping("/denied/{id}")
-        public CompletableFuture<ResponseEntity<String>> deniedTask(@PathVariable Long id) {
-                return taskService.deniedTask(id)
-                                .thenApply(task -> ResponseEntity.ok("Задача {" + task.getId() + "} отклонена"));
+        @PatchMapping("/change-status")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> changeStatus(@PathVariable Long id, String statusDescription) {
+                return taskService.changeStatus(
+                                id, 
+                                statusDescription).
+                                thenApply(task -> ResponseEntity
+                                        .status(HttpStatus.CREATED)
+                                        .body(TaskResponseDTO.from(task)));
         }
 
         // ==================================================
         // UPDATE / DELETE
         // ==================================================
 
+        // ==================================================
+        // Обновление содержания задачи (Заголовок, Описание)
+        // ==================================================
         @PutMapping("/{id}")
         public CompletableFuture<ResponseEntity<TaskResponseDTO>> update(
                         @PathVariable Long id,
@@ -211,6 +253,39 @@ public class TaskController {
                                 dto.title(),
                                 dto.description(),
                                 dto.comments())
+                                .thenApply(task -> ResponseEntity.ok(TaskResponseDTO.from(task)));
+        }
+
+        // ==================================================
+        // Распределение задачи на сотрудника для сотрудников из одной группы
+        // ==================================================
+        @PatchMapping("/change-assigned-client-in-group")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> changeAssignedClientInGroup(@PathVariable Long id, @RequestBody UUID assignedClientId) {
+                return taskService.changeAssignedClientInGroup(
+                                id, 
+                                assignedClientId)
+                                .thenApply(task -> ResponseEntity.ok(TaskResponseDTO.from(task)));
+        }
+
+        // ==================================================
+        // Распределение задачи на любого сотрудника
+        // ==================================================
+        @PatchMapping("/change-assigned-client")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> changeAssignedClient(@PathVariable Long id, @RequestBody UUID assignedClientId) {
+                return taskService.changeAssignedClient(
+                                id, 
+                                assignedClientId)
+                                .thenApply(task -> ResponseEntity.ok(TaskResponseDTO.from(task)));
+        }
+
+        // ==================================================
+        // Распределение задачи на группу
+        // ==================================================
+        @PatchMapping("/change-assigned-group-client")
+        public CompletableFuture<ResponseEntity<TaskResponseDTO>> changeAssignedGroupClient(@PathVariable Long id, @RequestBody Integer assignedGroupClientId) {
+                return taskService.changeAssignedGroupClient(
+                                id,
+                                assignedGroupClientId)
                                 .thenApply(task -> ResponseEntity.ok(TaskResponseDTO.from(task)));
         }
 

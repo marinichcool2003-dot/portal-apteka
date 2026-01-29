@@ -2,7 +2,7 @@ import FilterSearch from "./FilterSearch"
 import TaskTable from "./TaskTable"
 import MainDescription from "../MainDescription"
 
-import '../styles/Content.css'
+import '../../styles/mainPage/Content.css'
 
 export default function Content() {
     return (

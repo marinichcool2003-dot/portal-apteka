@@ -177,7 +177,7 @@ public class TaskServiceTest {
 
         assertEquals("Заголовок1", result.getTitle());
         assertEquals(mockApteka, result.getApteka());
-        assertEquals(mockGroupTask, result.getGroup());
+        assertEquals(mockGroupTask, result.wor());
 
         verify(aptekaService).getOne(mockApteka.getId());
         verify(groupTaskService).getOne(mockGroupTask.getId());

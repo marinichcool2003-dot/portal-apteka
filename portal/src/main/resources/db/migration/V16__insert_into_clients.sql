@@ -1,3 +1,5 @@
+TRUNCATE TABLE client RESTART IDENTITY CASCADE;
+
 INSERT INTO client (login, password, full_name, group_id, avatar_url) VALUES
     ('ivanov_i', 'ivan2024pass', 'Иванов Иван Иванович', 1, 'https://storage.example.com/avatars/ivanov.png'),
     ('petrova_a', 'petrovaSecure1', 'Петрова Анна Сергеевна', 2, 'https://storage.example.com/avatars/anna_petrova.jpg'),

@@ -62,6 +62,10 @@ public class Client implements UserDetails {
         return fullName;
     }
 
+    public GroupClient getGroupClient() {
+        return groupClient;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));

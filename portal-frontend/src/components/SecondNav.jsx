@@ -1,10 +1,10 @@
-import groupAvatar from '../assets/Аватар группы.png'
-import house from '../assets/Главная 1.svg'
-import tasksIcon from '../assets/Задачи 1.svg'
-import notifications from '../assets/Иконка уведомления.svg'
-import employee from '../assets/Сотрудники 1.svg'
-import news from '../assets/Значок новостей.svg'
-import settings from '../assets/Настройки 1.svg'
+import groupAvatar from '../assets/avatars/group-avatars/Аватар группы.png'
+import house from '../assets/static-images/Главная 1.svg'
+import tasksIcon from '../assets/static-images/Задачи 1.svg'
+import notifications from '../assets/static-images/Иконка уведомления.svg'
+import employee from '../assets/static-images/Сотрудники 1.svg'
+import news from '../assets/static-images/Значок новостей.svg'
+import settings from '../assets/static-images/Настройки 1.svg'
 
 import '../styles/SecondNav.css'
 

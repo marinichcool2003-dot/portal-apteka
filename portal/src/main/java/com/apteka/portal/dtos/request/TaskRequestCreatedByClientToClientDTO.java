@@ -2,12 +2,13 @@ package com.apteka.portal.dtos.request;
 
 import java.util.UUID;
 
-public record TaskRequestClientDTO(
+public record TaskRequestCreatedByClientToClientDTO(
     String title,
     String description,
     String comments,
-    UUID createdByClient,
-    Integer workTaskId
+    UUID creatorClient,
+    UUID assignedClient,
+    Integer workTypeId
 ) 
 {}
 

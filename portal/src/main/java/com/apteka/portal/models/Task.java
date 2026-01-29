@@ -50,32 +50,58 @@ public class Task {
     private Date date;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "status", nullable = false)
+    @Column(name = "status", nullable = false)
     private TaskStatus status;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "priority", nullable = false)
+    @Column(name = "priority", nullable = false)
     private TaskPriority priority;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_apteka_id")
-    private Apteka createdByApteka;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_client_id")
-    private Client createdByClient;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "work_type_id", nullable = false)
     private WorkType workType;
 
+    //================================================
+    //Создатель АПТЕКА
+    //================================================
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_apteka_id")
+    private Apteka createdByApteka;
+
+    //================================================
+    //Создатель СОТРУДНИК
+    //================================================
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_client_id")
+    private Client createdByClient;
+
+    //================================================
+    //Исполнитель СОТРУДНИК
+    //================================================
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_client_id")
     private Client assignedClient;
 
+    //================================================
+    //Исполнитель АПТЕКА
+    //================================================
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_apteka_id")
     private Apteka assignedApteka;
+
+    //================================================
+    //Исполнитель группа СОТРУДНИКОВ
+    //================================================
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_client_id")
+    private GroupClient assignedGroupClient;
+
+    //================================================
+    //Исполнитель группа АПТЕК
+    //================================================
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_apteki_id")
+    private GroupApteki assignedGroupApteki;
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<TaskComments> employeeComments;

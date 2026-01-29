@@ -6,6 +6,10 @@ ALTER TABLE task
 ADD CONSTRAINT fk_group_client_task
 FOREIGN KEY (group_client_id) REFERENCES group_client(id);
 
+ALTER TABLE task 
+ADD CONSTRAINT fk_group_apteki_task
+FOREIGN KEY (group_apteki_id) REFERENCES group_apteki(id);
+
 ALTER TABLE work_type 
 ADD CONSTRAINT fk_work_type_group
 FOREIGN KEY (group_task_id) REFERENCES group_task(id);
@@ -50,14 +54,14 @@ ALTER TABLE task_picture
 ADD CONSTRAINT fk_task_picture
 FOREIGN KEY (task_id) REFERENCES task(id);
 
-ALTER TABLE task
-ADD CONSTRAINT chk_creator_not_null
-CHECK (
-    created_by_apteka_id IS NOT NULL OR created_by_client_id IS NOT NULL
-);
+-- ALTER TABLE task
+-- ADD CONSTRAINT chk_creator_not_null
+-- CHECK (
+--     created_by_apteka_id IS NOT NULL OR created_by_client_id IS NOT NULL
+-- );
 
-ALTER TABLE task
-ADD CONSTRAINT chk_creator_not_self 
-CHECK (
-    created_by_client_id IS NULL OR created_by_client_id <> client_id
-);
+-- ALTER TABLE task
+-- ADD CONSTRAINT chk_creator_not_self 
+-- CHECK (
+--     created_by_client_id IS NULL OR created_by_client_id <> client_id
+-- );

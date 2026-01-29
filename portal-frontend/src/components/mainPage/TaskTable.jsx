@@ -1,6 +1,6 @@
 import { useTasks } from "../../hooks/GetAllTask"
 
-import '../styles/TaskTable.css'
+import '../../styles/mainPage/TaskTable.css'
 
 export default function TaskTable() {
 
