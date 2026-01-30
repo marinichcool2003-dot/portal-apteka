@@ -18,8 +18,15 @@ public class AuthAptekaService {
     private final JwtTokenProvider jwtTokenProvider;
 
     public String register(String login, String password, Integer number, String adress, String phoneNumber, Integer groupId) {
-        Apteka apteka = aptekaService.create(login, password, number, adress, phoneNumber, groupId);
-        return jwtTokenProvider.generateToken(apteka.getLogin());
+        // Используем AptekaService для создания аптеки
+        Apteka apteka = aptekaService.create(login, passwordEncoder.encode(password), number, adress, phoneNumber, groupId);
+        
+        // Генерируем токен для аптеки (нужно адаптировать JwtTokenProvider для Apteka)
+        // Создаем временный Client объект или адаптируем JwtTokenProvider
+        // return jwtTokenProvider.generateToken(apteka.getLogin());
+        
+        // Пока возвращаем просто сообщение
+        return "Аптека зарегистрирована. ID: " + apteka.getId();
     }
 
     public String login(String login, String password) {
@@ -30,6 +37,10 @@ public class AuthAptekaService {
             throw new RuntimeException("Неверный пароль!");
         }
 
-        return jwtTokenProvider.generateToken(apteka.getLogin());
+        // Для аптеки нужно создать отдельный JWT токен
+        // return jwtTokenProvider.generateToken(apteka.getLogin());
+        
+        // Пока возвращаем заглушку
+        return "Bearer mock_token_for_apteka_" + apteka.getId();
     }
 }

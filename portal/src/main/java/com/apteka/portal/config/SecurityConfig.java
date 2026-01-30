@@ -12,9 +12,11 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.apteka.portal.security.JwtTokenProvider;
@@ -26,7 +28,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
-@SuppressWarnings("null")
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
@@ -54,29 +55,21 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-
             .authorizeHttpRequests(auth -> auth
                 // API доступ без авторизации
-                .requestMatchers("/api/v1/login", "/api/v1/register").permitAll()
+                .requestMatchers("/api/v1/auth/**").permitAll()  // Изменил путь
+                .requestMatchers("/api/v1/register").permitAll()
 
                 // Swagger
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").hasAnyRole("LEGEND", "ADMIN")
 
-                //API
-                .requestMatchers("/api/v1/group-apteki/**").permitAll()
-                .requestMatchers("/api/v1/task/**").permitAll()
-                .requestMatchers("/api/v1/group-task/**").permitAll()
-                .requestMatchers("/api/v1/apteka/**").permitAll()
-                .requestMatchers("/api/v1/clients/**").permitAll()
-                .requestMatchers("/api/v1/group-clients/**").permitAll()
-                .requestMatchers("/api/v1/task-comments/**").permitAll()
-
+                // API endpoints - настраивайте безопасность отдельно
+                // .requestMatchers("/api/v1/clients/**").hasRole("ADMIN") // Пример
 
                 // Разрешаем ВСЮ статику
                 .requestMatchers(
@@ -88,37 +81,59 @@ public class SecurityConfig {
 
                 .anyRequest().authenticated()
             )
-
-            .addFilterBefore(new JwtAuthFilter(jwtTokenProvider),
-                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(
+                new JwtAuthFilter(jwtTokenProvider, clientService),
+                UsernamePasswordAuthenticationFilter.class
+            );
 
         return http.build();
     }
+}
 
-    static class JwtAuthFilter extends OncePerRequestFilter {
+// Выносим JwtAuthFilter в отдельный файл
+class JwtAuthFilter extends OncePerRequestFilter {
 
-        private final JwtTokenProvider jwtTokenProvider;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final ClientService clientService;
 
-        public JwtAuthFilter(JwtTokenProvider jwtTokenProvider) {
-            this.jwtTokenProvider = jwtTokenProvider;
-        }
+    public JwtAuthFilter(JwtTokenProvider jwtTokenProvider, ClientService clientService) {
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.clientService = clientService;
+    }
 
-        @Override
-        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-                throws ServletException, IOException {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, 
+                                  HttpServletResponse response, 
+                                  FilterChain filterChain)
+            throws ServletException, IOException {
 
-            String header = request.getHeader("Authorization");
+        String header = request.getHeader("Authorization");
 
-            if (header != null && header.startsWith("Bearer ")) {
-                String token = header.substring(7);
-                if (jwtTokenProvider.validateToken(token)) {
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7);
+            
+            if (jwtTokenProvider.validateToken(token)) {
+                try {
                     String login = jwtTokenProvider.getLoginFromToken(token);
-                    var auth = new UsernamePasswordAuthenticationToken(login, null, null);
-                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    
+                    UserDetails userDetails = clientService.loadUserByUsername(login);
+
+                    UsernamePasswordAuthenticationToken authenticationToken = 
+                        new UsernamePasswordAuthenticationToken(
+                            userDetails, 
+                            null, 
+                            userDetails.getAuthorities()
+                        );
+                    
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+
+                } catch (Exception e) {
+                    logger.error("Не удалось загрузить пользователя из токена", e);
+                    SecurityContextHolder.clearContext();
                 }
             }
-
-            filterChain.doFilter(request, response);
         }
+
+        filterChain.doFilter(request, response);
     }
 }

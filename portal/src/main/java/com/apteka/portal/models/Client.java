@@ -21,6 +21,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
@@ -31,6 +32,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @Builder
 @Setter
+@Getter
 @ToString
 public class Client implements UserDetails {
     @Id
@@ -57,6 +59,10 @@ public class Client implements UserDetails {
 
     @Column(name = "avatar_url")
     private String avatarURL;
+
+    public UUID getId() {
+        return id;
+    }
 
     public String getFullName() {
         return fullName;

@@ -4,5 +4,4 @@ import org.springframework.web.multipart.MultipartFile;
 
 public record ClientAvatarRequestDTO(
     MultipartFile avatar
-) 
-{}
+) {}

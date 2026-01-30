@@ -20,4 +20,6 @@ public interface ClientInterface extends JpaRepository<Client, UUID>{
             WHERE g.id = :groupId
             """)
     List<Client> findByGroupId(Integer groupId);
+
+    boolean existsByLogin(String login);
 }

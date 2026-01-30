@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +29,7 @@ public class ClientService implements UserDetailsService{
     private final GroupClientService groupClientService;
     private final ClientInterface clientInterface;
     private final AvatarClientService avatarClientService;
+    private final PasswordEncoder passwordEncoder; // Добавляем PasswordEncoder
 
     @Transactional(readOnly = true)
     public List<Client> getAll(){
@@ -40,35 +42,45 @@ public class ClientService implements UserDetailsService{
         return clientInterface.findByRole(role.name());
     }
 
-    @Transactional
+    @Override
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String login) throws UsernameNotFoundException {
         return clientInterface.findByLogin(login)
-            .orElseThrow(() -> new UsernameNotFoundException("Клиент не найден " + login));
+            .orElseThrow(() -> new UsernameNotFoundException("Клиент не найден: " + login));
     }
 
-    @SuppressWarnings("null")
     @Transactional(readOnly = true)
     public Client getOne(UUID id){
         return clientInterface.findById(id)
             .orElseThrow(() -> new ClientNotFoundException(id));
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public Client create(String login, String password, String fullName, String code, GroupClient groupClient) throws IOException{
-        if (login.strip().isEmpty() || login == null) throw new InvalidClientLoginException();
-        if (password.strip().isEmpty() || password == null) throw new InvalidClientPasswordException();
+        if (login == null || login.strip().isEmpty()) {
+            throw new InvalidClientLoginException();
+        }
+        if (password == null || password.strip().isEmpty()) {
+            throw new InvalidClientPasswordException();
+        }
+        
+        // Проверяем, не существует ли уже пользователь с таким логином
+        if (clientInterface.existsByLogin(login)) {
+            throw new RuntimeException("Пользователь с логином " + login + " уже существует");
+        }
+        
         GroupClient group = groupClientService.getOne(groupClient.getId());
         Role role = Role.fromCode(code);
 
         Client newClient = Client.builder()
             .login(login)
-            .password(password)
+            .password(passwordEncoder.encode(password)) // Кодируем пароль!
             .fullName(fullName)
             .role(role)
             .groupClient(group)
             .avatarURL("/uploads/avatars/clients/default.png")
             .build();
+            
         return clientInterface.save(newClient);
     }
 
@@ -76,40 +88,43 @@ public class ClientService implements UserDetailsService{
     public Client updateRole(UUID id, String code) {
         Client upClient = getOne(id);
         Role role = Role.fromCode(code);
-
         upClient.setRole(role);
-
         return clientInterface.save(upClient);
     }
 
     @Transactional
     public Client updateAvatar(UUID id, MultipartFile avatar) throws IOException{
         Client upClient = getOne(id);
-
         String avatarURL = avatarClientService.uploadAvatar(avatar, id);
         upClient.setAvatarURL(avatarURL);
-
         return clientInterface.save(upClient);
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public Client update(UUID id, String login, String password, String code, GroupClient groupClient){
         Client upClient = getOne(id);
-        groupClientService.getOne(groupClient.getId());
-        if (login != null || !login.isEmpty()) {
+        
+        if (groupClient != null) {
+            groupClientService.getOne(groupClient.getId());
+            upClient.setGroupClient(groupClient);
+        }
+        
+        if (login != null && !login.isEmpty()) {
             upClient.setLogin(login);
         }
-        if (password != null || !password.isEmpty()) {
-            upClient.setLogin(password);
+        
+        if (password != null && !password.isEmpty()) {
+            upClient.setPassword(passwordEncoder.encode(password)); // Кодируем новый пароль
         }
-        if (code != null || !code.isEmpty()) {
-            upClient.setLogin(code);
+        
+        if (code != null && !code.isEmpty()) {
+            Role role = Role.fromCode(code);
+            upClient.setRole(role);
         }
+        
         return clientInterface.save(upClient);
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public void delete(UUID id){
         if (clientInterface.existsById(id)) {
