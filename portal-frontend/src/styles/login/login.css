@@ -1,0 +1,31 @@
+.login-body {
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(180deg, #0d3b0d 0%, #2a6e2a 50%, #4c954c 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.login__container {
+    background-color: white;
+    height: 50rem;
+    width: 50rem;
+}
+
+.login-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    max-width: 10rem;
+}
+
+.login-header img {
+    height: 10rem;
+    width: 10rem;
+}
+
+.login-form {
+
+}

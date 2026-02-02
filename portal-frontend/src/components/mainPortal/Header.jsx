@@ -4,7 +4,7 @@ import '../../styles/mainPortal/Header.css'
 
 export default function Header() {
     return (
-        <header>
+        <header className='main-portal-header'>
             <a href="#Startova" className="logo">
                 <div className="logo-bg">
                     <object type="image/svg+xml" data={logo} width="140" height="40"></object>

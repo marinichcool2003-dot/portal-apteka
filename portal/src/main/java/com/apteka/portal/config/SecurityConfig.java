@@ -66,7 +66,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/register").permitAll()
 
                 // Swagger
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").hasAnyRole("LEGEND", "ADMIN")
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
                 // API endpoints - настраивайте безопасность отдельно
                 // .requestMatchers("/api/v1/clients/**").hasRole("ADMIN") // Пример
