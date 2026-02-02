@@ -114,7 +114,7 @@ public class ClientService implements UserDetailsService{
         }
         
         if (password != null && !password.isEmpty()) {
-            upClient.setPassword(passwordEncoder.encode(password)); // Кодируем новый пароль
+            upClient.setPassword(passwordEncoder.encode(password));
         }
         
         if (code != null && !code.isEmpty()) {

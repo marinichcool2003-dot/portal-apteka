@@ -1,0 +1,285 @@
+header{
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10%;
+    box-shadow: 0 2px 5px;
+    background: linear-gradient(to bottom, #388E3C, #339E37, rgba(5, 155, 50, 0.75));
+    z-index: 1000;
+}
+
+header .logo {
+    transition: .5s;
+}
+
+header .logo .logo-bg {
+    display: inline-flex;             /* чтобы объект центрировался */
+    align-items: center;
+    justify-content: center;
+    background: white;                /* белый фон */
+    border-radius: 10px;               /* круглый фон */
+    padding: 0px 3px;               /* внутренние отступы */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2); /* лёгкая тень для объёма */
+    transition: transform 0.3s ease;
+    margin: 5px 0px;
+
+}
+
+header .logo .logo-bg:hover {
+    transform: scale(1.03);           /* эффект при наведении */
+}
+
+header .logo-bg object {
+    pointer-events: none; /* клики будут проходить через объект */
+}
+
+ul {
+    box-shadow: 
+        5px 5px 7px -5px rgba(0, 0, 0, 0.15),
+        -5px 5px 7px -5px rgba(0, 0, 0, 0.15),
+        0 5px 7px -5px rgba(0, 0, 0, 0.15);
+}
+
+header nav ul li {
+    position: relative;
+    float: left;
+    border: 1px solid rgba(182, 182, 182, 0.1);
+}
+
+header nav ul li a {
+    padding: 15px;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    font-size: 16px;
+    display: block;
+    position: relative;
+    transition: color 0.3s ease; /* Плавное изменение цвета текста */
+}
+
+/* Линия при наведении */
+header nav ul li a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px; /* Увеличили толщину линии */
+    background: rgb(255, 255, 255);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1); /* Более плавная анимация */
+}
+
+/* Анимация при наведении */
+header nav ul li a:hover::before {
+    transform: scaleX(1);
+}
+
+/* Дополнительный эффект - изменение цвета текста */
+header nav ul li a:hover {
+    color: #ffffff; /* Темнее при наведении */
+}
+
+nav ul li ul {
+    position: absolute;
+    left: 0;
+    width: 160px;
+    opacity: 0;
+    transform: translateY(-20px) rotateX(-30deg);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    perspective: 1000px;
+    visibility: hidden;
+    background: linear-gradient(to bottom, rgba(5, 155, 50, 0.95), rgba(5, 180, 58, 0.95), rgba(9, 182, 61, 0.95));
+}
+
+nav ul li:hover > ul {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+}
+
+nav ul li ul li {
+    width: 100%;
+    border: 1px solid rgb(0, 0, 0, 0.1);
+}
+
+.header-button {
+    padding: 10px 20px;
+    background: #ffffff;
+    color: rgb(0, 0, 0);
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.header-button:hover {
+    background: #cccccc;
+    transform: scale(1.05);
+}
+
+.header-button:active {
+    transform: scale(0.98);
+}
+
+.has-submenu > a {
+    position: relative;
+    padding-right: 20px;
+    width: 140px;
+}
+
+.has-submenu > a::after {
+    content: "";
+    position: absolute;
+    right: -3px;
+    top: 48%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    background-size: contain;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    transition: transform 0.4s ease;
+}
+
+.has-submenu:hover > a::after {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* Стили для бургер-меню */
+.burger-menu {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 30px;
+    height: 21px;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+.burger-menu span {
+    display: block;
+    height: 3px;
+    width: 100%;
+    background-color: white;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+
+/* Боковая панель */
+.side-panel {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 280px;
+    height: 100vh;
+    background: linear-gradient(to bottom, #388E3C, #339E37, rgba(5, 155, 50, 0.95));
+    box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+    transition: right 0.4s ease;
+    z-index: 999;
+    overflow-y: auto;
+    padding-top: 70px;
+}
+
+.side-panel.active {
+    right: 0;
+}
+
+.side-panel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+.side-panel ul li {
+    border: none;
+    float: none;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.side-panel ul li a {
+    padding: 18px 25px;
+    display: block;
+    color: white;
+    text-decoration: none;
+    transition: background 0.3s;
+}
+
+.side-panel ul li a:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.side-panel ul li ul {
+    display: none;
+    background: rgba(0,0,0,0.1);
+    padding-left: 0;
+}
+
+.side-panel ul li ul.active {
+    display: block;
+}
+
+.side-panel ul li ul li a {
+    padding: 15px 25px 15px 35px;
+}
+
+/* СКРЫВАЕМ СТРЕЛКИ В БОКОВОЙ ПАНЕЛИ */
+.side-panel .has-submenu > a::after {
+    display: none !important;
+}
+
+.side-panel .has-submenu > a {
+    padding-right: 25px !important;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 998;
+}
+
+.overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Медиа-запросы для адаптивности */
+@media (max-width: 1200px) {
+    header {
+        padding: 0 5%;
+    }
+    
+    header nav ul li a {
+        padding: 15px 10px;
+        font-size: 15px;
+    }
+}
+
+@media (max-width: 992px) {
+    header nav {
+        display: none;
+    }
+    
+    .burger-menu {
+        display: flex;
+    }
+}
+
+@media (min-width: 993px) {
+    .side-panel {
+        display: none !important;
+    }
+}
