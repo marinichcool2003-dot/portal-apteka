@@ -6,23 +6,23 @@ export default function Login() {
     return (
         <div className='login-body'>
             <div className='login__container'>
-                <header className='login-header'>
+                <div className='login-header'>
                     <img src={logo} alt="Логотип Социальных аптек" />
                     <h1>Социальная аптека</h1>
                     <span>Вход в систему</span>
-                </header>
+                </div>
                 <form className='login-form' action="submit">
-                    <div className='username-input__container'>
-                        <label htmlFor="">Логин</label>
-                        <input type="text" placeholder='Введите логин' />
+                    <div className='input__container'>
+                        <label htmlFor="username">Логин</label>
+                        <input type="username" placeholder='Введите логин' />
                     </div>
-                    <div className='password-input__container'>
-                        <label htmlFor="">Пароль</label>
+                    <div className='input__container'>
+                        <label htmlFor="password">Пароль</label>
                         <input type="password" placeholder='Введите пароль' />
                     </div>
                     <div className='remember-me__container'>
-                        <label htmlFor="">Запомнить меня</label>
-                        <input type="checkbox" name="" id="" />
+                        <label>Запомнить меня</label>
+                        <input type="checkbox" name="remember-check" className="apple-check" id="remember-check" placeholder='Ф'/>
                     </div>
                     <button type="submit">Войти</button>
                 </form>
