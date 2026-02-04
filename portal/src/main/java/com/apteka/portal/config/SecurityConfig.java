@@ -13,7 +13,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -38,17 +37,12 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
+    public AuthenticationManager authenticationManager(HttpSecurity http, PasswordEncoder passwordEncoder) throws Exception {
         AuthenticationManagerBuilder authenticationManagerBuilder = 
             http.getSharedObject(AuthenticationManagerBuilder.class);
         authenticationManagerBuilder
             .userDetailsService(clientService)
-            .passwordEncoder(passwordEncoder());
+            .passwordEncoder(null);
 
         return authenticationManagerBuilder.build(); 
     }
@@ -62,8 +56,9 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 // API доступ без авторизации
-                .requestMatchers("/api/v1/auth/**").permitAll()  // Изменил путь
+                .requestMatchers("/api/v1/auth/login").permitAll()  // Изменил путь
                 .requestMatchers("/api/v1/register").permitAll()
+                .requestMatchers("/api/v1/apteka").permitAll()
 
                 // Swagger
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -82,7 +77,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .addFilterBefore(
-                new JwtAuthFilter(jwtTokenProvider, clientService),
+                new JwtAuthFilter(jwtTokenProvider),
                 UsernamePasswordAuthenticationFilter.class
             );
 
@@ -94,11 +89,9 @@ public class SecurityConfig {
 class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final ClientService clientService;
 
-    public JwtAuthFilter(JwtTokenProvider jwtTokenProvider, ClientService clientService) {
+    public JwtAuthFilter(JwtTokenProvider jwtTokenProvider) {
         this.jwtTokenProvider = jwtTokenProvider;
-        this.clientService = clientService;
     }
 
     @Override
@@ -115,17 +108,16 @@ class JwtAuthFilter extends OncePerRequestFilter {
             if (jwtTokenProvider.validateToken(token)) {
                 try {
                     String login = jwtTokenProvider.getLoginFromToken(token);
+                    var roles = jwtTokenProvider.getRolesFromToken(token);
                     
-                    UserDetails userDetails = clientService.loadUserByUsername(login);
-
-                    UsernamePasswordAuthenticationToken authenticationToken = 
+                    UsernamePasswordAuthenticationToken auth = 
                         new UsernamePasswordAuthenticationToken(
-                            userDetails, 
+                            login, 
                             null, 
-                            userDetails.getAuthorities()
+                            roles
                         );
                     
-                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                    SecurityContextHolder.getContext().setAuthentication(auth);
 
                 } catch (Exception e) {
                     logger.error("Не удалось загрузить пользователя из токена", e);

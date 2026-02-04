@@ -24,12 +24,13 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class ClientService implements UserDetailsService{
 
     private final GroupClientService groupClientService;
     private final ClientInterface clientInterface;
     private final AvatarClientService avatarClientService;
-    private final PasswordEncoder passwordEncoder; // Добавляем PasswordEncoder
+    private final PasswordEncoder passwordEncoder; 
 
     @Transactional(readOnly = true)
     public List<Client> getAll(){

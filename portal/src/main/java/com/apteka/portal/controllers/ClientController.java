@@ -25,7 +25,6 @@ import com.apteka.portal.dtos.request.ClientUpdateRoleDTO;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.services.ClientService;
-import com.apteka.portal.services.SecurityService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -40,7 +39,6 @@ import lombok.RequiredArgsConstructor;
 @SecurityRequirement(name = "bearerAuth")
 public class ClientController {
     private final ClientService clientService;
-    private final SecurityService securityService;
 
     @GetMapping
     @PreAuthorize("hasRole('LEGEND') or hasRole('ADMIN')")
@@ -54,7 +52,6 @@ public class ClientController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@securityService.canAccessClient(#id)")
     @Operation(summary = "получить пользователя по ID")
     public ResponseEntity<ClientResponseDTO> getOne(@PathVariable UUID id) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.getOne(id)));

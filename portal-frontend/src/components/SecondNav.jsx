@@ -1,4 +1,4 @@
-import groupAvatar from '../assets/avatars/group-avatars/Аватар группы.png'
+import GroupSelect from './GroupSelect'
 import house from '../assets/static-images/Главная 1.svg'
 import tasksIcon from '../assets/static-images/Задачи 1.svg'
 import notifications from '../assets/static-images/Иконка уведомления.svg'
@@ -11,13 +11,7 @@ import '../styles/SecondNav.css'
 export default function SecondNav() {
     return (
         <div className="secondNav">
-            <div className="groupDescription">
-                <a href="#"><img src={groupAvatar} alt="Аваттар группы" className="groupAvatar" /></a>
-                <div className="groupInfo">
-                    <p className="groupName">Проект: IT-отдел</p>
-                    <p className="groupDescriptionText">Хз возможно какой-то текст</p>
-                </div>
-            </div>
+            <GroupSelect/>
             <nav>
                 <ul className="icon-links">
                     <li><a href="#"><div className="icon-square"><img src={house} alt="Главная" /><span className="nav-text">Главная</span></div></a></li>
