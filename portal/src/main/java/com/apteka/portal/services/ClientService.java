@@ -57,20 +57,21 @@ public class ClientService implements UserDetailsService{
     }
 
     @Transactional
-    public Client create(String login, String password, String fullName, String code, GroupClient groupClient) throws IOException{
+    public Client create(String login, String password, String fullName, String code, Integer groupClientId) throws IOException{
+        System.out.println("SERVICE LOGIN = [" + login + "]");
         if (login == null || login.strip().isEmpty()) {
             throw new InvalidClientLoginException();
         }
         if (password == null || password.strip().isEmpty()) {
             throw new InvalidClientPasswordException();
         }
-        
+
         // Проверяем, не существует ли уже пользователь с таким логином
         if (clientInterface.existsByLogin(login)) {
             throw new RuntimeException("Пользователь с логином " + login + " уже существует");
         }
         
-        GroupClient group = groupClientService.getOne(groupClient.getId());
+        GroupClient group = groupClientService.getOne(groupClientId);
         Role role = Role.fromCode(code);
 
         Client newClient = Client.builder()
@@ -102,11 +103,20 @@ public class ClientService implements UserDetailsService{
     }
 
     @Transactional
-    public Client update(UUID id, String login, String password, String code, GroupClient groupClient){
+    public Client updateAvatar(String username, MultipartFile avatar) throws IOException{
+        Client upClient = clientInterface.findByLogin(username)
+            .orElseThrow(() -> new ClientNotFoundException("Пользователь с именем " + username + " не найден!"));
+        String avatarURL = avatarClientService.uploadAvatar(avatar, upClient.getId());
+        upClient.setAvatarURL(avatarURL);
+        return clientInterface.save(upClient);
+    }
+
+    @Transactional
+    public Client update(UUID id, String login, String password, Integer groupClientId){
         Client upClient = getOne(id);
         
-        if (groupClient != null) {
-            groupClientService.getOne(groupClient.getId());
+        if (groupClientId != null) {
+            GroupClient groupClient = groupClientService.getOne(groupClientId);
             upClient.setGroupClient(groupClient);
         }
         
@@ -116,11 +126,6 @@ public class ClientService implements UserDetailsService{
         
         if (password != null && !password.isEmpty()) {
             upClient.setPassword(passwordEncoder.encode(password));
-        }
-        
-        if (code != null && !code.isEmpty()) {
-            Role role = Role.fromCode(code);
-            upClient.setRole(role);
         }
         
         return clientInterface.save(upClient);

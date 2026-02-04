@@ -2,6 +2,7 @@ package com.apteka.portal.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -9,7 +10,6 @@ import com.apteka.portal.dtos.request.LoginRequestDTO;
 import com.apteka.portal.dtos.response.TokenResponseDTO;
 import com.apteka.portal.services.AuthService;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import lombok.RequiredArgsConstructor;
 
 @RestController

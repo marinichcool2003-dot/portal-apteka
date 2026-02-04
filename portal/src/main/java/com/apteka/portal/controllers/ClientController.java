@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,7 +28,6 @@ import com.apteka.portal.models.Client;
 import com.apteka.portal.services.ClientService;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +41,7 @@ public class ClientController {
     private final ClientService clientService;
 
     @GetMapping
-    @PreAuthorize("hasRole('LEGEND') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('LEGEND')")
     @Operation(summary = "Получить всех пользователей", description = "Доступно только для ролей LEGEND и ADMIN")
     public ResponseEntity<List<ClientResponseDTO>> getAll() {
         return ResponseEntity
@@ -52,6 +52,7 @@ public class ClientController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('LEGEND')")
     @Operation(summary = "получить пользователя по ID")
     public ResponseEntity<ClientResponseDTO> getOne(@PathVariable UUID id) {
         return ResponseEntity.ok(ClientResponseDTO.from(clientService.getOne(id)));
@@ -65,6 +66,13 @@ public class ClientController {
         return ResponseEntity.ok(ClientResponseDTO.from(client)); 
     }
 
+    @PatchMapping("/update-avatar-me")
+    public ResponseEntity<String> updateAvatarMe(@RequestBody ClientAvatarRequestDTO dto) throws IOException{
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        clientService.updateAvatar(authentication.getName(), dto.avatar());
+        return ResponseEntity.ok()
+            .body("Картинка профиля была успешно изменена!");
+    }
     @PostMapping
     @PreAuthorize("hasRole('LEGEND') or hasRole('ADMIN')")
     public ResponseEntity<ClientResponseDTO> create(@RequestBody ClientRequestDTO dto) throws IOException {
@@ -76,10 +84,11 @@ public class ClientController {
                                 dto.password(),
                                 dto.fullName(),
                                 dto.role(),
-                                dto.groupClient())));
+                                dto.groupClientId())));
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping("/update-avatar/{id}")
+    @PreAuthorize("hasRole('LEGEND') or hasRole('ADMIN')")
     public ResponseEntity<ClientResponseDTO> updateAvatar(@PathVariable UUID id,
             @RequestBody ClientAvatarRequestDTO dto) throws IOException {
         return ResponseEntity
@@ -89,7 +98,8 @@ public class ClientController {
                         dto.avatar())));
     }
 
-    @PatchMapping("/changeRole/{id}")
+    @PatchMapping("/change-role/{id}")
+    @PreAuthorize("hasRole('LEGEND')")
     public ResponseEntity<ClientResponseDTO> updateRole(@PathVariable UUID id, @RequestBody ClientUpdateRoleDTO dto) {
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -99,6 +109,7 @@ public class ClientController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('LEGEND') or hasRole('ADMIN')")
     public ResponseEntity<ClientResponseDTO> update(@PathVariable UUID id, @RequestBody ClientUpdateDTO dto) {
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -106,8 +117,7 @@ public class ClientController {
                         id,
                         dto.login(),
                         dto.password(),
-                        dto.role(),
-                        dto.groupClient())));
+                        dto.groupClientId())));
     }
 
     @DeleteMapping("/{id}")
