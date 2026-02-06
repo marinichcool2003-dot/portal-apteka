@@ -120,7 +120,6 @@ public class TaskController {
         @GetMapping("/by-group/{groupId}")
         public CompletableFuture<ResponseEntity<List<TaskResponseDTO>>> getByGroup(
                         @PathVariable Integer groupId) {
-
                 return taskService.getByGroup(groupId)
                                 .thenApply(tasks -> tasks.stream()
                                                 .map(TaskResponseDTO::from)

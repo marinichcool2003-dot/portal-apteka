@@ -56,10 +56,10 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // API доступ без авторизации
                 .requestMatchers("/api/v1/auth/login").permitAll()  // Изменил путь
-                .requestMatchers("/api/v1/register").permitAll()
-                .requestMatchers("/api/v1/apteka").permitAll()
+                // .requestMatchers("/api/v1/register").permitAll()
+                // .requestMatchers("/api/v1/apteka").permitAll()
                 .requestMatchers("api/v1/clients").permitAll()
-                .requestMatchers("/api/v1/group-task").permitAll()
+                // .requestMatchers("/api/v1/group-task").permitAll()
                 .requestMatchers("api/v1/group-client").permitAll()
 
                 // Swagger

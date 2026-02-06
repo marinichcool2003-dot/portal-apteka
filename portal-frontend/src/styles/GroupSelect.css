@@ -1,0 +1,54 @@
+.selected-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.selected-group-name {
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+
+.selected-group-avatar {
+    width: 6.6rem;
+    height: 6.6rem;
+    border-radius: 1.5rem;
+    object-fit: cover;
+    border: 2px solid white;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.group-dropdown-item {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.group-avatar {
+    width: 6.6rem;
+    height: 6.6rem;
+}
+.group-info {
+    display: flex;
+    flex-direction: column;
+}
+.group-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-left: 1rem;
+}
+
+.placeholder {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.placeholder-avatar {
+    width: 6.6rem;
+    height: 6.6rem;
+}
+

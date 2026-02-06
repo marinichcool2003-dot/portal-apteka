@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 
-import api from './hooks/axios.js'
+import api from './axios.js'
 
 export function useTasks() {
     const [tasks, setTasks] = useState([])

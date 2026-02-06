@@ -12,48 +12,6 @@
     z-index: 999;
 }
 
-.groupDescription {
-    display: flex;
-    align-items: flex-start;
-    padding: 0px 1rem 0.6rem 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.groupAvatar {
-    width: 6.6rem;
-    height: 6.6rem;
-    border-radius: 1.5rem;
-    object-fit: cover;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
-    flex-shrink: 0;
-}
-
-.groupInfo {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 0px 6px;
-}
-
-.groupAvatar:hover {
-    border-color: white;
-    transform: scale(1.05);
-}
-
-.groupName {
-    font-weight: bold;
-    font-size: 1.5rem;
-    color: white;
-    margin: 0 0 5px 0;
-}
-
-.groupDescriptionText {
-    font-weight: bold;
-    font-size: 1.5rem;
-    color: rgb(147, 147, 147);
-}
-
 .icon-links {
     list-style: none;
 }

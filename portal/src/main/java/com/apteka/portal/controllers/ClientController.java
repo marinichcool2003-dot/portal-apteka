@@ -74,7 +74,7 @@ public class ClientController {
             .body("Картинка профиля была успешно изменена!");
     }
     @PostMapping
-    @PreAuthorize("hasRole('LEGEND') or hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('LEGEND') or hasRole('ADMIN')")
     public ResponseEntity<ClientResponseDTO> create(@RequestBody ClientRequestDTO dto) throws IOException {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
