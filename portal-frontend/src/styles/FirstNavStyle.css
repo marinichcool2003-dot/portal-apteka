@@ -11,6 +11,7 @@
     align-items: center;
     padding: 1.9rem 0;
     z-index: 1000;
+    user-select: none;
 }
 
 .nav-top,

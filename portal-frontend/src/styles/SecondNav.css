@@ -10,6 +10,7 @@
     overflow-y: auto;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     z-index: 999;
+    user-select: none;
 }
 
 .icon-links {
@@ -43,4 +44,54 @@
     text-decoration: none;
     display: block;
     color: inherit;
+}
+
+
+
+
+/* Область для перетаскивания (правый край) */
+.secondNav::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    background: transparent;
+    transition: background-color 0.2s;
+}
+
+.secondNav:hover::after {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Или более заметный вариант с ручкой */
+.secondNav {
+    position: fixed;
+    /* остальные стили... */
+    resize: horizontal; /* браузерный ресайз, но может не работать хорошо */
+    overflow: hidden; /* для браузерного ресайза */
+}
+
+/* Кастомная ручка для ресайза */
+.resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 10px;
+    height: 100%;
+    cursor: col-resize;
+    background: transparent;
+    z-index: 1000;
+}
+
+.resize-handle:hover {
+    background: black
+}
+
+/* Индикатор ресайза во время перетаскивания */
+.resizing {
+    user-select: none;
+    -webkit-user-select: none;
 }

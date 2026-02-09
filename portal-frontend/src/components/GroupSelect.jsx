@@ -8,22 +8,14 @@ export default function GroupSelect() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
 
-  // Функция для сохранения выбранной группы
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
     setIsOpen(false);
-    
-    // Здесь вы можете сохранить ID в переменную или отправить куда нужно
+
     console.log("Выбрана группа:", {
       id: group.id,
-      name: group.name,
-      description: group.description
+      name: group.name
     });
-    
-    // Можно также передать в родительский компонент через props, если нужно
-    // if (onGroupSelect) {
-    //   onGroupSelect(group.id);
-    // }
   };
 
   if (loading) return <p className="loading-text">Загрузка групп...</p>;
@@ -45,9 +37,6 @@ export default function GroupSelect() {
               />
               <div className="selected-group-info">
                 <span className="selected-group-name">{selectedGroup.name}</span>
-                <span className="selected-group-description">
-                  {selectedGroup.description}
-                </span>
               </div>
             </div>
           ) : (
@@ -60,7 +49,6 @@ export default function GroupSelect() {
               <span>Выберите группу</span>
             </div>
           )}
-          <span className={`dropdown-arrow ${isOpen ? 'open' : ''}`}>▼</span>
         </div>
 
         {isOpen && (
@@ -71,11 +59,11 @@ export default function GroupSelect() {
                 className={`group-dropdown-item ${selectedGroup?.id === group.id ? 'selected' : ''}`}
                 onClick={() => handleGroupSelect(group)}
               >
-                {/* <img 
+                <img 
                   src={groupAvatar} 
                   alt={group.name}
                   className="group-avatar"
-                /> */}
+                />
                 <div className="group-info">
                   <p className="group-name">{group.name}</p>
                   <small className="group-description">{group.description}</small>

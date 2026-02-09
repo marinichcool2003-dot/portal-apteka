@@ -141,31 +141,31 @@ public class TaskService {
     // ==================================================
     // FILTER
     // ==================================================
-    @Async
-    @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> filter(
-            UUID clientId,
-            Integer aptekaId,
-            UUID createdByClientId,
-            Integer workTaskId,
-            TaskStatus status,
-            TaskPriority priority,
-            Date fromDate,
-            Date toDate) {
+    // @Async
+    // @Transactional(readOnly = true)
+    // public CompletableFuture<List<Task>> filter(
+    //         UUID clientId,
+    //         Integer aptekaId,
+    //         UUID createdByClientId,
+    //         Integer workTaskId,
+    //         TaskStatus status,
+    //         TaskPriority priority,
+    //         Date fromDate,
+    //         Date toDate) {
 
-        log.info("Фильтр задач | поток {}", Thread.currentThread().getName());
+    //     log.info("Фильтр задач | поток {}", Thread.currentThread().getName());
 
-        return CompletableFuture.completedFuture(
-                taskRepository.filter(
-                        clientId,
-                        aptekaId,
-                        createdByClientId,
-                        workTaskId,
-                        status,
-                        priority,
-                        fromDate,
-                        toDate));
-    }
+    //     return CompletableFuture.completedFuture(
+    //             taskRepository.filter(
+    //                     clientId,
+    //                     aptekaId,
+    //                     createdByClientId,
+    //                     workTaskId,
+    //                     status,
+    //                     priority,
+    //                     fromDate,
+    //                     toDate));
+    // }
 
     // ==================================================
     // CREATE
@@ -194,7 +194,7 @@ public class TaskService {
                 .title(title.strip())
                 .description(description.strip())
                 .comments(comments != null ? comments.strip() : null)
-                .date(new Date())
+                .creationDate(new Date())
                 .status(TaskStatus.OPEN)
                 .createdByApteka(apteka)
                 .assignedClient(client)
@@ -231,7 +231,7 @@ public class TaskService {
                 .title(title.strip())
                 .description(description.strip())
                 .comments(comments != null ? comments.strip() : null)
-                .date(new Date())
+                .creationDate(new Date())
                 .status(TaskStatus.OPEN)
                 .createdByClient(creator)
                 .assignedClient(assigner)
@@ -264,7 +264,7 @@ public class TaskService {
                 .title(title.strip())
                 .description(description.strip())
                 .comments(comments != null ? comments.strip() : null)
-                .date(new Date())
+                .creationDate(new Date())
                 .status(TaskStatus.OPEN)
                 .createdByClient(creator)
                 .assignedClient(assigner)
@@ -297,7 +297,7 @@ public class TaskService {
                 .title(title)
                 .description(description)
                 .comments(comments)
-                .date(new Date())
+                .creationDate(new Date())
                 .status(TaskStatus.OPEN)
                 .createdByApteka(apteka)
                 .assignedGroupClient(froupClient)
@@ -316,6 +316,10 @@ public class TaskService {
         TaskStatus newStatus = TaskStatus.fromDescription(statusDescription);
 
         task.setStatus(newStatus);
+
+        if (newStatus == TaskStatus.CLOSED) {
+            task.setClosingDate(new Date());
+        }
 
         return CompletableFuture.completedFuture(taskRepository.save(task));
     }
@@ -344,14 +348,10 @@ public class TaskService {
             throw new BlockChangeIfNotActuallyTaskException();
         }
 
-        if (title != null && !title.isBlank())
-            task.setTitle(title.strip());
-
-        if (description != null && !description.isBlank())
-            task.setDescription(description.strip());
-
         if (comments != null)
             task.setComments(comments.strip());
+
+        task.setUpdatedDate(new Date());
 
         return CompletableFuture.completedFuture(taskRepository.save(task));
     }
@@ -377,6 +377,8 @@ public class TaskService {
         //Перестаёт принадлежать группе
         task.setAssignedGroupClient(null);
 
+        task.setUpdatedDate(new Date());
+
         return CompletableFuture.completedFuture(taskRepository.save(task));
     }  
 
@@ -396,6 +398,8 @@ public class TaskService {
         //Перестаёт принадлежать группе
         task.setAssignedGroupClient(null);
 
+        task.setUpdatedDate(new Date());
+
         return CompletableFuture.completedFuture(taskRepository.save(task));
     }
 
@@ -412,6 +416,8 @@ public class TaskService {
 
         //Распределение на группу
         task.setAssignedGroupClient(assignedGroupClient);
+
+        task.setUpdatedDate(new Date());
 
         return CompletableFuture.completedFuture(taskRepository.save(task));
     }

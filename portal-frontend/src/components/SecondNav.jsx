@@ -7,10 +7,48 @@ import news from '../assets/static-images/Значок новостей.svg'
 import settings from '../assets/static-images/Настройки 1.svg'
 
 import '../styles/SecondNav.css'
+import { useEffect, useRef, useState } from 'react'
 
 export default function SecondNav() {
+
+    const [width, setWidth] = useState(237)
+    const [isResizing, setIsResizing] = useState(false)
+    const navRef = useRef(null)
+
+    useEffect(()=> {
+        const handleMouseMove = (e) => {
+            if(!isResizing) return;
+
+            const newWidth = e.clientX - navRef.current.getBoundingClientRect().left
+
+            if(newWidth > 60 && newWidth < 500) {
+                setWidth(newWidth)
+            }
+
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false)
+        }
+
+        if (isResizing) {
+            document.addEventListener('mousemove', handleMouseMove)
+            document.addEventListener('mouseup', handleMouseUp)
+
+            return () => {
+                document.removeEventListener('mousemove', handleMouseMove)
+                document.removeEventListener('mouseup', handleMouseUp)
+            };
+        }
+
+    }, [isResizing])
+
     return (
-        <div className="secondNav">
+        <div 
+            className="secondNav"
+            ref={navRef}
+            style={{width: `${width}px`}}
+        >
             <GroupSelect/>
             <nav>
                 <ul className="icon-links">
@@ -22,6 +60,11 @@ export default function SecondNav() {
                     <li><a href="#"><div className="icon-square"><img src={settings} alt="Настройки" /><span className="nav-text">Настройки</span></div></a></li>
                 </ul>
             </nav>
+
+            <div
+                className='resize-handle'
+                onMouseDown={() => setIsResizing(true)}
+            />
         </div>
     )
 }

@@ -46,8 +46,14 @@ public class Task {
     @Column(name = "comments")
     private String comments;
 
-    @Column(name = "date")
-    private Date date;
+    @Column(name = "creation_date")
+    private Date creationDate;
+
+    @Column(name = "closing_date")
+    private Date closingDate;
+
+    @Column(name = "updated_date")
+    private Date updatedDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

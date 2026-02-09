@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.repository.AptekaInterface;
-import com.apteka.portal.security.JwtTokenProvider;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,7 +14,6 @@ public class AuthAptekaService {
     private final AptekaInterface aptekaInterface;
     private final AptekaService aptekaService;
     private final PasswordEncoder passwordEncoder;
-    private final JwtTokenProvider jwtTokenProvider;
 
     public String register(String login, String password, Integer number, String adress, String phoneNumber, Integer groupId) {
         // Используем AptekaService для создания аптеки
