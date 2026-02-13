@@ -1,3 +1,9 @@
+.description-container {
+    display: flex;
+    justify-content: space-between;
+    padding-right: 5rem;
+}
+
 .description {
     gap: 0.5rem;
 }

@@ -21,7 +21,7 @@ export default function SecondNav() {
 
             const newWidth = e.clientX - navRef.current.getBoundingClientRect().left
 
-            if(newWidth > 60 && newWidth < 500) {
+            if(newWidth > 60 && newWidth < 250) {
                 setWidth(newWidth)
             }
 
@@ -49,7 +49,6 @@ export default function SecondNav() {
             ref={navRef}
             style={{width: `${width}px`}}
         >
-            <GroupSelect/>
             <nav>
                 <ul className="icon-links">
                     <li><a href="#"><div className="icon-square"><img src={house} alt="Главная" /><span className="nav-text">Главная</span></div></a></li>
