@@ -23,7 +23,7 @@ import lombok.ToString;
 @Getter
 @Setter
 @Builder
-public class Apteka {
+public class Apteka{
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id")
