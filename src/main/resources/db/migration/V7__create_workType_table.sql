@@ -1,5 +1,0 @@
-CREATE TABLE IF NOT EXISTS work_type(
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    group_task_id INT NOT NULL
-);

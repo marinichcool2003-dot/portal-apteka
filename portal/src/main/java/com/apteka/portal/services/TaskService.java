@@ -20,7 +20,6 @@ import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupClient;
 import com.apteka.portal.models.Task;
-import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.repository.TaskInterface;

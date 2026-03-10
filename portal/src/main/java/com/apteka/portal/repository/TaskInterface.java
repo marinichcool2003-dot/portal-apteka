@@ -1,6 +1,5 @@
 package com.apteka.portal.repository;
 
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -10,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.apteka.portal.models.Task;
-import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
 
 @Repository
@@ -35,35 +33,6 @@ public interface TaskInterface extends JpaRepository<Task, Long> {
                             WHERE g.id = :groupId
                         """)
         List<Task> findByGroupId(@Param("groupId") Integer groupId);
-
-        // @Query("""
-        // SELECT t FROM Task t
-        // WHERE (:clientId IS NULL OR t.assignedClient.id = :assignedClientId)
-        // AND (:assignedAptekaId IS NULL OR t.assignedApteka.id = :assignedAptekaId)
-        // AND (:createdByClientId IS NULL OR t.createdByClient.id = :createdByClientId)
-        // AND (:workTypeId IS NULL OR t.workType.id = :workTypeId)
-        // AND (:status IS NULL OR t.status = :status)
-        // AND (:priority IS NULL OR t.priority = :priority)
-        // AND (:fromDate IS NULL OR t.createdDate >= :fromDate)
-        // AND (:toDate IS NULL OR t.createdDate <= :toDate)
-        // """)
-
-        // List<Task> filter(
-        // @Param("assignedClientId") UUID assignedClientId,
-        // @Param("assignedAptekaId") Integer assignedAptekaId,
-        // @Param("createdByClientId") UUID createdByClientId,
-        // @Param("workTypeId") Integer workTypeId,
-        // @Param("status") TaskStatus status,
-        // @Param("priority") TaskPriority priority,
-        // @Param("fromDate") Date fromDate,
-        // @Param("toDate") Date toDate);
-
-        // @Query("""
-        // SELECT t FROM Task t
-        // JOIN t.assignedClient c
-        // JOIN c.groupClient g
-        // WHERE g.id =:groupClientId
-        // """)
 
         @Query("""
                             SELECT t FROM Task t

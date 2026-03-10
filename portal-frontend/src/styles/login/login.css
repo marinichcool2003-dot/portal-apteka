@@ -103,6 +103,9 @@
 }
 
 .login-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: 1px solid rgb(0, 85, 0);
     border-radius: 1rem;
     margin-top: 2rem;
@@ -121,5 +124,16 @@
     transform: scale(1.05);
 }
 
+.btn-loader {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #e0e0e0; 
+  border-top: 3px solid #555;  
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
+}
 
-
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

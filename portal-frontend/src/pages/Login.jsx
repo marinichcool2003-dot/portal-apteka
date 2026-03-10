@@ -4,6 +4,8 @@ import '../styles/login/Login.css'
 import { useLogin } from '../hooks/Login' 
 import { useNavigate } from 'react-router-dom'
 
+import Loader from '../components/login/loader'
+
 export default function Login() {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
@@ -82,7 +84,7 @@ export default function Login() {
                         className="login-button"
                         disabled={loading || !username.trim() || !password.trim()}
                     >
-                        <span>{loading ? 'Вход...' : 'Войти'}</span>
+                        <span>{loading ? <Loader/> : 'Войти'}</span>
                     </button>
                 </form>
             </div>
