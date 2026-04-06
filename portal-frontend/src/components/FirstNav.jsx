@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import logo from '../assets/static-images/logo.png'
 import question from '../assets/static-images/Вопрос.svg'
 import menu from '../assets/static-images/Иконка меню.svg'
@@ -7,19 +8,28 @@ import avatar from '../assets/static-images/Котик.png'
 
 import '../styles/FirstNavStyle.css'
 
-export default function FirstNav() {
+export default function FirstNav({ onToggleSidebar, onOpenTaskSearch }) {
     return (
-        <div className="firstNav">
+        <nav className="firstNav">
             <div className="nav-top">
-                <a href="#"><img src={logo} alt="Логотип" className="logo" /></a>
-                <a href="#"><img src={lupa} alt="Поиск" className="lupa" /></a>
-                <a href="#"><img src={plus} alt="Добавить задачу" className="plus" /></a>
+                <Link to="/dashboard"><img src={logo} alt="Логотип" className="logo" /></Link>
+                <button
+                    type="button"
+                    className="nav-btn"
+                    onClick={() => onOpenTaskSearch?.()}
+                    aria-label="Поиск задач"
+                >
+                    <img src={lupa} alt="" className="lupa" />
+                </button>
+                <Link to="/createTask"><img src={plus} alt="Добавить задачу" className="plus" /></Link>
             </div>
             <div className="nav-bottom">
-                <a href="#"><img src={menu} alt="Меню" className="menu" /></a>
+                <button className="nav-btn" onClick={onToggleSidebar}>
+                    <img src={menu} alt="Меню" className="menu" />
+                </button>
                 <a href="#"><img src={question} alt="Вопросы" className="question" /></a>
-                <a href="#"><img src={avatar} alt="Аватарка" className="avatar" /></a>
+                <Link to="/profile"><img src={avatar} alt="Личный кабинет" className="avatar" /></Link>
             </div>
-        </div>
+        </nav>
     )
 }

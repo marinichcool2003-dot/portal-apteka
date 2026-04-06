@@ -1,16 +1,64 @@
 .secondNav {
-    width: 23.7rem;
+    width: var(--sidebar-width);
     height: 100vh;
-    background-color: rgb(31, 41, 55);
+    background-color: var(--color-sidebar);
     position: fixed;
     top: 0;
-    left: 8.5rem;
-    padding: 1.9rem 0;
-    color: white;
+    left: var(--nav-width);
+    padding: 1.5rem 0;
+    color: var(--color-text-white);
     overflow-y: auto;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     z-index: 999;
     user-select: none;
+    transition: transform 0.3s ease;
+}
+
+.secondNav.closed {
+    transform: translateX(-100%);
+}
+
+.sidebar-project-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1.5rem 1.5rem;
+}
+
+.project-avatar {
+    width: 5rem;
+    height: 5rem;
+    border-radius: var(--radius-lg);
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.project-text {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.project-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.project-desc {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-divider {
+    height: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0 1.5rem 0.5rem;
 }
 
 .icon-links {
@@ -20,24 +68,59 @@
 .icon-square {
     display: flex;
     width: 100%;
-    height: 6.7rem;
-    border-radius: 10px;
+    height: 5.5rem;
+    border-radius: var(--radius-md);
     align-items: center;
-    gap: 0.7rem;
-    padding-left: 2rem;
-    transition: all 0.3s ease;
+    gap: 1rem;
+    padding-left: 1.5rem;
+    padding-right: 1rem;
+    transition: background-color 0.2s ease;
+    position: relative;
 }
 
 .icon-square:hover {
-    background-color: rgb(147, 147, 147);
+    background-color: var(--color-sidebar-hover);
+}
+
+.icon-square.active {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    flex-shrink: 0;
 }
 
 .nav-text {
-    font-size: 1.5rem;
-    font-weight: bold;
+    font-size: 1.4rem;
+    font-weight: 600;
     text-decoration: none;
     color: white;
-    padding: 0px 0.7rem;
+}
+
+.nav-badge {
+    background: var(--color-accent-red);
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    min-width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+}
+
+.nav-arrow {
+    font-size: 1.8rem;
+    margin-left: auto;
+    opacity: 0.5;
+}
+
+.nav-badge + .nav-arrow {
+    margin-left: 0.5rem;
 }
 
 .icon-links a {
@@ -46,44 +129,85 @@
     color: inherit;
 }
 
-.secondNav::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 1px;
-    height: 100%;
-    cursor: col-resize;
+.nav-tasks-group {
+    width: 100%;
+}
+
+.nav-tasks-toggle {
+    width: 100%;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    height: auto;
+    min-height: 5.5rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.nav-arrow-rotate {
+    transition: transform 0.2s ease;
+}
+
+.nav-arrow-rotate.open {
+    transform: rotate(90deg);
+}
+
+.nav-submenu {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0.8rem 3.2rem;
+    /* Reset global header nav dropdown rules (nav ul li ul) when MainPortal Header.css is loaded */
+    position: static;
+    left: auto;
+    width: auto;
+    opacity: 1;
+    transform: none;
+    visibility: visible;
     background: transparent;
-    transition: background-color 0.2s;
+    box-shadow: none;
+    perspective: none;
+    transition: none;
 }
 
-.secondNav:hover::after {
-    background-color: rgba(255, 255, 255, 0.1);
+.nav-submenu li {
+    margin: 0;
 }
 
-.secondNav {
-    position: absolute;
-    resize: horizontal; 
-    overflow: hidden; 
+.nav-submenu-link {
+    display: block;
+    padding: 0.65rem 1rem 0.65rem 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.82);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s, color 0.15s;
 }
 
-.resize-handle {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 5px;
-    height: 100%;
-    cursor: col-resize;
-    background: transparent;
-    z-index: 1000;
+.nav-submenu-link:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
 }
 
-.resize-handle:hover {
-    background: black
+.nav-submenu-link.active {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
 }
 
-.resizing {
-    user-select: none;
-    -webkit-user-select: none;
+@media (max-width: 768px) {
+    .secondNav {
+        left: var(--nav-width);
+        width: min(22rem, calc(100vw - var(--nav-width)));
+    }
+
+    .sidebar-project-info {
+        padding: 0.5rem 1rem 1rem;
+    }
+
+    .nav-text {
+        font-size: 1.3rem;
+    }
 }

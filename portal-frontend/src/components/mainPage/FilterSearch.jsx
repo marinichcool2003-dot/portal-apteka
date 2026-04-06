@@ -1,14 +1,9 @@
-import { useState } from 'react'
-
 import search from '../../assets/static-images/Лупа для поиска.svg'
-
 import '../../styles/mainPage/FilterSearch.css'
 
-export default function FilterSearch() {
+const defaultPlaceholder = 'Поиск по №, теме или автору…'
 
-    const [searchText, setSearchText] = useState('')
-    const [filterType, setFilterType] = useState('ALL')
-
+export default function FilterSearch({ value, onChange, placeholder = defaultPlaceholder }) {
     return (
         <div className="filter-search">
             <div className="search-container">
@@ -16,24 +11,19 @@ export default function FilterSearch() {
                     <input
                         type="search"
                         className="search-form"
-                        value={searchText}
-                        placeholder=""
-                        onChange={(e) => setSearchText(e.target.value)}
+                        value={value}
+                        placeholder={placeholder}
+                        onChange={(e) => onChange?.(e.target.value)}
+                        aria-label={placeholder}
                     />
-                    <div className="search-placeholder">
-                        <img src={search} alt="Иконка поиска" className="search-icon" />
-                        <span className="placeholder-text">Поиск по задачам</span>
+                    <div className="search-placeholder" aria-hidden>
+                        <img src={search} alt="" className="search-icon" />
                     </div>
                 </div>
-                <select
-                    className="filter-select"
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                >
-                    <option className="select-item" value="ALL">Все задачи</option>
-                    <option className="select-item" value="MY TASKS">Мои задачи</option>
-                    <option className="select-item" value="MY CREATED TASKS">Мои составленные задачи</option>
-                </select>
+                <button type="button" className="filter-btn">
+                    Быстрые фильтры
+                    <span className="filter-arrow">▾</span>
+                </button>
             </div>
         </div>
     )
