@@ -8,14 +8,18 @@
     padding: 1.5rem 0;
     color: var(--color-text-white);
     overflow-y: auto;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
     z-index: 999;
     user-select: none;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease-in-out;
 }
 
 .secondNav.closed {
-    transform: translateX(-100%);
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+}
+
+.secondNav.open {
+    transform: translateX(0);
 }
 
 .sidebar-project-info {
@@ -197,17 +201,37 @@
     color: #fff;
 }
 
+/* Мобильные устройства */
 @media (max-width: 768px) {
     .secondNav {
-        left: var(--nav-width);
-        width: min(22rem, calc(100vw - var(--nav-width)));
+        left: 0;
+        z-index: 1001;
+        box-shadow: var(--shadow-lg);
     }
-
-    .sidebar-project-info {
-        padding: 0.5rem 1rem 1rem;
+    
+    .secondNav.closed {
+        transform: translateX(-100%);
     }
+}
 
-    .nav-text {
-        font-size: 1.3rem;
+/* Оверлей для мобильных (затемнение фона) */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+}
+
+.sidebar-overlay.visible {
+    display: block;
+}
+
+@media (max-width: 992px) {
+    .sidebar-overlay.visible {
+        display: block;
     }
 }

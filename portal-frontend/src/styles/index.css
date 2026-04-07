@@ -16,7 +16,7 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 1.6rem;
     color: var(--color-text);
-    background-color: #fff;
+    background-color: var(--color-bg);
 }
 
 img {
@@ -31,4 +31,64 @@ button {
 
 input, select, textarea {
     font-family: inherit;
+}
+
+/* ========== СТИЛИ ДЛЯ САЙДБАРА И КОНТЕНТА ========== */
+
+/* Основной контейнер приложения */
+.main {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+}
+
+/* Контентная область - Desktop версия */
+.main .content {
+    flex: 1;
+    transition: margin-left 0.3s ease-in-out;
+    margin-left: calc(var(--nav-width) + var(--sidebar-width));
+    padding: 2rem;
+    background-color: var(--color-bg);
+    width: 100%;
+}
+
+/* Когда сайдбар закрыт на Desktop */
+.main.sidebar-closed .content {
+    margin-left: var(--nav-width);
+}
+
+/* ========== АДАПТИВ ДЛЯ ПЛАНШЕТОВ (до 992px) ========== */
+@media (max-width: 992px) {
+    /* На планшетах контент всегда имеет отступ только под FirstNav */
+    .main .content {
+        margin-left: var(--nav-width);
+        padding: 1.5rem;
+    }
+    
+    /* Убираем дополнительный отступ даже когда сайдбар открыт */
+    .main:not(.sidebar-closed) .content {
+        margin-left: var(--nav-width);
+    }
+    
+    /* Сайдбар на планшетах выезжает поверх контента */
+    .secondNav {
+        position: fixed;
+        top: 0;
+        left: var(--nav-width);
+        z-index: 1000;
+    }
+}
+
+/* ========== АДАПТИВ ДЛЯ МОБИЛЬНЫХ (до 768px) ========== */
+@media (max-width: 768px) {
+    .main .content {
+        margin-left: 0;
+        padding: 1rem;
+        width: 100%;
+    }
+    
+    /* Сайдбар на мобильных выезжает от края экрана */
+    .secondNav {
+        left: 0;
+    }
 }

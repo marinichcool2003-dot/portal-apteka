@@ -9,7 +9,7 @@ export default function MainDescription() {
                 <h1>Управление задачами</h1>
                 <h2>Просмотр и управление задачами</h2>
             </div>
-            <GroupSelect />
+            {/* <GroupSelect /> */}
         </div>
     )
 }

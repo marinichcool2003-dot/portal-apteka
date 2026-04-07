@@ -40,6 +40,23 @@ const navItems = [
 export default function SecondNav({ isOpen, onClose }) {
     const location = useLocation()
     const [tasksOpen, setTasksOpen] = useState(() => tasksSectionActive(location.pathname))
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth)
+
+    // Отслеживаем изменение размера окна
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth)
+        }
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
+
+    // Автоматически закрываем сайдбар на мобильных при изменении размера
+    useEffect(() => {
+        if (windowWidth <= 992 && isOpen) {
+            onClose()
+        }
+    }, [windowWidth])
 
     useEffect(() => {
         if (tasksSectionActive(location.pathname)) {
@@ -48,92 +65,106 @@ export default function SecondNav({ isOpen, onClose }) {
     }, [location.pathname])
 
     const handleNavClick = () => {
-        if (window.innerWidth <= 992) {
+        if (windowWidth <= 992) {
             onClose()
         }
     }
 
+    const handleOverlayClick = () => {
+        onClose()
+    }
+
+    const shouldShowOverlay = isOpen && windowWidth <= 992
+
     return (
-        <aside className={`secondNav ${isOpen ? 'open' : 'closed'}`}>
-            <div className="sidebar-project-info">
-                <img src={logo} alt="Проект" className="project-avatar" />
-                <div className="project-text">
-                    <span className="project-name">Проект: IT-Отдел</span>
-                    <span className="project-desc">Хз возможно какой-то текст</span>
+        <>
+            {/* Оверлей для мобильных устройств и планшетов */}
+            <div
+                className={`sidebar-overlay ${shouldShowOverlay ? 'visible' : ''}`}
+                onClick={handleOverlayClick}
+            />
+
+            <aside className={`secondNav ${isOpen ? 'open' : 'closed'}`}>
+                <div className="sidebar-project-info">
+                    <img src={logo} alt="Проект" className="project-avatar" />
+                    <div className="project-text">
+                        <span className="project-name">Проект: IT-Отдел</span>
+                        <span className="project-desc">Хз возможно какой-то текст</span>
+                    </div>
                 </div>
-            </div>
 
-            <div className="sidebar-divider" />
+                <div className="sidebar-divider" />
 
-            <nav>
-                <ul className="icon-links">
-                    {navItems.map((item) => {
-                        if (item.type === 'tasks') {
-                            const isActive = tasksSectionActive(location.pathname)
+                <nav>
+                    <ul className="icon-links">
+                        {navItems.map((item) => {
+                            if (item.type === 'tasks') {
+                                const isActive = tasksSectionActive(location.pathname)
+                                return (
+                                    <li key={item.label} className="nav-item-tasks">
+                                        <div className="nav-tasks-group">
+                                            <button
+                                                type="button"
+                                                className={`icon-square nav-tasks-toggle ${isActive ? 'active' : ''}`}
+                                                onClick={() => setTasksOpen((o) => !o)}
+                                                aria-expanded={tasksOpen}
+                                            >
+                                                <img src={item.icon} alt={item.alt} className="nav-icon" />
+                                                <span className="nav-text">{item.label}</span>
+                                                {item.hasArrow && (
+                                                    <span className={`nav-arrow nav-arrow-rotate ${tasksOpen ? 'open' : ''}`}>
+                                                        ›
+                                                    </span>
+                                                )}
+                                            </button>
+                                            {tasksOpen && (
+                                                <ul className="nav-submenu">
+                                                    <li>
+                                                        <Link
+                                                            to="/taskController"
+                                                            className={`nav-submenu-link ${location.pathname === '/taskController' ? 'active' : ''}`}
+                                                            onClick={handleNavClick}
+                                                        >
+                                                            Мои задачи
+                                                        </Link>
+                                                    </li>
+                                                    <li>
+                                                        <Link
+                                                            to="/departmentTasks"
+                                                            className={`nav-submenu-link ${location.pathname === '/departmentTasks' ? 'active' : ''}`}
+                                                            onClick={handleNavClick}
+                                                        >
+                                                            Все задачи отдела
+                                                        </Link>
+                                                    </li>
+                                                </ul>
+                                            )}
+                                        </div>
+                                    </li>
+                                )
+                            }
+
+                            const isActive = isNavItemActive(location.pathname, item)
                             return (
-                                <li key={item.label} className="nav-item-tasks">
-                                    <div className="nav-tasks-group">
-                                        <button
-                                            type="button"
-                                            className={`icon-square nav-tasks-toggle ${isActive ? 'active' : ''}`}
-                                            onClick={() => setTasksOpen((o) => !o)}
-                                            aria-expanded={tasksOpen}
-                                        >
+                                <li key={item.label}>
+                                    <Link to={item.to} onClick={handleNavClick}>
+                                        <div className={`icon-square ${isActive ? 'active' : ''}`}>
                                             <img src={item.icon} alt={item.alt} className="nav-icon" />
                                             <span className="nav-text">{item.label}</span>
-                                            {item.hasArrow && (
-                                                <span className={`nav-arrow nav-arrow-rotate ${tasksOpen ? 'open' : ''}`}>
-                                                    ›
-                                                </span>
+                                            {item.badge && (
+                                                <span className="nav-badge">{item.badge}</span>
                                             )}
-                                        </button>
-                                        {tasksOpen && (
-                                            <ul className="nav-submenu">
-                                                <li>
-                                                    <Link
-                                                        to="/taskController"
-                                                        className={`nav-submenu-link ${location.pathname === '/taskController' ? 'active' : ''}`}
-                                                        onClick={handleNavClick}
-                                                    >
-                                                        Мои задачи
-                                                    </Link>
-                                                </li>
-                                                <li>
-                                                    <Link
-                                                        to="/departmentTasks"
-                                                        className={`nav-submenu-link ${location.pathname === '/departmentTasks' ? 'active' : ''}`}
-                                                        onClick={handleNavClick}
-                                                    >
-                                                        Все задачи отдела
-                                                    </Link>
-                                                </li>
-                                            </ul>
-                                        )}
-                                    </div>
+                                            {item.hasArrow && (
+                                                <span className="nav-arrow">›</span>
+                                            )}
+                                        </div>
+                                    </Link>
                                 </li>
                             )
-                        }
-
-                        const isActive = isNavItemActive(location.pathname, item)
-                        return (
-                            <li key={item.label}>
-                                <Link to={item.to} onClick={handleNavClick}>
-                                    <div className={`icon-square ${isActive ? 'active' : ''}`}>
-                                        <img src={item.icon} alt={item.alt} className="nav-icon" />
-                                        <span className="nav-text">{item.label}</span>
-                                        {item.badge && (
-                                            <span className="nav-badge">{item.badge}</span>
-                                        )}
-                                        {item.hasArrow && (
-                                            <span className="nav-arrow">›</span>
-                                        )}
-                                    </div>
-                                </Link>
-                            </li>
-                        )
-                    })}
-                </ul>
-            </nav>
-        </aside>
+                        })}
+                    </ul>
+                </nav>
+            </aside>
+        </>
     )
 }
