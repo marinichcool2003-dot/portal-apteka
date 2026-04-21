@@ -32,6 +32,6 @@ public class WorkType {
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_task")
+    @JoinColumn(name = "group_task_id")
     private GroupTask groupTask;
 }

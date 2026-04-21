@@ -29,7 +29,6 @@ public class TaskCommentsService {
         return taskCommentsInterface.findByTaskId(taskId);
     }
 
-    @SuppressWarnings("null")
     @Transactional(readOnly = true)
     public TaskComments getOne(Long id) {
         return taskCommentsInterface.findById(id)

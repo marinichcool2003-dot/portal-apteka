@@ -24,7 +24,6 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class ClientService implements UserDetailsService{
 
     private final GroupClientService groupClientService;

@@ -25,7 +25,7 @@ import lombok.ToString;
 @Builder
 public class Apteka{
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
 
@@ -47,10 +47,4 @@ public class Apteka{
     @ManyToOne
     @JoinColumn(name = "group_id")
     private GroupApteki groupApteki;
-
-    // @Column
-    // private String otpCode;
-
-    // @Column
-    // private boolean otpVerified = false;
 }

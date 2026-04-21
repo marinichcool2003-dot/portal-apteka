@@ -25,7 +25,7 @@ import lombok.ToString;
 @Builder
 public class TaskComments {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 

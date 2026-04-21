@@ -33,6 +33,6 @@ public class TaskPicture {
     private String path;
 
     @ManyToOne
-    @JoinColumn(name = "task")
+    @JoinColumn(name = "task_id")
     private Task task;
 }

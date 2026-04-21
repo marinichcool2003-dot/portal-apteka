@@ -28,7 +28,6 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class TaskService {
 
     private static final Logger log = LoggerFactory.getLogger(TaskService.class);
@@ -73,10 +72,10 @@ public class TaskService {
     //===================================================
     @Async
     @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByAssignedApteka(Integer assignedAptekaId) {
+    public CompletableFuture<List<Task>> getByAssignedApteka(Integer assignedAptekaId, TaskStatus status) {
         aptekaService.getOne(assignedAptekaId);
         return CompletableFuture.completedFuture(
-                taskRepository.findByAssignedAptekaId(assignedAptekaId));
+                taskRepository.findByAssignedAptekaIdAndStatus(assignedAptekaId, status));
     }
 
     //===================================================
@@ -84,10 +83,10 @@ public class TaskService {
     //===================================================
     @Async
     @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByAssignedClient(UUID assignedClientId) {
+    public CompletableFuture<List<Task>> getByAssignedClient(UUID assignedClientId, TaskStatus status) {
         clientService.getOne(assignedClientId);
         return CompletableFuture.completedFuture(
-                taskRepository.findByAssignedClientId(assignedClientId));
+                taskRepository.findByAssignedClientIdAndStatus(assignedClientId, status));
     }
 
     //===================================================
@@ -95,10 +94,10 @@ public class TaskService {
     //===================================================
     @Async
     @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByCreatedByClient(UUID createdByClientId) {
+    public CompletableFuture<List<Task>> getByCreatedByClient(UUID createdByClientId, TaskStatus status) {
         clientService.getOne(createdByClientId);
         return CompletableFuture.completedFuture(
-                taskRepository.findByCreatedByClient(createdByClientId));
+                taskRepository.findByCreatedByClientIdAndStatus(createdByClientId, status));
     }
 
     //===================================================
@@ -106,10 +105,10 @@ public class TaskService {
     //===================================================
     @Async
     @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByCreatedByApteka(Integer createdByAptekaId) {
+    public CompletableFuture<List<Task>> getByCreatedByApteka(Integer createdByAptekaId, TaskStatus status) {
         aptekaService.getOne(createdByAptekaId);
         return CompletableFuture.completedFuture(
-                taskRepository.findByCreatedByApteka(createdByAptekaId));
+                taskRepository.findByCreatedByAptekaIdAndStatus(createdByAptekaId, status));
     }
 
     //===================================================

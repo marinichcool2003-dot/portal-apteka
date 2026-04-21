@@ -23,14 +23,12 @@ public class GroupAptekiService {
         return groupAptekiInterface.findAll();
     }
 
-    @SuppressWarnings("null")
     @Transactional(readOnly = true)
     public GroupApteki getOne(Integer id) {
         return groupAptekiInterface.findById(id)
                 .orElseThrow(() -> new GroupAptekiNotFoundException(id));
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public GroupApteki create(String name) {
         name = name.strip();
@@ -59,7 +57,6 @@ public class GroupAptekiService {
         return groupAptekiInterface.save(upGroup);
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public void delete(Integer id) {
         if (!groupAptekiInterface.existsById(id)) {

@@ -24,14 +24,12 @@ public class GroupTaskService {
         return groupTaskInterface.findAll();
     }
 
-    @SuppressWarnings("null")
     @Transactional(readOnly = true)
     public GroupTask getOne(@PathVariable Integer id) {
         return groupTaskInterface.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public GroupTask create(String name) {
         name = name.strip();
@@ -61,7 +59,6 @@ public class GroupTaskService {
         return groupTaskInterface.save(upGroup);
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public void delete(Integer id) {
         if (!groupTaskInterface.existsById(id)) {

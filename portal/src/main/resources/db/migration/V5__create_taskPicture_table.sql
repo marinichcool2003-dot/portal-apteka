@@ -2,5 +2,5 @@ DROP TABLE IF EXISTS task_picture CASCADE;
 CREATE TABLE IF NOT EXISTS task_picture (
     id SERIAL PRIMARY KEY,
     path VARCHAR(255) UNIQUE NOT NULL,
-    task_id INT NOT NULL
+    task_id BIGINT NOT NULL
 );

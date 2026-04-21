@@ -23,14 +23,12 @@ public class GroupClientService {
         return groupClientInterface.findAll();
     }
 
-    @SuppressWarnings("null")
     @Transactional(readOnly = true)
     public GroupClient getOne(Integer id) {
         return groupClientInterface.findById(id)
             .orElseThrow(() -> new GroupClientNotFoundException(id));
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public GroupClient create(String name){
         name = name.strip();
@@ -60,7 +58,6 @@ public class GroupClientService {
         return groupClientInterface.save(upGroup);
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public void delete(Integer id){
         if (!groupClientInterface.existsById(id)) {
