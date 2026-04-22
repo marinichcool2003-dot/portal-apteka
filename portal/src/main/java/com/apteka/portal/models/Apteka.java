@@ -23,7 +23,7 @@ import lombok.ToString;
 @Getter
 @Setter
 @Builder
-public class Apteka{
+public class Apteka implements HasGroup{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
@@ -46,5 +46,5 @@ public class Apteka{
 
     @ManyToOne
     @JoinColumn(name = "group_id")
-    private GroupApteki groupApteki;
+    private UserGroup userGroup;
 }

@@ -1,17 +1,19 @@
 package com.apteka.portal.dtos.response;
 
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.util.List;
 
 import com.apteka.portal.models.Task;
+import com.apteka.portal.models.TaskComments;
 
 public record TaskResponseDTO(
         Long id,
         String title,
         String description,
         String comments,
-        Date creationDate,
-        Date updatedDate,
-        Date closingDate,
+        LocalDateTime creationDate,
+        LocalDateTime updatedDate,
+        LocalDateTime closingDate,
         String status,
         String priority,
         String workType,
@@ -20,8 +22,8 @@ public record TaskResponseDTO(
         String createdByClientFullName,
         String assignedAptekaLogin,
         String assignedClientFullName,
-        String groupClient,
-        String groupApteki
+        String assignedGroup,
+        List<TaskComments> Allcomments 
 ) {
     public static TaskResponseDTO from(Task task) {
         return new TaskResponseDTO(
@@ -40,8 +42,8 @@ public record TaskResponseDTO(
                 task.getCreatedByClient() != null ? task.getCreatedByClient().getFullName() : null,
                 task.getAssignedApteka() != null ? task.getAssignedApteka().getLogin() : null,
                 task.getAssignedClient() != null ? task.getAssignedClient().getFullName() : null,
-                task.getAssignedGroupClient() != null ? task.getAssignedGroupClient().getName() : null,
-                task.getAssignedGroupApteki() != null ? task.getAssignedGroupApteki().getName() : null
+                task.getAssignedGroup() != null ? task.getAssignedGroup().getName() : null,
+                task.getEmployeeComments()
         );
     }
 }

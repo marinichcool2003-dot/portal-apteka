@@ -5,9 +5,9 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.apteka.portal.models.GroupApteki;
+import com.apteka.portal.models.UserGroup;
 
 @Repository
-public interface GroupAptekiInterface extends JpaRepository<GroupApteki, Integer> {
-    Optional<GroupApteki> findByName(String name);
+public interface UserGroupInterface extends JpaRepository<UserGroup, Integer>{
+    Optional<UserGroup> findByName(String name);
 }

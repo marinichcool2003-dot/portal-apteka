@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.apteka.portal.dtos.request.GroupClientRequestDTO;
-import com.apteka.portal.models.GroupClient;
-import com.apteka.portal.services.GroupClientService;
+import com.apteka.portal.models.UserGroup;
+import com.apteka.portal.services.UserGroupService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,29 +23,29 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("api/v1/group-client")
 @RequiredArgsConstructor
 public class GroupClientController {
-    private final GroupClientService groupClientService;
+    private final UserGroupService groupClientService;
 
     @GetMapping
-    public ResponseEntity<List<GroupClient>> getAll(){
+    public ResponseEntity<List<UserGroup>> getAll(){
         return ResponseEntity
             .ok(groupClientService.getAll());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<GroupClient> getOne(@PathVariable Integer id){
+    public ResponseEntity<UserGroup> getOne(@PathVariable Integer id){
         return ResponseEntity
             .ok(groupClientService.getOne(id));
     }
 
     @PostMapping
-    public ResponseEntity<GroupClient> create(@RequestBody GroupClientRequestDTO groupClientRequestDTO){
+    public ResponseEntity<UserGroup> create(@RequestBody GroupClientRequestDTO groupClientRequestDTO){
         return ResponseEntity
             .status(HttpStatus.CREATED)
             .body(groupClientService.create(groupClientRequestDTO.name()));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<GroupClient> update(@PathVariable Integer id, @RequestBody GroupClientRequestDTO groupClientRequestDTO){
+    public ResponseEntity<UserGroup> update(@PathVariable Integer id, @RequestBody GroupClientRequestDTO groupClientRequestDTO){
         return ResponseEntity
             .status(HttpStatus.OK)
             .body(groupClientService.update(id, groupClientRequestDTO.name()));

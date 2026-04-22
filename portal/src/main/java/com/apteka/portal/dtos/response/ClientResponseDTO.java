@@ -3,13 +3,13 @@ package com.apteka.portal.dtos.response;
 import java.util.UUID;
 
 import com.apteka.portal.models.Client;
-import com.apteka.portal.models.Role;
+import com.apteka.portal.models.ClientRole;
 
 public record ClientResponseDTO(
     UUID id,
     String login,
     String fullName,
-    Role role,
+    ClientRole role,
     String avatarURL,
     String groupClientName
 ) {
@@ -20,7 +20,7 @@ public record ClientResponseDTO(
             client.getFullName(), 
             client.getRole(),
             client.getAvatarURL(),
-            client.getGroupClient() != null ? client.getGroupClient().getName() : null
+            client.getUserGroup() != null ? client.getUserGroup().getName() : null
         );
     } 
 }

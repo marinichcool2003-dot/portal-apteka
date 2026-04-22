@@ -33,9 +33,9 @@ import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupApteki;
-import com.apteka.portal.models.GroupClient;
+import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.GroupTask;
-import com.apteka.portal.models.Role;
+import com.apteka.portal.models.ClientRole;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.repository.ClientInterface;
@@ -61,18 +61,18 @@ public class TaskServiceTest {
     private GroupTask mockGroupTask;
     private Client mockClient;
     private GroupApteki mockGroupApteki;
-    private GroupClient mockgroupClient;
+    private UserGroup mockgroupClient;
     private Task task1;
     private Task task2;
 
     @BeforeEach
     void setUp() {
         mockGroupApteki = new GroupApteki(1, "Группа1");
-        mockgroupClient = new GroupClient(1, "Группа1");
+        mockgroupClient = new UserGroup(1, "Группа1");
         mockApteka = new Apteka(1, "sacapteka101@farmp.ru", "15943245", 001, "Ростов-на-Дону", "9881233322", mockGroupApteki);
         mockGroupTask = new GroupTask(1, "Группа 1");
         UUID newUUID = UUID.randomUUID();
-        mockClient = new Client(newUUID, "Birdux", "1234_Af!848", "Гетманцев Даниил Олегович", Role.LEGEND, mockgroupClient, "url/avatar");
+        mockClient = new Client(newUUID, "Birdux", "1234_Af!848", "Гетманцев Даниил Олегович", ClientRole.LEGEND, mockgroupClient, "url/avatar");
         task1 = new Task(
                 1L,
                 "Заголовок1",

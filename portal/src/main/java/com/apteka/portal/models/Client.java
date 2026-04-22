@@ -52,11 +52,11 @@ public class Client implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
-    private Role role;
+    private ClientRole role;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
-    private GroupClient groupClient;
+    private UserGroup userGroup;
 
     @Column(name = "avatar_url")
     private String avatarURL;
@@ -69,8 +69,8 @@ public class Client implements UserDetails {
         return fullName;
     }
 
-    public GroupClient getGroupClient() {
-        return groupClient;
+    public UserGroup getUserGroup() {
+        return userGroup;
     }
 
     @Override
@@ -78,7 +78,7 @@ public class Client implements UserDetails {
         List<GrantedAuthority> authorities = new ArrayList<>();
 
         authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
-        authorities.add(new SimpleGrantedAuthority("GROUP_" + groupClient.getName().replace(" ", "_").toUpperCase()));
+        authorities.add(new SimpleGrantedAuthority("GROUP_" + userGroup.getName().replace(" ", "_").toUpperCase()));
         return authorities;
     }
 

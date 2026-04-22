@@ -96,18 +96,11 @@ public class Task {
     private Apteka assignedApteka;
 
     //================================================
-    //Исполнитель группа СОТРУДНИКОВ
+    //Исполнительная группа
     //================================================
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_client_id")
-    private GroupClient assignedGroupClient;
-
-    //================================================
-    //Исполнитель группа АПТЕК
-    //================================================
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_apteki_id")
-    private GroupApteki assignedGroupApteki;
+    @JoinColumn(name = "group_user_id")
+    private UserGroup assignedGroup;
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<TaskComments> employeeComments;

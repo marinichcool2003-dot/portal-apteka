@@ -21,7 +21,7 @@ import lombok.ToString;
 @Setter
 @Builder
 @ToString
-public class GroupClient {
+public class UserGroup {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")

@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.exceptions.ClientBelongsToAnotherGroupException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
@@ -19,7 +20,7 @@ import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
-import com.apteka.portal.models.GroupClient;
+import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
@@ -38,8 +39,10 @@ public class TaskService {
     private final AptekaService aptekaService;
     private final ClientService clientService;
     private final WorkTypeService workTypeService;
-    private final GroupClientService groupClientService;
+    private final UserGroupService userGroupService;
     private final TaskCommentsService taskCommentsService;
+    private final TaskSecurityService taskSecurityService;
+
 
     // ==================================================
     // GET
@@ -70,6 +73,7 @@ public class TaskService {
             UUID creatorClientId,
             Integer creatorAptekaId,
             UUID specificClientId,
+            Integer specificAptekaId,
             TaskStatus status,
             TaskPriority priority,
             Integer groupTaskId) {
@@ -78,22 +82,6 @@ public class TaskService {
                 creatorClientId,
                 creatorAptekaId,
                 specificClientId,
-                status,
-                priority,
-                groupTaskId);
-        return CompletableFuture.completedFuture(tasks);
-    }
-
-    @Async
-    @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getAptekiGroupTasksWithFilters(
-            Integer groupId,
-            Integer specificAptekaId,
-            TaskStatus status,
-            TaskPriority priority,
-            Integer groupTaskId) {
-        List<Task> tasks = taskRepository.findAptekiGroupTasksWithFilters(
-                groupId,
                 specificAptekaId,
                 status,
                 priority,
@@ -102,37 +90,44 @@ public class TaskService {
     }
 
     // ==================================================
-    // CREATE
+    // CREATE //Нужно добавить кастомную анотацию чтобы не было куча исполнителей и создателей
     // ==================================================
 
-    @Async
     @Transactional
-    public CompletableFuture<Task> createByAptekaToClient(
-            String title,
-            String description,
-            String comments,
-            Integer createByAptekaId,
-            Integer workTypeId,
-            UUID assignedClientId) {
+    public Task createTask(TaskCreateRequestDTO dto, Object currentUser) {
+        validate(dto.title(), dto.description());
 
-        validate(title, description);
-
-        Apteka apteka = aptekaService.getOne(createByAptekaId);
-        WorkType workType = workTypeService.getOne(workTypeId);
-        Client client = clientService.getOne(assignedClientId);
+        taskSecurityService.validateCanCreate(dto, currentUser);
 
         Task task = Task.builder()
-                .title(title.strip())
-                .description(description.strip())
-                .comments(comments != null ? comments.strip() : null)
-                .creationDate(new Date())
-                .status(TaskStatus.OPEN)
-                .createdByApteka(apteka)
-                .assignedClient(client)
-                .workType(workType)
+                .title(dto.title())
+                .description(dto.description())
+                .comments(dto.comments() != null ? dto.comments().strip() : null)
+                .workType(workTypeService.getOne(dto.workTypeId()))
                 .build();
 
-        return CompletableFuture.completedFuture(taskRepository.save(task));
+        if (dto.createdByAptekaId() != null) {
+            Apteka apteka = aptekaService.getOne(dto.createdByAptekaId());
+            task.setCreatedByApteka(apteka);
+        } else if (dto.createdByClientId() != null) {
+            Client client = clientService.getOne(dto.createdByClientId());
+            task.setCreatedByClient(client);
+        }
+
+        setAssignee(task, dto);
+
+        return taskRepository.save(task);
+
+    }
+
+    private void setAssignee(Task task, TaskCreateRequestDTO dto) {
+        if (dto.assignedGroupId() != null) {
+            task.setAssignedGroup(userGroupService.getOne(dto.assignedGroupId()));
+        } else if (dto.assignedClientId() != null) {
+            task.setAssignedClient(clientService.getOne(dto.assignedClientId()));
+        } else if (dto.assignedAptekaId() != null) {
+            task.setAssignedApteka(aptekaService.getOne(dto.assignedAptekaId()));
+        }
     }
 
     // ==================================================
@@ -162,77 +157,13 @@ public class TaskService {
                 .title(title.strip())
                 .description(description.strip())
                 .comments(comments != null ? comments.strip() : null)
-                .creationDate(new Date())
+                .creationDate(LocalDateTime.now())
                 .status(TaskStatus.OPEN)
                 .createdByClient(creator)
                 .assignedClient(assigner)
                 .workType(workType)
                 .build();
 
-        return CompletableFuture.completedFuture(taskRepository.save(task));
-    }
-
-    // ==================================================
-    // Создание задачи сотрудником для сотрудника любой группы
-    // ==================================================
-    @Async
-    @Transactional
-    public CompletableFuture<Task> createByClientToClient(
-            String title,
-            String description,
-            String comments,
-            UUID creatorClient,
-            UUID assignedClient,
-            Integer workTypeId) {
-
-        validate(title, description);
-
-        Client creator = clientService.getOne(creatorClient);
-        Client assigner = clientService.getOne(assignedClient);
-        WorkType workType = workTypeService.getOne(workTypeId);
-
-        Task task = Task.builder()
-                .title(title.strip())
-                .description(description.strip())
-                .comments(comments != null ? comments.strip() : null)
-                .creationDate(new Date())
-                .status(TaskStatus.OPEN)
-                .createdByClient(creator)
-                .assignedClient(assigner)
-                .workType(workType)
-                .build();
-
-        return CompletableFuture.completedFuture(taskRepository.save(task));
-    }
-
-    // ==================================================
-    // Создание задачи аптекой для группы сотрудников
-    // ==================================================
-    @Async
-    @Transactional
-    public CompletableFuture<Task> createByAptekaToGroupClient(
-            String title,
-            String description,
-            String comments,
-            Integer createdAptekaId,
-            Integer assignedGroupClientId,
-            Integer workTypeId) {
-        validate(title, description);
-
-        Apteka apteka = aptekaService.getOne(createdAptekaId);
-        GroupClient froupClient = groupClientService.getOne(assignedGroupClientId);
-        WorkType workType = workTypeService.getOne(workTypeId);
-
-        Task task = Task.builder()
-                .title(title)
-                .description(description)
-                .comments(comments)
-                .creationDate(new Date())
-                .status(TaskStatus.OPEN)
-                .createdByApteka(apteka)
-                .assignedGroupClient(froupClient)
-                .workType(workType)
-                .build();
         return CompletableFuture.completedFuture(taskRepository.save(task));
     }
 
@@ -259,12 +190,13 @@ public class TaskService {
             if (clientId != null) {
                 authorName = clientService.getOne(clientId).getFullName();
             } else if (aptekaId != null) {
-                authorName = aptekaService.getOne(aptekaId).getGroupApteki().getName() + " " + aptekaService.getOne(aptekaId).getNumber();
+                authorName = aptekaService.getOne(aptekaId).getUserGroup().getName() + " "
+                        + aptekaService.getOne(aptekaId).getNumber();
             }
 
             String commentText = "Пользователь %s изменил статус задачи #%d изменен c '%s' на '%s' "
-                .formatted(authorName, id, oldStatus, newStatus);
-            
+                    .formatted(authorName, id, oldStatus, newStatus);
+
             Task savedTask = taskRepository.save(task);
             taskCommentsService.create(commentText, id, clientId, aptekaId);
             return savedTask;
@@ -292,7 +224,8 @@ public class TaskService {
 
         validate(title, description);
 
-        if ((task.getStatus() == TaskStatus.DENIED) || (task.getStatus() == TaskStatus.CLOSED && LocalDateTime.now().isAfter(task.getClosingDate().plusMonths(1)))) {
+        if ((task.getStatus() == TaskStatus.DENIED) || (task.getStatus() == TaskStatus.CLOSED
+                && LocalDateTime.now().isAfter(task.getClosingDate().plusMonths(1)))) {
             throw new BlockChangeIfNotActuallyTaskException();
         }
 
@@ -360,7 +293,7 @@ public class TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
-        GroupClient assignedGroupClient = groupClientService.getOne(assignedGroupClientId);
+        UserGroup assignedGroupClient = groupClientService.getOne(assignedGroupClientId);
 
         // Распределение на группу
         task.setAssignedGroupClient(assignedGroupClient);

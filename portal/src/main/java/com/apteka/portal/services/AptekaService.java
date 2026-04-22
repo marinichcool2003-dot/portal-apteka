@@ -14,7 +14,7 @@ import com.apteka.portal.exceptions.InvalidAptekaPasswordException;
 import com.apteka.portal.exceptions.InvalidAptekaAdressException;
 import com.apteka.portal.exceptions.InvalidAptekaPhoneNumberException;
 import com.apteka.portal.models.Apteka;
-import com.apteka.portal.models.GroupApteki;
+import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.AptekaInterface;
 
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AptekaService {
     private final AptekaInterface aptekaInterface;
-    private final GroupAptekiService groupAptekiService;
+    private final UserGroupService userGroupService;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
@@ -60,19 +60,18 @@ public class AptekaService {
         if (aptekaInterface.existsByLogin(login))
             throw new DublicateAptekaLoginException(login);
 
-        GroupApteki groupApteki = groupAptekiService.getOne(groupId);
+        UserGroup userGroup = userGroupService.getOne(groupId);
 
         Apteka apteka = Apteka.builder()
                 .login(login)
                 .password(passwordEncoder.encode(password))
                 .number(number)
-                .groupApteki(groupApteki)
+                .userGroup(userGroup)
                 .build();
 
         return aptekaInterface.save(apteka);
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public void delete(Integer id) {
         if (!aptekaInterface.existsById(id)) {

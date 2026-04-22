@@ -16,8 +16,8 @@ import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.InvalidClientLoginException;
 import com.apteka.portal.exceptions.InvalidClientPasswordException;
 import com.apteka.portal.models.Client;
-import com.apteka.portal.models.GroupClient;
-import com.apteka.portal.models.Role;
+import com.apteka.portal.models.UserGroup;
+import com.apteka.portal.models.ClientRole;
 import com.apteka.portal.repository.ClientInterface;
 
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ClientService implements UserDetailsService{
 
-    private final GroupClientService groupClientService;
+    private final UserGroupService groupClientService;
     private final ClientInterface clientInterface;
     private final AvatarClientService avatarClientService;
     private final PasswordEncoder passwordEncoder; 
@@ -38,7 +38,7 @@ public class ClientService implements UserDetailsService{
 
     @Transactional(readOnly = true)
     public List<Client> findByRole(String code){
-        Role role = Role.fromCode(code);
+        ClientRole role = ClientRole.fromCode(code);
         return clientInterface.findByRole(role.name());
     }
 
@@ -70,15 +70,15 @@ public class ClientService implements UserDetailsService{
             throw new RuntimeException("Пользователь с логином " + login + " уже существует");
         }
         
-        GroupClient group = groupClientService.getOne(groupClientId);
-        Role role = Role.fromCode(code);
+        UserGroup group = groupClientService.getOne(groupClientId);
+        ClientRole role = ClientRole.fromCode(code);
 
         Client newClient = Client.builder()
             .login(login)
             .password(passwordEncoder.encode(password)) // Кодируем пароль!
             .fullName(fullName)
             .role(role)
-            .groupClient(group)
+            .userGroup(group)
             .avatarURL("/uploads/avatars/clients/default.png")
             .build();
             
@@ -88,7 +88,7 @@ public class ClientService implements UserDetailsService{
     @Transactional
     public Client updateRole(UUID id, String code) {
         Client upClient = getOne(id);
-        Role role = Role.fromCode(code);
+        ClientRole role = ClientRole.fromCode(code);
         upClient.setRole(role);
         return clientInterface.save(upClient);
     }
@@ -115,8 +115,8 @@ public class ClientService implements UserDetailsService{
         Client upClient = getOne(id);
         
         if (groupClientId != null) {
-            GroupClient groupClient = groupClientService.getOne(groupClientId);
-            upClient.setGroupClient(groupClient);
+            UserGroup groupClient = groupClientService.getOne(groupClientId);
+            upClient.setUserGroup(groupClient);
         }
         
         if (login != null && !login.isEmpty()) {
