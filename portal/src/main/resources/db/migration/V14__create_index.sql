@@ -12,3 +12,11 @@ CREATE INDEX idx_task_assigned_apteka_status_date ON task(assigned_apteka_id, st
 
 -- Индекс для фильтрации по группе задач (Category)
 CREATE INDEX idx_task_work_type_id ON task(work_type_id);
+
+CREATE INDEX idx_task_stats_client_status ON task(assigned_client_id, status);
+
+-- Для групп сотрудников
+CREATE INDEX idx_task_group_client_stats ON task(group_client_id, status);
+
+-- Для групп аптек
+CREATE INDEX idx_task_group_apteki_stats ON task(group_apteki_id, status);

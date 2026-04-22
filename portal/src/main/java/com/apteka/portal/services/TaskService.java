@@ -1,5 +1,6 @@
 package com.apteka.portal.services;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupClient;
 import com.apteka.portal.models.Task;
+import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.repository.TaskInterface;
@@ -36,16 +38,13 @@ public class TaskService {
     private final AptekaService aptekaService;
     private final ClientService clientService;
     private final WorkTypeService workTypeService;
-    private final GroupTaskService groupTaskService;
     private final GroupClientService groupClientService;
+    private final TaskCommentsService taskCommentsService;
 
     // ==================================================
     // GET
     // ==================================================
 
-    //===================================================
-    // Получение всех задач
-    //===================================================
     @Async
     @Transactional(readOnly = true)
     public CompletableFuture<List<Task>> getAll() {
@@ -53,9 +52,6 @@ public class TaskService {
         return CompletableFuture.completedFuture(taskRepository.findAll());
     }
 
-    //===================================================
-    // Получение одной задачи
-    //===================================================
     @Async
     @Transactional(readOnly = true)
     public CompletableFuture<Task> getOne(Long id) {
@@ -67,111 +63,48 @@ public class TaskService {
         return CompletableFuture.completedFuture(task);
     }
 
-    //===================================================
-    // Получение задач назначенных аптеке
-    //===================================================
     @Async
     @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByAssignedApteka(Integer assignedAptekaId, TaskStatus status) {
-        aptekaService.getOne(assignedAptekaId);
-        return CompletableFuture.completedFuture(
-                taskRepository.findByAssignedAptekaIdAndStatus(assignedAptekaId, status));
+    public CompletableFuture<List<Task>> getDepartamentTaskWithFilters(
+            Integer groupId,
+            UUID creatorClientId,
+            Integer creatorAptekaId,
+            UUID specificClientId,
+            TaskStatus status,
+            TaskPriority priority,
+            Integer groupTaskId) {
+        List<Task> tasks = taskRepository.findDepartmentTasksWithFilters(
+                groupId,
+                creatorClientId,
+                creatorAptekaId,
+                specificClientId,
+                status,
+                priority,
+                groupTaskId);
+        return CompletableFuture.completedFuture(tasks);
     }
 
-    //===================================================
-    // Получение задач назначенных сотруднику
-    //===================================================
     @Async
     @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByAssignedClient(UUID assignedClientId, TaskStatus status) {
-        clientService.getOne(assignedClientId);
-        return CompletableFuture.completedFuture(
-                taskRepository.findByAssignedClientIdAndStatus(assignedClientId, status));
+    public CompletableFuture<List<Task>> getAptekiGroupTasksWithFilters(
+            Integer groupId,
+            Integer specificAptekaId,
+            TaskStatus status,
+            TaskPriority priority,
+            Integer groupTaskId) {
+        List<Task> tasks = taskRepository.findAptekiGroupTasksWithFilters(
+                groupId,
+                specificAptekaId,
+                status,
+                priority,
+                groupTaskId);
+        return CompletableFuture.completedFuture(tasks);
     }
-
-    //===================================================
-    // Получение задач созданных сотрудником
-    //===================================================
-    @Async
-    @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByCreatedByClient(UUID createdByClientId, TaskStatus status) {
-        clientService.getOne(createdByClientId);
-        return CompletableFuture.completedFuture(
-                taskRepository.findByCreatedByClientIdAndStatus(createdByClientId, status));
-    }
-
-    //===================================================
-    // Получение задач созданных аптекой
-    //===================================================
-    @Async
-    @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByCreatedByApteka(Integer createdByAptekaId, TaskStatus status) {
-        aptekaService.getOne(createdByAptekaId);
-        return CompletableFuture.completedFuture(
-                taskRepository.findByCreatedByAptekaIdAndStatus(createdByAptekaId, status));
-    }
-
-    //===================================================
-    // Получение задач по группе
-    //===================================================
-    @Async
-    @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByGroup(Integer groupId) {
-        groupTaskService.getOne(groupId);
-        return CompletableFuture.completedFuture(
-                taskRepository.findByGroupId(groupId));
-    }
-    
-    //===================================================
-    // Получение задач по группе сотрудников с определенным статусом
-    //===================================================
-    @Async
-    @Transactional(readOnly = true)
-    public CompletableFuture<List<Task>> getByGroupClient(Integer groupId, String statusDescription) {
-        groupClientService.getOne(groupId);
-
-        TaskStatus status = TaskStatus.fromDescription(statusDescription);
-
-        return CompletableFuture.completedFuture(
-                taskRepository.findByGroupClient(groupId, status));
-    }
-
-    // ==================================================
-    // FILTER
-    // ==================================================
-    // @Async
-    // @Transactional(readOnly = true)
-    // public CompletableFuture<List<Task>> filter(
-    //         UUID clientId,
-    //         Integer aptekaId,
-    //         UUID createdByClientId,
-    //         Integer workTaskId,
-    //         TaskStatus status,
-    //         TaskPriority priority,
-    //         Date fromDate,
-    //         Date toDate) {
-
-    //     log.info("Фильтр задач | поток {}", Thread.currentThread().getName());
-
-    //     return CompletableFuture.completedFuture(
-    //             taskRepository.filter(
-    //                     clientId,
-    //                     aptekaId,
-    //                     createdByClientId,
-    //                     workTaskId,
-    //                     status,
-    //                     priority,
-    //                     fromDate,
-    //                     toDate));
-    // }
 
     // ==================================================
     // CREATE
     // ==================================================
 
-    // ==================================================
-    // Создание задачи аптекой для сотрудника
-    // ==================================================
     @Async
     @Transactional
     public CompletableFuture<Task> createByAptekaToClient(
@@ -221,7 +154,7 @@ public class TaskService {
         Client assigner = clientService.getOne(assignedClient);
         WorkType workType = workTypeService.getOne(workTypeId);
 
-        if(!creator.getGroupClient().getName().equals(assigner.getGroupClient().getName())) {
+        if (!creator.getGroupClient().getName().equals(assigner.getGroupClient().getName())) {
             throw new ClientBelongsToAnotherGroupException(assigner.getUsername());
         }
 
@@ -278,13 +211,12 @@ public class TaskService {
     @Async
     @Transactional
     public CompletableFuture<Task> createByAptekaToGroupClient(
-        String title,
-        String description,
-        String comments,
-        Integer createdAptekaId,
-        Integer assignedGroupClientId,
-        Integer workTypeId
-    ) {
+            String title,
+            String description,
+            String comments,
+            Integer createdAptekaId,
+            Integer assignedGroupClientId,
+            Integer workTypeId) {
         validate(title, description);
 
         Apteka apteka = aptekaService.getOne(createdAptekaId);
@@ -307,19 +239,38 @@ public class TaskService {
     // ==================================================
     // STATUS
     // ==================================================
-    public CompletableFuture<Task> changeStatus(Long id, String statusDescription) {
+    @Transactional
+    public Task changeStatus(Long id, String statusDescription, UUID clientId, Integer aptekaId) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
         TaskStatus newStatus = TaskStatus.fromDescription(statusDescription);
 
-        task.setStatus(newStatus);
+        if (newStatus != task.getStatus()) {
+            TaskStatus oldStatus = task.getStatus();
+            task.setStatus(newStatus);
 
-        if (newStatus == TaskStatus.CLOSED) {
-            task.setClosingDate(new Date());
+            if (newStatus == TaskStatus.CLOSED) {
+                task.setClosingDate(LocalDateTime.now());
+            }
+            task.setUpdatedDate(LocalDateTime.now());
+
+            String authorName = "Система";
+            if (clientId != null) {
+                authorName = clientService.getOne(clientId).getFullName();
+            } else if (aptekaId != null) {
+                authorName = aptekaService.getOne(aptekaId).getGroupApteki().getName() + " " + aptekaService.getOne(aptekaId).getNumber();
+            }
+
+            String commentText = "Пользователь %s изменил статус задачи #%d изменен c '%s' на '%s' "
+                .formatted(authorName, id, oldStatus, newStatus);
+            
+            Task savedTask = taskRepository.save(task);
+            taskCommentsService.create(commentText, id, clientId, aptekaId);
+            return savedTask;
         }
 
-        return CompletableFuture.completedFuture(taskRepository.save(task));
+        return task;
     }
 
     // ==================================================
@@ -329,9 +280,8 @@ public class TaskService {
     // ==================================================
     // Обновление содержания задачи (Заголовок, Описание)
     // ==================================================
-    @Async
     @Transactional
-    public CompletableFuture<Task> update(
+    public Task update(
             Long id,
             String title,
             String description,
@@ -342,7 +292,7 @@ public class TaskService {
 
         validate(title, description);
 
-        if (task.getStatus() == TaskStatus.CLOSED || task.getStatus() == TaskStatus.DENIED) {
+        if ((task.getStatus() == TaskStatus.DENIED) || (task.getStatus() == TaskStatus.CLOSED && LocalDateTime.now().isAfter(task.getClosingDate().plusMonths(1)))) {
             throw new BlockChangeIfNotActuallyTaskException();
         }
 
@@ -361,24 +311,24 @@ public class TaskService {
     @Transactional
     public CompletableFuture<Task> changeAssignedClientInGroup(Long id, UUID assignedClientId) {
         Task task = taskRepository.findById(id)
-            .orElseThrow(() -> new TaskNotFoundException(id));
+                .orElseThrow(() -> new TaskNotFoundException(id));
 
         Client assignedClient = clientService.getOne(assignedClientId);
 
-        //Проверка, что сотрудник из аптеки на которую назаначена задача
+        // Проверка, что сотрудник из аптеки на которую назаначена задача
         if (assignedClient.getGroupClient().getName() != task.getAssignedGroupClient().getName()) {
             throw new ClientBelongsToAnotherGroupException(assignedClient.getUsername());
         }
 
-        //Распределение на сотрудника
+        // Распределение на сотрудника
         task.setAssignedClient(assignedClient);
-        //Перестаёт принадлежать группе
+        // Перестаёт принадлежать группе
         task.setAssignedGroupClient(null);
 
         task.setUpdatedDate(new Date());
 
         return CompletableFuture.completedFuture(taskRepository.save(task));
-    }  
+    }
 
     // ==================================================
     // Распределение задачи на любого сотрудника
@@ -387,13 +337,13 @@ public class TaskService {
     @Transactional
     public CompletableFuture<Task> changeAssignedClient(Long id, UUID assignedClientId) {
         Task task = taskRepository.findById(id)
-            .orElseThrow(() -> new TaskNotFoundException(id));
+                .orElseThrow(() -> new TaskNotFoundException(id));
 
         Client assignedClient = clientService.getOne(assignedClientId);
 
-        //Распределение на сотрудника
+        // Распределение на сотрудника
         task.setAssignedClient(assignedClient);
-        //Перестаёт принадлежать группе
+        // Перестаёт принадлежать группе
         task.setAssignedGroupClient(null);
 
         task.setUpdatedDate(new Date());
@@ -408,11 +358,11 @@ public class TaskService {
     @Transactional
     public CompletableFuture<Task> changeAssignedGroupClient(Long id, Integer assignedGroupClientId) {
         Task task = taskRepository.findById(id)
-            .orElseThrow(() -> new TaskNotFoundException(id));
-        
+                .orElseThrow(() -> new TaskNotFoundException(id));
+
         GroupClient assignedGroupClient = groupClientService.getOne(assignedGroupClientId);
 
-        //Распределение на группу
+        // Распределение на группу
         task.setAssignedGroupClient(assignedGroupClient);
 
         task.setUpdatedDate(new Date());

@@ -18,6 +18,7 @@ public class OpenApiConfig {
                         .description("Документация REST API для Портала Социальных аптек")
                         .contact(new Contact()
                                 .name("Birdux Dev Team")
-                                .email("support@birdux.kz")));
+                                .email("support@birdux.kz")
+                                .url("https://rutube.ru/video/71a3f8b5315c645256c7fae5cbac3afe/")));
     }
 }

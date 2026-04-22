@@ -15,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class WorkTypeService {
     private final WorkTypeInterface workTaskInterface;
     private final GroupTaskService groupTaskService;

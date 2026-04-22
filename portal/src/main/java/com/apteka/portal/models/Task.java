@@ -1,6 +1,6 @@
 package com.apteka.portal.models;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import jakarta.persistence.CascadeType;
@@ -47,13 +47,13 @@ public class Task {
     private String comments;
 
     @Column(name = "creation_date")
-    private Date creationDate;
+    private LocalDateTime creationDate;
 
     @Column(name = "closing_date")
-    private Date closingDate;
+    private LocalDateTime closingDate;
 
     @Column(name = "updated_date")
-    private Date updatedDate;
+    private LocalDateTime updatedDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)

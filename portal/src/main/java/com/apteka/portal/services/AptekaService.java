@@ -31,7 +31,6 @@ public class AptekaService {
         return aptekaInterface.findAll();
     }
 
-    @SuppressWarnings("null")
     @Transactional(readOnly = true)
     public Apteka getOne(Integer id) {
         return aptekaInterface.findById(id)
@@ -43,7 +42,6 @@ public class AptekaService {
         return aptekaInterface.filter(login, groupId, number, phoneNumber);
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public Apteka create(String login, String password, Integer number, String adress, String phoneNumber, Integer groupId) {
         if (login == null || login.isBlank())
