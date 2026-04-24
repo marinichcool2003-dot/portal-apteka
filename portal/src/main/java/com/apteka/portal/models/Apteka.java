@@ -23,7 +23,7 @@ import lombok.ToString;
 @Getter
 @Setter
 @Builder
-public class Apteka implements HasGroup{
+public class Apteka implements UsersInApp{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")

@@ -1,7 +1,6 @@
 package com.apteka.portal.services;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +13,7 @@ import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskComments;
+import com.apteka.portal.models.UsersInApp;
 import com.apteka.portal.repository.TaskCommentsInterface;
 import com.apteka.portal.repository.TaskInterface;
 
@@ -47,18 +47,18 @@ public class TaskCommentsService {
     }
 
     @Transactional
-    public TaskComments create(String comment, Long taskId, UUID clientId, Integer aptekaId) {
+    public TaskComments create(String comment, Long taskId, UsersInApp currentUser) {
         Task task = taskInterface.findById(taskId)
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
         TaskComments.TaskCommentsBuilder builder = TaskComments.builder().comment(comment).task(task);
-        if (clientId != null) {
-            Client client = clientService.getOne(clientId);
-            builder.client(client);
+        if (currentUser instanceof Client client) {
+            Client currentClient = clientService.getOne(client.getId());
+            builder.client(currentClient);
         }
-        else if (aptekaId != null){
-            Apteka apteka = aptekaService.getOne(aptekaId);
-            builder.apteka(apteka);
+        else if (currentUser instanceof Apteka apteka){
+            Apteka currentApteka = aptekaService.getOne(apteka.getId());
+            builder.apteka(currentApteka);
         }
         else {
             throw new AvtorCommentNotInputException("Автор комментария не был указан или не существует.");

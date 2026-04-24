@@ -1,5 +1,5 @@
 package com.apteka.portal.models;
 
-public interface HasGroup {
+public interface UsersInApp {
     UserGroup getUserGroup();
 }
