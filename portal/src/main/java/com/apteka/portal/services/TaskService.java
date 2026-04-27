@@ -38,14 +38,14 @@ public class TaskService {
     private final ClientService clientService;
     private final WorkTypeService workTypeService;
     private final UserGroupService userGroupService;
-    private final TaskCommentsService taskCommentsService;
     private final TaskSecurityService taskSecurityService;
+    private final TaskAuditService taskAuditService;
 
     @Async
     @Transactional(readOnly = true)
     public CompletableFuture<List<Task>> getAll() {
         log.info("Получение всех задач | поток {}", Thread.currentThread().getName());
-        return CompletableFuture.completedFuture(taskRepository.findAll());
+        return CompletableFuture.supplyAsync(taskRepository::findAll);
     }
 
     @Async
@@ -97,6 +97,8 @@ public class TaskService {
 
         setAssignee(task, dto);
 
+        Objects.requireNonNull(task, "Задача не может быть пустой");
+
         return taskRepository.save(task);
     }
 
@@ -113,9 +115,9 @@ public class TaskService {
                 || !Objects.equals(task.getDescription(), dto.description())) {
             validateTitleAndDescripton(dto.title(), dto.description());
             String commentText = "Пользователь %s изменил описание задачи #%d"
-                    .formatted(getAuthor(currentUser), task.getId());
+                    .formatted(taskAuditService.getAuthor(currentUser), task.getId());
 
-            addComment(commentText, currentUser, task);
+            taskAuditService.addComment(commentText, currentUser, task);
         }
 
         if (dto.statusDescription() != null && !dto.statusDescription().isBlank()) {
@@ -134,12 +136,14 @@ public class TaskService {
     @Transactional
     public void delete(Long id, UsersInApp currentUser) {
 
-        if (!taskRepository.existsById(id)) {
-            throw new TaskNotFoundException(id);
-        }
+        Objects.requireNonNull(id, "Идентификатор не был передан");
+
+        Task task = taskRepository.findById(id)
+            .orElseThrow(() -> new TaskNotFoundException(id));
+
 
         if (currentUser instanceof Client client && client.getRole() == ClientRole.ADMIN) {
-            taskRepository.deleteById(id);
+            taskRepository.delete(task);
             return;
         }
         throw new AccessDeniedException("Только пользователь с правами администратора может удалить задачу");
@@ -155,22 +159,11 @@ public class TaskService {
         task.changeStatus(newStatus);
 
         String commentText = "Пользователь %s изменил статус задачи #%d изменен c '%s' на '%s' "
-                .formatted(getAuthor(currentUser), task.getId(), oldStatus, newStatus);
+                .formatted(taskAuditService.getAuthor(currentUser), task.getId(), oldStatus, newStatus);
 
-        addComment(commentText, currentUser, task);
+        taskAuditService.addComment(commentText, currentUser, task);
 
         return task;
-    }
-
-    private String getAuthor(UsersInApp currentuser) {
-        String authorName = "Система";
-        if (currentuser instanceof Client client) {
-            return client.getFullName();
-        }
-        if (currentuser instanceof Apteka apteka) {
-            return apteka.getUserGroup().getName() + " " + apteka.getNumber();
-        }
-        return authorName;
     }
 
     private void setAssignee(Task task, TaskRequestDTO dto) {
@@ -191,8 +184,4 @@ public class TaskService {
             throw new InvalidTaskDescriptionException();
     }
 
-    private void addComment(String template, UsersInApp user, Task task) {
-        String text = template.formatted(getAuthor(user), task.getId());
-        taskCommentsService.create(text, task.getId(), user);
-    }
 }
