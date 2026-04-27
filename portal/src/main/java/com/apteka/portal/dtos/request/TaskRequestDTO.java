@@ -7,6 +7,7 @@ public record TaskRequestDTO(
     String description,
     String comments,
     Integer workTypeId,
+    String statusDescription,
     Integer assignedAptekaId,
     UUID assignedClientId,
     Integer assignedGroupId

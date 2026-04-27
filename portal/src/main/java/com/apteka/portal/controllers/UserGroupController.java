@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("api/v1/group-client")
 @RequiredArgsConstructor
-public class GroupClientController {
+public class UserGroupController {
     private final UserGroupService groupClientService;
 
     @GetMapping

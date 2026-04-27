@@ -2,6 +2,7 @@ package com.apteka.portal.services;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
@@ -13,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.TaskRequestDTO;
-import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
 import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
@@ -98,38 +98,28 @@ public class TaskService {
         setAssignee(task, dto);
 
         return taskRepository.save(task);
-
     }
 
     @Transactional
-    public Task update(Long id, TaskRequestDTO dto, String statusDescription, UsersInApp currentUser) {
+    public Task update(Long id, TaskRequestDTO dto, UsersInApp currentUser) {
 
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
-        if (task.getAssignedApteka().getId() != dto.assignedAptekaId() ||
-                task.getAssignedClient().getId() != dto.assignedClientId() ||
-                task.getAssignedGroup().getId() != dto.assignedGroupId()) {
-            if (currentUser instanceof Client client) {
-                if (justUser(client) && task.getAssignedClient().getId() != client.getId()
-                        && task.getCreatedByClient().getId() != client.getId()
-                        && (client.getUserGroup().getId() != task.getAssignedGroup().getId()
-                                && dto.assignedGroupId() != client.getUserGroup().getId())) {
-                    throw new AccessDeniedException(
-                            "Обычный пользователь не может изменять задачу вне своего отдела или к которой не имеет отношение!");
-                }
-            }
-            if (currentUser instanceof Apteka apteka) {
-                if (task.getCreatedByApteka().getId() != apteka.getId()
-                        && task.getAssignedApteka().getId() != apteka.getId()) {
-                    throw new AccessDeniedException("Аптека не может изменять задачу к которой не имеет отношение!");
-                }
-            }
+        taskSecurityService.validateCanUpdate(task, dto, currentUser);
+        taskSecurityService.validateStatus(task, currentUser);
+
+        if (!Objects.equals(task.getTitle(), dto.title())
+                || !Objects.equals(task.getDescription(), dto.description())) {
+            validateTitleAndDescripton(dto.title(), dto.description());
+            String commentText = "Пользователь %s изменил описание задачи #%d"
+                    .formatted(getAuthor(currentUser), task.getId());
+
+            addComment(commentText, currentUser, task);
         }
 
-        validateTitleAndDescripton(dto.title(), dto.description());
-        if (statusDescription != null && !statusDescription.isBlank()) {
-            task = changeStatus(task, statusDescription, currentUser);
+        if (dto.statusDescription() != null && !dto.statusDescription().isBlank()) {
+            task = changeStatus(task, dto.statusDescription(), currentUser);
         }
 
         if (dto.comments() != null && !dto.comments().isBlank()) {
@@ -148,51 +138,39 @@ public class TaskService {
             throw new TaskNotFoundException(id);
         }
 
-        if (currentUser instanceof Client client) {
-            if (client.getRole() == ClientRole.ADMIN) {
-                taskRepository.deleteById(id);
-            }
+        if (currentUser instanceof Client client && client.getRole() == ClientRole.ADMIN) {
+            taskRepository.deleteById(id);
+            return;
         }
         throw new AccessDeniedException("Только пользователь с правами администратора может удалить задачу");
     }
 
     private Task changeStatus(Task task, String statusDescription, UsersInApp currentUser) {
 
-        validateStatus(task, currentUser);
+        taskSecurityService.validateStatus(task, currentUser);
         TaskStatus newStatus = TaskStatus.fromDescription(statusDescription);
 
-        if (newStatus != task.getStatus()) {
-            TaskStatus oldStatus = task.getStatus();
-            task.setStatus(newStatus);
+        if (newStatus == task.getStatus()) return task;
+        TaskStatus oldStatus = task.getStatus();
+        task.changeStatus(newStatus);
 
-            if (newStatus == TaskStatus.CLOSED) {
-                task.setClosingDate(LocalDateTime.now());
-            }
-            task.setUpdatedDate(LocalDateTime.now());
+        String commentText = "Пользователь %s изменил статус задачи #%d изменен c '%s' на '%s' "
+                .formatted(getAuthor(currentUser), task.getId(), oldStatus, newStatus);
 
-            String authorName = "Система";
-            if (currentUser instanceof Client client) {
-                authorName = clientService.getOne(client.getId()).getFullName();
-            } else if (currentUser instanceof Apteka apteka) {
-                authorName = aptekaService.getOne(apteka.getId()).getUserGroup().getName() + " "
-                        + aptekaService.getOne(apteka.getId()).getNumber();
-            }
-
-            String commentText = "Пользователь %s изменил статус задачи #%d изменен c '%s' на '%s' "
-                    .formatted(authorName, task.getId(), oldStatus, newStatus);
-
-            Task savedTask = taskRepository.save(task);
-            taskCommentsService.create(commentText, task.getId(), currentUser);
-            return savedTask;
-        }
+        addComment(commentText, currentUser, task);
 
         return task;
     }
 
-    private Integer getAssignedAptekaId(Task task) {
-        return task.getAssignedApteka() != null 
-            ? task.getAssignedApteka().getId()
-            : null;
+    private String getAuthor(UsersInApp currentuser) {
+        String authorName = "Система";
+        if (currentuser instanceof Client client) {
+            return client.getFullName();
+        }
+        if (currentuser instanceof Apteka apteka) {
+            return apteka.getUserGroup().getName() + " " + apteka.getNumber();
+        }
+        return authorName;
     }
 
     private void setAssignee(Task task, TaskRequestDTO dto) {
@@ -213,36 +191,8 @@ public class TaskService {
             throw new InvalidTaskDescriptionException();
     }
 
-    private void validateStatus(Task task, UsersInApp currentUser) {
-        if ((task.getStatus() == TaskStatus.DENIED) || (task.getStatus() == TaskStatus.CLOSED
-                && LocalDateTime.now().isAfter(task.getClosingDate().plusMonths(1)))) {
-            throw new BlockChangeIfNotActuallyTaskException();
-        }
-
-        if (currentUser instanceof Client client) {
-            if (!justUser(client))
-                return;
-
-            if (client.getId() != task.getAssignedClient().getId()
-                    && client.getId() != task.getCreatedByClient().getId()) {
-                throw new AccessDeniedException(
-                        "Пользователь без определенных прав может изменять статус только своих собственных задач");
-            }
-        }
-
-        if (currentUser instanceof Apteka apteka) {
-            if (apteka.getId() != task.getCreatedByApteka().getId()
-                    && apteka.getId() != task.getAssignedApteka().getId()) {
-                throw new AccessDeniedException("Аптека может изменять статус только своих собственных задач");
-            }
-        }
-    }
-
-    private boolean justUser(Client client) {
-        if (client.getRole() != ClientRole.ADMIN && client.getRole() != ClientRole.BOSS
-                && client.getRole() != ClientRole.SENIOR) {
-            return true;
-        }
-        return false;
+    private void addComment(String template, UsersInApp user, Task task) {
+        String text = template.formatted(getAuthor(user), task.getId());
+        taskCommentsService.create(text, task.getId(), user);
     }
 }

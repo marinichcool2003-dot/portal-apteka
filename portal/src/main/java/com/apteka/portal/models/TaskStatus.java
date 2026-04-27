@@ -13,7 +13,12 @@ public enum TaskStatus {
 
     private final String description;
 
-    public static TaskStatus fromDescription(String description){
+    public static TaskStatus fromDescription(String description) {
+
+        if (description == null || description.isBlank()) {
+            throw new IllegalArgumentException("Статус не может быть пустым");
+        }
+
         for (TaskStatus status : values()) {
             if (status.description.equals(description)) {
                 return status;
