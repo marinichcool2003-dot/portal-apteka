@@ -2,14 +2,18 @@ package com.apteka.portal.models;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -50,9 +54,12 @@ public class Client implements UserDetails {
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
+    @Builder.Default
+    @ElementCollection(targetClass = ClientRole.class, fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "client_roles", joinColumns = @JoinColumn(name = "client_id"))
     @Column(name = "role", nullable = false)
-    private ClientRole role;
+    private Set<ClientRole> roles = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
@@ -77,8 +84,14 @@ public class Client implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
         List<GrantedAuthority> authorities = new ArrayList<>();
 
-        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
-        authorities.add(new SimpleGrantedAuthority("GROUP_" + userGroup.getName().replace(" ", "_").toUpperCase()));
+        if (roles != null) {
+            roles.forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r.name())));
+        }
+    
+        if (userGroup != null) {
+            String grouprole = "GROUP_" + userGroup.getName().replace(" ", "_").toUpperCase();
+            authorities.add(new SimpleGrantedAuthority(grouprole));
+        }
         return authorities;
     }
 

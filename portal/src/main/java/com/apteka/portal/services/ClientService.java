@@ -1,5 +1,6 @@
 package com.apteka.portal.services;
 
+import com.apteka.portal.repository.UserGroupInterface;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -29,7 +30,8 @@ public class ClientService implements UserDetailsService{
     private final UserGroupService groupClientService;
     private final ClientInterface clientInterface;
     private final AvatarClientService avatarClientService;
-    private final PasswordEncoder passwordEncoder; 
+    private final PasswordEncoder passwordEncoder;
+    private final UserGroupService userGroupService;
 
     @Transactional(readOnly = true)
     public List<Client> getAll(){
@@ -37,9 +39,15 @@ public class ClientService implements UserDetailsService{
     }
 
     @Transactional(readOnly = true)
-    public List<Client> findByRole(String code){
+    public List<Client> getByRole(String code){
         ClientRole role = ClientRole.fromCode(code);
         return clientInterface.findByRole(role.name());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Client> getbyGroup(Integer userGroupId) {
+        userGroupService.getOne(userGroupId);
+        return clientInterface.findByGroupId(userGroupId);
     }
 
     @Override
@@ -47,12 +55,6 @@ public class ClientService implements UserDetailsService{
     public UserDetails loadUserByUsername(String login) throws UsernameNotFoundException {
         return clientInterface.findByLogin(login)
             .orElseThrow(() -> new UsernameNotFoundException("Клиент не найден: " + login));
-    }
-
-    @Transactional(readOnly = true)
-    public Client getOne(UUID id){
-        return clientInterface.findById(id)
-            .orElseThrow(() -> new ClientNotFoundException(id));
     }
 
     @Transactional

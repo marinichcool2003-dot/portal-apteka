@@ -1,5 +1,6 @@
 package com.apteka.portal.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,4 +11,5 @@ import com.apteka.portal.models.GroupTask;
 @Repository
 public interface GroupTaskInterface extends JpaRepository<GroupTask, Integer> {
     Optional<GroupTask> findByName(String name);
+    List<GroupTask> findByUserGroupId(Integer userGroupId);
 }

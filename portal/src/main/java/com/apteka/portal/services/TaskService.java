@@ -76,7 +76,7 @@ public class TaskService {
 
     @Transactional
     public Task createTask(TaskRequestDTO dto, UsersInApp currentUser) {
-        validateTitleAndDescripton(dto.title(), dto.description());
+        validateTitle(dto.title());
 
         taskSecurityService.validateCanCreate(dto, currentUser);
 
@@ -111,9 +111,16 @@ public class TaskService {
         taskSecurityService.validateCanUpdate(task, dto, currentUser);
         taskSecurityService.validateStatus(task, currentUser);
 
-        if (!Objects.equals(task.getTitle(), dto.title())
-                || !Objects.equals(task.getDescription(), dto.description())) {
-            validateTitleAndDescripton(dto.title(), dto.description());
+        if (dto.title() != null && !Objects.equals(task.getTitle(), dto.title())) {
+            validateTitle(dto.title());
+            String commentText = "Пользователь %s изменил заголовок задачи #%d"
+                    .formatted(taskAuditService.getAuthor(currentUser), task.getId());
+
+            taskAuditService.addComment(commentText, currentUser, task);
+        }
+
+        if (dto.description() != null && !Objects.equals(task.getDescription(), dto.description())) {
+            validateDescription(dto.description());
             String commentText = "Пользователь %s изменил описание задачи #%d"
                     .formatted(taskAuditService.getAuthor(currentUser), task.getId());
 
@@ -136,11 +143,8 @@ public class TaskService {
     @Transactional
     public void delete(Long id, UsersInApp currentUser) {
 
-        Objects.requireNonNull(id, "Идентификатор не был передан");
-
         Task task = taskRepository.findById(id)
-            .orElseThrow(() -> new TaskNotFoundException(id));
-
+                .orElseThrow(() -> new TaskNotFoundException(id));
 
         if (currentUser instanceof Client client && client.getRole() == ClientRole.ADMIN) {
             taskRepository.delete(task);
@@ -154,7 +158,8 @@ public class TaskService {
         taskSecurityService.validateStatus(task, currentUser);
         TaskStatus newStatus = TaskStatus.fromDescription(statusDescription);
 
-        if (newStatus == task.getStatus()) return task;
+        if (newStatus == task.getStatus())
+            return task;
         TaskStatus oldStatus = task.getStatus();
         task.changeStatus(newStatus);
 
@@ -176,10 +181,12 @@ public class TaskService {
         }
     }
 
-    private void validateTitleAndDescripton(String title, String description) {
+    private void validateTitle(String title) {
         if (title == null || title.isBlank())
             throw new InvalidTaskTitleException();
+    }
 
+    private void validateDescription(String description) {
         if (description == null || description.isBlank())
             throw new InvalidTaskDescriptionException();
     }
