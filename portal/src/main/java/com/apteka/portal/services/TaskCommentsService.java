@@ -52,12 +52,12 @@ public class TaskCommentsService {
             .orElseThrow(() -> new TaskNotFoundException(taskId));
 
         TaskComments.TaskCommentsBuilder builder = TaskComments.builder().comment(comment).task(task);
-        if (currentUser instanceof Client client) {
-            Client currentClient = clientService.getOne(client.getId());
+        if (currentUser.isClient()) {
+            Client currentClient = clientService.getOne(currentUser.getClientId());
             builder.client(currentClient);
         }
-        else if (currentUser instanceof Apteka apteka){
-            Apteka currentApteka = aptekaService.getOne(apteka.getId());
+        else if (currentUser.isApteka()){
+            Apteka currentApteka = aptekaService.getOne(currentUser.getAptekaId());
             builder.apteka(currentApteka);
         }
         else {

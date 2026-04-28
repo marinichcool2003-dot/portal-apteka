@@ -35,7 +35,7 @@ import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupApteki;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.GroupTask;
-import com.apteka.portal.models.ClientRole;
+import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.repository.ClientInterface;
@@ -72,7 +72,7 @@ public class TaskServiceTest {
         mockApteka = new Apteka(1, "sacapteka101@farmp.ru", "15943245", 001, "Ростов-на-Дону", "9881233322", mockGroupApteki);
         mockGroupTask = new GroupTask(1, "Группа 1");
         UUID newUUID = UUID.randomUUID();
-        mockClient = new Client(newUUID, "Birdux", "1234_Af!848", "Гетманцев Даниил Олегович", ClientRole.LEGEND, mockgroupClient, "url/avatar");
+        mockClient = new Client(newUUID, "Birdux", "1234_Af!848", "Гетманцев Даниил Олегович", UserRole.LEGEND, mockgroupClient, "url/avatar");
         task1 = new Task(
                 1L,
                 "Заголовок1",

@@ -6,7 +6,7 @@ public record ClientRequestDTO (
     String login,
     String password,
     String fullName,
-    Set<String> roles,
+    Set<String> rolesCode,
     Integer groupClientId
 )
 {}

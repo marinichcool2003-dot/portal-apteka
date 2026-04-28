@@ -1,5 +1,8 @@
 package com.apteka.portal.models;
 
+import java.util.Set;
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -8,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,6 +31,7 @@ public class Apteka implements UsersInApp{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
+    @Getter(AccessLevel.NONE)
     private Integer id;
 
     @Column(name = "login", nullable = false)
@@ -47,4 +52,24 @@ public class Apteka implements UsersInApp{
     @ManyToOne
     @JoinColumn(name = "group_id")
     private UserGroup userGroup;
+
+    public boolean isApteka() {
+        return true;
+    }
+
+    public boolean isClient() {
+        return false;
+    }
+
+    public UUID getClientId() {
+        return null;
+    }
+
+    public Integer getAptekaId() {
+        return this.id;
+    }
+
+    public Set<UserRole> getRoles() {
+        return Set.of(UserRole.APTEKA);
+    }
 }

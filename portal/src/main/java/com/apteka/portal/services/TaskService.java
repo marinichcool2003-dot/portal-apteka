@@ -19,7 +19,7 @@ import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
-import com.apteka.portal.models.ClientRole;
+import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.UsersInApp;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
@@ -87,17 +87,15 @@ public class TaskService {
                 .workType(workTypeService.getOne(dto.workTypeId()))
                 .build();
 
-        if (currentUser instanceof Apteka apteka) {
-            Apteka currentApteka = aptekaService.getOne(apteka.getId());
+        if (currentUser.isApteka()) {
+            Apteka currentApteka = aptekaService.getOne(currentUser.getAptekaId());
             task.setCreatedByApteka(currentApteka);
-        } else if (currentUser instanceof Client client) {
-            Client currentClient = clientService.getOne(client.getId());
+        } else if (currentUser.isClient()) {
+            Client currentClient = clientService.getOne(currentUser.getClientId());
             task.setCreatedByClient(currentClient);
         }
 
         setAssignee(task, dto);
-
-        Objects.requireNonNull(task, "Задача не может быть пустой");
 
         return taskRepository.save(task);
     }
@@ -146,7 +144,7 @@ public class TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
-        if (currentUser instanceof Client client && client.getRole() == ClientRole.ADMIN) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
             taskRepository.delete(task);
             return;
         }

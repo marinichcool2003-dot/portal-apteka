@@ -1,15 +1,8 @@
 package com.apteka.portal.models;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -24,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -39,10 +33,11 @@ import lombok.ToString;
 @Setter
 @Getter
 @ToString
-public class Client implements UserDetails {
+public class Client implements UsersInApp{
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id")
+    @Getter(AccessLevel.NONE)
     private UUID id;
 
     @Column(name = "login", nullable = false)
@@ -55,11 +50,11 @@ public class Client implements UserDetails {
     private String fullName;
 
     @Builder.Default
-    @ElementCollection(targetClass = ClientRole.class, fetch = FetchType.EAGER)
+    @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "client_roles", joinColumns = @JoinColumn(name = "client_id"))
     @Column(name = "role", nullable = false)
-    private Set<ClientRole> roles = new HashSet<>();
+    private Set<UserRole> roles = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
@@ -68,56 +63,24 @@ public class Client implements UserDetails {
     @Column(name = "avatar_url")
     private String avatarURL;
 
-    public UUID getId() {
+    @Override
+    public boolean isApteka() {
+        return false;
+    }
+
+    @Override
+    public boolean isClient() {
+        return true;
+    }
+
+    @Override
+    public UUID getClientId() {
         return id;
     }
 
-    public String getFullName() {
-        return fullName;
-    }
-
-    public UserGroup getUserGroup() {
-        return userGroup;
-    }
-
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        List<GrantedAuthority> authorities = new ArrayList<>();
-
-        if (roles != null) {
-            roles.forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r.name())));
-        }
-    
-        if (userGroup != null) {
-            String grouprole = "GROUP_" + userGroup.getName().replace(" ", "_").toUpperCase();
-            authorities.add(new SimpleGrantedAuthority(grouprole));
-        }
-        return authorities;
-    }
-
-    @Override
-    public String getPassword() {
-        return password;
-    }
-
-    public String getUsername() {
-        return login;
-    }
-
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    public boolean isEnabled() {
-        return true;
+    public Integer getAptekaId() {
+        return null;
     }
 
 }
