@@ -15,12 +15,12 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.apteka.portal.models.Apteka;
-import com.apteka.portal.repository.AptekaInterface;
+import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.security.JwtTokenProvider;
 
 public class AuthAptekaServiceTest {
     @Mock
-    private AptekaInterface aptekaInterface;
+    private AptekaRepository aptekaInterface;
 
     @Mock
     private AptekaService aptekaService;

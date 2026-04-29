@@ -16,7 +16,7 @@ public record ClientResponseDTO(
 ) {
     public static ClientResponseDTO from(Client client) {
         return new ClientResponseDTO(
-            client.getClientId(), 
+            client.getId(), 
             client.getLogin(), 
             client.getFullName(), 
             client.getRoles(),

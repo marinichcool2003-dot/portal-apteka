@@ -12,18 +12,20 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.apteka.portal.components.TaskSecurityService;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.TaskRequestDTO;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
 import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
+import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserRole;
-import com.apteka.portal.models.UsersInApp;
+import com.apteka.portal.models.UserType;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
-import com.apteka.portal.repository.TaskInterface;
+import com.apteka.portal.repository.TaskRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,7 +35,7 @@ public class TaskService {
 
     private static final Logger log = LoggerFactory.getLogger(TaskService.class);
 
-    private final TaskInterface taskRepository;
+    private final TaskRepository taskRepository;
     private final AptekaService aptekaService;
     private final ClientService clientService;
     private final WorkTypeService workTypeService;
@@ -75,7 +77,8 @@ public class TaskService {
     }
 
     @Transactional
-    public Task createTask(TaskRequestDTO dto, UsersInApp currentUser) {
+    public Task createTask(TaskRequestDTO dto, AppUserDetails currentUser) {
+        
         validateTitle(dto.title());
 
         taskSecurityService.validateCanCreate(dto, currentUser);
@@ -87,10 +90,10 @@ public class TaskService {
                 .workType(workTypeService.getOne(dto.workTypeId()))
                 .build();
 
-        if (currentUser.isApteka()) {
+        if (currentUser.getType() == UserType.APTEKA) {
             Apteka currentApteka = aptekaService.getOne(currentUser.getAptekaId());
             task.setCreatedByApteka(currentApteka);
-        } else if (currentUser.isClient()) {
+        } else if (currentUser.getType() == UserType.CLIENT) {
             Client currentClient = clientService.getOne(currentUser.getClientId());
             task.setCreatedByClient(currentClient);
         }
@@ -101,7 +104,7 @@ public class TaskService {
     }
 
     @Transactional
-    public Task update(Long id, TaskRequestDTO dto, UsersInApp currentUser) {
+    public Task update(Long id, TaskRequestDTO dto, AppUserDetails currentUser) {
 
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
@@ -139,7 +142,7 @@ public class TaskService {
     }
 
     @Transactional
-    public void delete(Long id, UsersInApp currentUser) {
+    public void delete(Long id, AppUserDetails currentUser) {
 
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
@@ -151,7 +154,7 @@ public class TaskService {
         throw new AccessDeniedException("Только пользователь с правами администратора может удалить задачу");
     }
 
-    private Task changeStatus(Task task, String statusDescription, UsersInApp currentUser) {
+    private Task changeStatus(Task task, String statusDescription, AppUserDetails currentUser) {
 
         taskSecurityService.validateStatus(task, currentUser);
         TaskStatus newStatus = TaskStatus.fromDescription(statusDescription);

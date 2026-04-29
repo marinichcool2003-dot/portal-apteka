@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS apteka(
     password VARCHAR(100) NOT NULL,
     number INT NOT NULL,
     adress VARCHAR(255),
-    phone_number VARCHAR(10) UNIQUE,
-    group_id INT NOT NULL,
-    zav_id UUID
+    phone_number VARCHAR(20) UNIQUE,
+    group_id INT NOT NULL
 );

@@ -1,4 +1,4 @@
-package com.apteka.portal.services;
+package com.apteka.portal.components;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -7,10 +7,10 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-@Service
+@Component
 public class AvatarClientService {
 
     private final String uploadDir = "/uploads/clients/avatars";

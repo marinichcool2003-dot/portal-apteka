@@ -5,11 +5,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import com.apteka.portal.repository.ClientInterface;
+import com.apteka.portal.repository.ClientRepository;
 
 public class ClientServiceTest {
     @Mock
-    private ClientInterface clientInterface;
+    private ClientRepository clientInterface;
 
     @InjectMocks
     private ClientService clientService;

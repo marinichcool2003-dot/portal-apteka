@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.apteka.portal.models.Client;
 
-public interface ClientInterface extends JpaRepository<Client, UUID>{
+public interface ClientRepository extends JpaRepository<Client, UUID>{
 
     Optional<Client> findByLogin(String login);
 

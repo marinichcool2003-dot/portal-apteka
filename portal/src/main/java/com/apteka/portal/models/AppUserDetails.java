@@ -10,10 +10,12 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
 @Setter
+@Getter
 @ToString
 public class AppUserDetails implements UserDetails {
 
@@ -22,9 +24,9 @@ public class AppUserDetails implements UserDetails {
     private final Set<UserRole> roles;
     private final UserGroup userGroup;
     private final UserType type;
-
     private final UUID clientId;
     private final Integer aptekaId;
+    private final String displayName;
 
     public AppUserDetails(Client client) {
         this.login = client.getLogin();
@@ -32,8 +34,9 @@ public class AppUserDetails implements UserDetails {
         this.roles = client.getRoles();
         this.userGroup = client.getUserGroup();
         this.type = UserType.CLIENT;
-        this.clientId = client.getClientId();
+        this.clientId = client.getId();
         this.aptekaId = null;
+        this.displayName = client.getFullName();
     }
 
     public AppUserDetails(Apteka apteka) {
@@ -42,8 +45,40 @@ public class AppUserDetails implements UserDetails {
         this.roles = Set.of(UserRole.APTEKA);
         this.userGroup = apteka.getUserGroup();
         this.type = UserType.APTEKA;
-        this.aptekaId = apteka.getAptekaId();
+        this.aptekaId = apteka.getId();
         this.clientId = null;
+        this.displayName = apteka.getUserGroup().getName() + " " + apteka.getNumber();
+    }
+
+    public Object getInternalId() {
+        return (type == UserType.CLIENT) ? clientId : aptekaId;
+    }
+
+    public boolean isJustUser() {
+        if (type == UserType.APTEKA)
+            return false;
+        return roles.stream()
+                .noneMatch(role -> role == UserRole.ADMIN || role == UserRole.BOSS || role == UserRole.SENIOR);
+    }
+
+    public boolean isApteka() {
+        return type == UserType.APTEKA;
+    }
+
+    public boolean isClient() {
+        return type == UserType.CLIENT;
+    }
+
+    public boolean hasRole(UserRole role) {
+        return roles.contains(role);
+    }
+
+    public boolean hasAnyRole(UserRole... targetRoles) {
+        for (UserRole target : targetRoles) {
+            if (roles.contains(target))
+                return true;
+        }
+        return false;
     }
 
     @Override
@@ -58,18 +93,6 @@ public class AppUserDetails implements UserDetails {
         }
 
         return result;
-    }
-
-    public Set<UserRole> getRoles() {
-        return roles;
-    }
-
-    public UserGroup getUserGroup() {
-        return userGroup;
-    }
-
-    public UserType getType() {
-        return type;
     }
 
     @Override

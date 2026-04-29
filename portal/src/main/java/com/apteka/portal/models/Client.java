@@ -17,7 +17,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -33,11 +32,10 @@ import lombok.ToString;
 @Setter
 @Getter
 @ToString
-public class Client implements UsersInApp{
+public class Client{
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id")
-    @Getter(AccessLevel.NONE)
     private UUID id;
 
     @Column(name = "login", nullable = false)
@@ -62,25 +60,5 @@ public class Client implements UsersInApp{
 
     @Column(name = "avatar_url")
     private String avatarURL;
-
-    @Override
-    public boolean isApteka() {
-        return false;
-    }
-
-    @Override
-    public boolean isClient() {
-        return true;
-    }
-
-    @Override
-    public UUID getClientId() {
-        return id;
-    }
-
-    @Override
-    public Integer getAptekaId() {
-        return null;
-    }
 
 }

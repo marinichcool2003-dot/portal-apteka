@@ -15,7 +15,7 @@ import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
 
 @Repository
-public interface TaskInterface extends JpaRepository<Task, Long> {
+public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Query("""
                 SELECT DISTINCT t FROM Task t

@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS group_user CASCADE;
 CREATE TABLE IF NOT EXISTS group_user(
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL
+    name VARCHAR(50) UNIQUE NOT NULL,
+    phone_number VARCHAR(20) 
 );

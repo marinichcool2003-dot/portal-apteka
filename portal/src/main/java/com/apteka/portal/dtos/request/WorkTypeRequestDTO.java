@@ -1,6 +1,5 @@
 package com.apteka.portal.dtos.request;
 
-public record GroupAptekiRequestDTO(
+public record WorkTypeRequestDTO(
     String name
-) 
-{}
+) {}

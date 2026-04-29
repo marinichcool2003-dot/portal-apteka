@@ -38,21 +38,21 @@ import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
-import com.apteka.portal.repository.ClientInterface;
-import com.apteka.portal.repository.TaskInterface;
+import com.apteka.portal.repository.ClientRepository;
+import com.apteka.portal.repository.TaskRepository;
 
 public class TaskServiceTest {
     @Mock
     private AptekaService aptekaService;
 
     @Mock
-    private TaskInterface taskInterface;
+    private TaskRepository taskInterface;
 
     @Mock
     private GroupTaskService groupTaskService;
 
     @Mock
-    private ClientInterface clientInterface;
+    private ClientRepository clientInterface;
 
     @InjectMocks
     private TaskService taskService;

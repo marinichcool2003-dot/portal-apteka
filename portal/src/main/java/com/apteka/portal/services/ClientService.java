@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.apteka.portal.components.AvatarClientService;
 import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.InvalidClientLoginException;
@@ -23,7 +24,7 @@ import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
-import com.apteka.portal.repository.ClientInterface;
+import com.apteka.portal.repository.ClientRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,26 +33,26 @@ import lombok.RequiredArgsConstructor;
 public class ClientService {
 
     private final UserGroupService groupClientService;
-    private final ClientInterface clientInterface;
+    private final ClientRepository clientRepository;
     private final AvatarClientService avatarClientService;
     private final PasswordEncoder passwordEncoder;
     private final UserGroupService userGroupService;
 
     @Transactional(readOnly = true)
     public List<Client> getAll() {
-        return clientInterface.findAll();
+        return clientRepository.findAll();
     }
 
     @Transactional(readOnly = true)
     public Client getOne(UUID id) {
-        return clientInterface.findById(id)
+        return clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
     }
 
     @Transactional(readOnly = true)
     public List<Client> getbyGroup(Integer userGroupId) {
         userGroupService.getOne(userGroupId);
-        return clientInterface.findByGroupId(userGroupId);
+        return clientRepository.findByGroupId(userGroupId);
     }
 
     @Transactional
@@ -67,7 +68,7 @@ public class ClientService {
             throw new InvalidClientPasswordException();
         }
 
-        if (clientInterface.existsByLogin(dto.login().strip())) {
+        if (clientRepository.existsByLogin(dto.login().strip())) {
             throw new RuntimeException("Пользователь с логином " + dto.login() + " уже существует");
         }
 
@@ -90,7 +91,7 @@ public class ClientService {
                 .avatarURL("/uploads/avatars/clients/default.png")
                 .build();
 
-        return clientInterface.save(newClient);
+        return clientRepository.save(newClient);
     }
 
     private void canGiveRoleToClient(Set<UserRole> newRoles, AppUserDetails currentUser, UserGroup targetGroup) {
@@ -124,7 +125,7 @@ public class ClientService {
         Client upClient = getOne(id);
         UserRole role = UserRole.fromCode(code);
         upClient.setRoles(Set.of(role));
-        return clientInterface.save(upClient);
+        return clientRepository.save(upClient);
     }
 
     @Transactional
@@ -132,16 +133,16 @@ public class ClientService {
         Client upClient = getOne(id);
         String avatarURL = avatarClientService.uploadAvatar(avatar, id);
         upClient.setAvatarURL(avatarURL);
-        return clientInterface.save(upClient);
+        return clientRepository.save(upClient);
     }
 
     @Transactional
     public Client updateAvatar(String username, MultipartFile avatar) throws IOException {
-        Client upClient = clientInterface.findByLogin(username)
+        Client upClient = clientRepository.findByLogin(username)
                 .orElseThrow(() -> new ClientNotFoundException("Пользователь с именем " + username + " не найден!"));
-        String avatarURL = avatarClientService.uploadAvatar(avatar, upClient.getClientId());
+        String avatarURL = avatarClientService.uploadAvatar(avatar, upClient.getId());
         upClient.setAvatarURL(avatarURL);
-        return clientInterface.save(upClient);
+        return clientRepository.save(upClient);
     }
 
     @Transactional
@@ -161,13 +162,13 @@ public class ClientService {
             upClient.setPassword(passwordEncoder.encode(password));
         }
 
-        return clientInterface.save(upClient);
+        return clientRepository.save(upClient);
     }
 
     @Transactional
     public void delete(UUID id) {
-        if (clientInterface.existsById(id)) {
-            clientInterface.deleteById(id);
+        if (clientRepository.existsById(id)) {
+            clientRepository.deleteById(id);
         }
     }
 }

@@ -8,6 +8,6 @@ import java.util.Optional;
 
 
 @Repository
-public interface WorkTypeInterface extends JpaRepository<WorkType, Integer>{
+public interface WorkTypeRepository extends JpaRepository<WorkType, Integer>{
     Optional<WorkType> findByName(String name);
 }

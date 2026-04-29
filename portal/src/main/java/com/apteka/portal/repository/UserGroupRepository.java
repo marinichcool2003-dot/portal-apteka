@@ -8,6 +8,6 @@ import org.springframework.stereotype.Repository;
 import com.apteka.portal.models.UserGroup;
 
 @Repository
-public interface UserGroupInterface extends JpaRepository<UserGroup, Integer>{
+public interface UserGroupRepository extends JpaRepository<UserGroup, Integer>{
     Optional<UserGroup> findByName(String name);
 }

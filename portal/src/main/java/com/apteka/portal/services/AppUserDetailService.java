@@ -6,23 +6,23 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.repository.AptekaInterface;
-import com.apteka.portal.repository.ClientInterface;
+import com.apteka.portal.repository.AptekaRepository;
+import com.apteka.portal.repository.ClientRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class AppUserDetailService implements UserDetailsService {
-    private final ClientInterface clientInterface;
-    private final AptekaInterface aptekaInterface;
+    private final ClientRepository clientRepository;
+    private final AptekaRepository aptekaRepository;
 
     @Override
     public UserDetails loadUserByUsername(String login) {
 
-        return clientInterface.findByLogin(login)
+        return clientRepository.findByLogin(login)
                 .map(AppUserDetails::new)
-                .orElseGet(() -> aptekaInterface.findByLogin(login)
+                .orElseGet(() -> aptekaRepository.findByLogin(login)
                         .map(AppUserDetails::new)
                         .orElseThrow(() -> new UsernameNotFoundException(login)));
     }

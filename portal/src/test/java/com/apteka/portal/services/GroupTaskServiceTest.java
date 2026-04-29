@@ -21,11 +21,11 @@ import com.apteka.portal.exceptions.DublicateGroupTaskException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
 import com.apteka.portal.exceptions.InvalidGroupTaskException;
 import com.apteka.portal.models.GroupTask;
-import com.apteka.portal.repository.GroupTaskInterface;
+import com.apteka.portal.repository.GroupTaskRepository;
 
 public class GroupTaskServiceTest {
     @Mock
-    private GroupTaskInterface groupTaskInterface;
+    private GroupTaskRepository groupTaskInterface;
 
     @InjectMocks
     private GroupTaskService groupTaskService;

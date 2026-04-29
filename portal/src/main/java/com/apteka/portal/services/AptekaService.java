@@ -15,31 +15,31 @@ import com.apteka.portal.exceptions.InvalidAptekaAdressException;
 import com.apteka.portal.exceptions.InvalidAptekaPhoneNumberException;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.UserGroup;
-import com.apteka.portal.repository.AptekaInterface;
+import com.apteka.portal.repository.AptekaRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class AptekaService {
-    private final AptekaInterface aptekaInterface;
+    private final AptekaRepository aptekaRepository;
     private final UserGroupService userGroupService;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public List<Apteka> getAll() {
-        return aptekaInterface.findAll();
+        return aptekaRepository.findAll();
     }
 
     @Transactional(readOnly = true)
     public Apteka getOne(Integer id) {
-        return aptekaInterface.findById(id)
+        return aptekaRepository.findById(id)
                 .orElseThrow(() -> new AptekaNotFoundException(id));
     }
     
     @Transactional(readOnly = true)
     public List<Apteka> filter(String login, Integer groupId, Integer number, String phoneNumber){
-        return aptekaInterface.filter(login, groupId, number, phoneNumber);
+        return aptekaRepository.filter(login, groupId, number, phoneNumber);
     }
 
     @Transactional
@@ -57,7 +57,7 @@ public class AptekaService {
 
         login = login.strip();
 
-        if (aptekaInterface.existsByLogin(login))
+        if (aptekaRepository.existsByLogin(login))
             throw new DublicateAptekaLoginException(login);
 
         UserGroup userGroup = userGroupService.getOne(groupId);
@@ -69,14 +69,14 @@ public class AptekaService {
                 .userGroup(userGroup)
                 .build();
 
-        return aptekaInterface.save(apteka);
+        return aptekaRepository.save(apteka);
     }
 
     @Transactional
     public void delete(Integer id) {
-        if (!aptekaInterface.existsById(id)) {
+        if (!aptekaRepository.existsById(id)) {
             throw new AptekaNotFoundException(id);
         }
-        aptekaInterface.deleteById(id);
+        aptekaRepository.deleteById(id);
     }
 }

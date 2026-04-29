@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import com.apteka.portal.models.GroupTask;
 
 @Repository
-public interface GroupTaskInterface extends JpaRepository<GroupTask, Integer> {
+public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
     Optional<GroupTask> findByNameAndUserGroupId(String name, Integer userGroupId);
     List<GroupTask> findByUserGroupId(Integer userGroupId);
 }

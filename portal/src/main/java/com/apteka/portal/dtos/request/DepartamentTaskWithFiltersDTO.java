@@ -14,5 +14,4 @@ public record DepartamentTaskWithFiltersDTO(
         TaskStatus status,
         TaskPriority priority,
         Integer groupTaskId
-
 ) {}

@@ -24,11 +24,11 @@ import com.apteka.portal.exceptions.InvalidAptekaLoginException;
 import com.apteka.portal.exceptions.InvalidAptekaPasswordException;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.GroupApteki;
-import com.apteka.portal.repository.AptekaInterface;
+import com.apteka.portal.repository.AptekaRepository;
 
 public class AptekaServiceTest {
     @Mock
-    private AptekaInterface aptekaInterface;
+    private AptekaRepository aptekaInterface;
 
     @Mock
     private GroupAptekiService groupAptekiService;

@@ -6,8 +6,12 @@ import com.apteka.portal.models.AppUserDetails;
 
 public class SecurityUtils {
     public static AppUserDetails getCurrentUser() {
-        return (AppUserDetails) SecurityContextHolder.getContext()
-            .getAuthentication()
-            .getPrincipal();
+
+        var authentification = SecurityContextHolder.getContext().getAuthentication();
+        if (authentification != null && authentification.getPrincipal() instanceof AppUserDetails) {
+            return (AppUserDetails) authentification.getPrincipal();
+        }
+
+        return null;
     }
 }

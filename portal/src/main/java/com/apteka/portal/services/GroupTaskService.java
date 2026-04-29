@@ -7,6 +7,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
 import com.apteka.portal.exceptions.DublicateGroupTaskException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
 import com.apteka.portal.exceptions.InvalidGroupTaskException;
@@ -15,59 +16,59 @@ import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.UserType;
-import com.apteka.portal.repository.GroupTaskInterface;
+import com.apteka.portal.repository.GroupTaskRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class GroupTaskService {
 
-    private final GroupTaskInterface groupTaskInterface;
+    private final GroupTaskRepository groupTaskRepository;
     private final UserGroupService userGroupService;
 
     @Transactional(readOnly = true)
     public List<GroupTask> getByUserGroup(Integer userGroupId) {
         userGroupService.getOne(userGroupId);
-        return groupTaskInterface.findByUserGroupId(userGroupId);
+        return groupTaskRepository.findByUserGroupId(userGroupId);
     }
 
     @Transactional(readOnly = true)
     public GroupTask getOne(Integer id) {
-        return groupTaskInterface.findById(id)
+        return groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
     }
 
     @Transactional
-    public GroupTask create(String name, Integer userGroupId) {
+    public GroupTask create(GroupTaskRequestDTO dto) {
 
         AppUserDetails currentUser = SecurityUtils.getCurrentUser();
-        UserGroup userGroup = userGroupService.getOne(userGroupId);
+        UserGroup userGroup = userGroupService.getOne(dto.userGroupId());
 
-        validateGroupTaskName(name, userGroup);
+        validateGroupTaskName(dto.name(), userGroup);
         validateBossOrAdmin(currentUser, userGroup);
 
-        return groupTaskInterface.save(GroupTask.builder()
-                .name(name.strip())
+        return groupTaskRepository.save(GroupTask.builder()
+                .name(dto.name().strip())
                 .userGroup(Objects.requireNonNull(userGroup))
                 .build());
     }
 
     @Transactional
-    public GroupTask update(Integer id, String name) {
+    public GroupTask update(Integer id, GroupTaskRequestDTO dto) {
 
         AppUserDetails currentUser = SecurityUtils.getCurrentUser();
         GroupTask upGroup = getOne(id);
 
         validateBossOrAdmin(currentUser, upGroup.getUserGroup());
 
-        if (Objects.equals(name, upGroup.getName())) {
+        if (Objects.equals(dto.name(), upGroup.getName())) {
             return upGroup;
         }
 
-        validateGroupTaskName(name, upGroup.getUserGroup());
+        validateGroupTaskName(dto.name(), upGroup.getUserGroup());
 
-        upGroup.setName(name.strip());
-        return groupTaskInterface.save(upGroup);
+        upGroup.setName(dto.name().strip());
+        return groupTaskRepository.save(upGroup);
     }
 
     @Transactional
@@ -75,13 +76,13 @@ public class GroupTaskService {
         AppUserDetails currentUser = SecurityUtils.getCurrentUser();
         GroupTask deletedTask = getOne(id);
         validateBossOrAdmin(currentUser, deletedTask.getUserGroup());
-        groupTaskInterface.deleteById(id);
+        groupTaskRepository.deleteById(id);
     }
 
     private void validateGroupTaskName(String name, UserGroup userGroup) {
         if (name == null || name.isBlank())
             throw new InvalidGroupTaskException(name);
-        if (groupTaskInterface.findByNameAndUserGroupId(name, userGroup.getId()).isPresent())
+        if (groupTaskRepository.findByNameAndUserGroupId(name, userGroup.getId()).isPresent())
             throw new DublicateGroupTaskException(name);
     }
 

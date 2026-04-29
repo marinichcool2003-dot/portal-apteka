@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.apteka.portal.models.Apteka;
 
 @Repository
-public interface AptekaInterface extends JpaRepository<Apteka, Integer> {
+public interface AptekaRepository extends JpaRepository<Apteka, Integer> {
     boolean existsByLogin(String login);
 
     Optional<Apteka> findByLogin(String login);

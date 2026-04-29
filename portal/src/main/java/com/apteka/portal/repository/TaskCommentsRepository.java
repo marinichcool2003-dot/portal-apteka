@@ -8,6 +8,6 @@ import org.springframework.stereotype.Repository;
 import com.apteka.portal.models.TaskComments;
 
 @Repository
-public interface TaskCommentsInterface extends JpaRepository<TaskComments, Long>{
+public interface TaskCommentsRepository extends JpaRepository<TaskComments, Long>{
     List<TaskComments> findByTaskId(Long taskId);
 }
