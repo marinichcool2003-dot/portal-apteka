@@ -1,6 +1,5 @@
 package com.apteka.portal.services;
 
-import com.apteka.portal.repository.UserGroupInterface;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
@@ -11,9 +10,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +20,9 @@ import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.InvalidClientLoginException;
 import com.apteka.portal.exceptions.InvalidClientPasswordException;
 import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
-import com.apteka.portal.models.UserType;
-import com.apteka.portal.models.UsersInApp;
 import com.apteka.portal.repository.ClientInterface;
 
 import lombok.RequiredArgsConstructor;
@@ -146,7 +139,7 @@ public class ClientService {
     public Client updateAvatar(String username, MultipartFile avatar) throws IOException {
         Client upClient = clientInterface.findByLogin(username)
                 .orElseThrow(() -> new ClientNotFoundException("Пользователь с именем " + username + " не найден!"));
-        String avatarURL = avatarClientService.uploadAvatar(avatar, upClient.getId());
+        String avatarURL = avatarClientService.uploadAvatar(avatar, upClient.getClientId());
         upClient.setAvatarURL(avatarURL);
         return clientInterface.save(upClient);
     }

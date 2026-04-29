@@ -13,7 +13,7 @@ public record AptekaResponseDTO(
 {
     public static AptekaResponseDTO from(Apteka apteka){
         return new AptekaResponseDTO(
-            apteka.getId(),
+            apteka.getAptekaId(),
             apteka.getLogin(), 
             apteka.getAdress(),
             apteka.getPhoneNumber(),

@@ -10,6 +10,6 @@ import com.apteka.portal.models.GroupTask;
 
 @Repository
 public interface GroupTaskInterface extends JpaRepository<GroupTask, Integer> {
-    Optional<GroupTask> findByName(String name);
+    Optional<GroupTask> findByNameAndUserGroupId(String name, Integer userGroupId);
     List<GroupTask> findByUserGroupId(Integer userGroupId);
 }
