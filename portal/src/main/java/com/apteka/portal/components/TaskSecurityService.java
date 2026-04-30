@@ -11,6 +11,7 @@ import com.apteka.portal.dtos.request.TaskRequestDTO;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.UserType;
+import com.apteka.portal.services.ClientService;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
@@ -20,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class TaskSecurityService {
+
+    private final ClientService clientService;
 
     public void validateCanCreate(TaskRequestDTO dto, AppUserDetails currentUser) {
         if (currentUser.getType() == UserType.CLIENT) {
@@ -67,6 +70,16 @@ public class TaskSecurityService {
         }
     }
 
+    public boolean changeAssigner(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
+        if(isAssignmentChanged(task, dto)) {
+            if (hasElevatedPrivileges(currentUser)) return true;
+            if (!isUserRelatedToTask(task, currentUser) || !isAssignerOfSameGroup(dto, currentUser)) 
+                throw new AccessDeniedException("Пользователь без прав доступа может изменять исполнителей только своих собственных или назначенных ему задач и переводить их внутри своей группы");
+            return true;
+        }
+        return false;
+    }
+
     public void validateStatus(Task task, AppUserDetails currentUser) {
         if (isTaskLockedForChanges(task)) {
             throw new BlockChangeIfNotActuallyTaskException();
@@ -78,14 +91,14 @@ public class TaskSecurityService {
 
             if (!isUserRelatedToTask(task, currentUser)) {
                 throw new AccessDeniedException(
-                        "Пользователь без прав доступа может изменять статус только своих собственных или назначенных ему задач");
+                        "Пользователь без прав доступа может изменять только свои собственные или назначенные ему задачи");
             }
         }
 
         if (currentUser.getType() == UserType.APTEKA) {
             if (!isAptekaRelatedToTask(task, currentUser)) {
                 throw new AccessDeniedException(
-                        "Аптека может изменять статус только своих собственных или назначенных ей задач");
+                        "Аптека может изменять только свои собственные или назначенные ей задачи");
             }
         }
     }
@@ -116,6 +129,11 @@ public class TaskSecurityService {
         return !Objects.equals(getAssignedAptekaId(task), dto.assignedAptekaId()) ||
                 !Objects.equals(getAssignedClientId(task), dto.assignedClientId()) ||
                 !Objects.equals(getAssignedGroupId(task), dto.assignedGroupId());
+    }
+
+    private boolean isAssignerOfSameGroup(TaskRequestDTO dto, AppUserDetails currentUser) {
+        return !Objects.equals(currentUser.getUserGroup().getId(), dto.assignedGroupId()) && 
+            !Objects.equals(currentUser.getUserGroup().getId(), clientService.getOne(dto.assignedClientId()).getUserGroup().getId());
     }
 
     // Безопасное извлечение ID из сущностей (Null-safe)

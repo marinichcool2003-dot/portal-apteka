@@ -10,4 +10,6 @@ import java.util.Optional;
 @Repository
 public interface WorkTypeRepository extends JpaRepository<WorkType, Integer>{
     Optional<WorkType> findByName(String name);
+
+    boolean existsByNameAndGroupTaskId(String name, Integer groupTaskId);
 }

@@ -7,11 +7,18 @@ import jakarta.validation.constraints.NotBlank;
 public record TaskRequestDTO(
     @NotBlank
     String title,
+
     @NotBlank
     String description,
+
     String comments,
+
+    @NotBlank
     Integer workTypeId,
+
+    @NotBlank
     String statusDescription,
+
     Integer assignedAptekaId,
     UUID assignedClientId,
     Integer assignedGroupId

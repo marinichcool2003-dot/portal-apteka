@@ -13,19 +13,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.TaskSecurityService;
+import com.apteka.portal.components.TaskValidateService;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.TaskRequestDTO;
-import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
-import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.Apteka;
-import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserRole;
-import com.apteka.portal.models.UserType;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.repository.TaskRepository;
+import com.apteka.portal.repository.WorkTypeRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,10 +35,11 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final AptekaService aptekaService;
     private final ClientService clientService;
-    private final WorkTypeService workTypeService;
+    private final WorkTypeRepository workTypeRepository;
     private final UserGroupService userGroupService;
-    private final TaskSecurityService taskSecurityService;
     private final TaskAuditService taskAuditService;
+    private final TaskSecurityService taskSecurityService;
+    private final TaskValidateService taskValidateService;
 
     @Async
     @Transactional(readOnly = true)
@@ -77,25 +75,22 @@ public class TaskService {
     }
 
     @Transactional
-    public Task createTask(TaskRequestDTO dto, AppUserDetails currentUser) {
-        
-        validateTitle(dto.title());
+    public Task saveTask(TaskRequestDTO dto, AppUserDetails currentUser) {
 
-        taskSecurityService.validateCanCreate(dto, currentUser);
+        if (currentUser == null) {
+            throw new AccessDeniedException("Пользователь не найден в SecurityContext");
+        }
 
         Task task = Task.builder()
                 .title(dto.title())
                 .description(dto.description())
                 .comments(dto.comments() != null ? dto.comments().strip() : null)
-                .workType(workTypeService.getOne(dto.workTypeId()))
+                .workType(workTypeRepository.getReferenceById(dto.workTypeId()))
                 .build();
 
-        if (currentUser.getType() == UserType.APTEKA) {
-            Apteka currentApteka = aptekaService.getOne(currentUser.getAptekaId());
-            task.setCreatedByApteka(currentApteka);
-        } else if (currentUser.getType() == UserType.CLIENT) {
-            Client currentClient = clientService.getOne(currentUser.getClientId());
-            task.setCreatedByClient(currentClient);
+        switch (currentUser.getType()) {
+            case APTEKA -> task.setCreatedByApteka(aptekaService.getOne(currentUser.getAptekaId()));
+            case CLIENT -> task.setCreatedByClient(clientService.getOne(currentUser.getClientId()));
         }
 
         setAssignee(task, dto);
@@ -104,7 +99,9 @@ public class TaskService {
     }
 
     @Transactional
-    public Task update(Long id, TaskRequestDTO dto, AppUserDetails currentUser) {
+    public Task update(Long id, TaskRequestDTO dto) {
+
+        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
 
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
@@ -113,29 +110,32 @@ public class TaskService {
         taskSecurityService.validateStatus(task, currentUser);
 
         if (dto.title() != null && !Objects.equals(task.getTitle(), dto.title())) {
-            validateTitle(dto.title());
-            String commentText = "Пользователь %s изменил заголовок задачи #%d"
-                    .formatted(taskAuditService.getAuthor(currentUser), task.getId());
-
-            taskAuditService.addComment(commentText, currentUser, task);
+            taskValidateService.validateTitle(dto.title());
+            taskAuditService.logChange(task, currentUser, "заголовок", task.getTitle(), dto.title());
         }
 
         if (dto.description() != null && !Objects.equals(task.getDescription(), dto.description())) {
-            validateDescription(dto.description());
-            String commentText = "Пользователь %s изменил описание задачи #%d"
-                    .formatted(taskAuditService.getAuthor(currentUser), task.getId());
+            taskValidateService.validateDescription(dto.description());
+            taskAuditService.logChange(task, currentUser, "описание", task.getDescription(), dto.description());
+            task.setDescription(dto.description());
+        }
 
-            taskAuditService.addComment(commentText, currentUser, task);
+        if (taskSecurityService.changeAssigner(task, dto, currentUser)) {
+            String oldAssigneName = getAssigneeName(task);
+            setAssignee(task, dto);
+            String newAssigneeName = getAssigneeName(task);
+
+            taskAuditService.logChange(task, currentUser, "исполнителя", oldAssigneName, newAssigneeName);
         }
 
         if (dto.statusDescription() != null && !dto.statusDescription().isBlank()) {
+            taskSecurityService.validateStatus(task, currentUser);
             task = changeStatus(task, dto.statusDescription(), currentUser);
         }
 
         if (dto.comments() != null && !dto.comments().isBlank()) {
             task.setComments(dto.comments().strip());
         }
-
         task.setUpdatedDate(LocalDateTime.now());
 
         return taskRepository.save(task);
@@ -181,15 +181,10 @@ public class TaskService {
             task.setAssignedApteka(aptekaService.getOne(dto.assignedAptekaId()));
         }
     }
-
-    private void validateTitle(String title) {
-        if (title == null || title.isBlank())
-            throw new InvalidTaskTitleException();
+    private String getAssigneeName(Task task) {
+        if(task.getAssignedGroup() != null) return "Группа: " + task.getAssignedGroup().getName();
+        if(task.getAssignedClient() != null) return "Пользователь: " + task.getAssignedClient().getFullName();
+        if(task.getAssignedApteka() != null) return "Аптека: " + task.getAssignedApteka().getUserGroup().getName() + " " + task.getAssignedApteka().getNumber();
+        return "Не назначен";
     }
-
-    private void validateDescription(String description) {
-        if (description == null || description.isBlank())
-            throw new InvalidTaskDescriptionException();
-    }
-
 }
