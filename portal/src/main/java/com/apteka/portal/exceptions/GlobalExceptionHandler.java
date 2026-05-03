@@ -31,9 +31,6 @@ public class GlobalExceptionHandler {
         if (cause instanceof DublicateAptekaLoginException ex) {
             return handleDublicateAptekaLoginException(ex);
         }
-        if (cause instanceof DublicateGroupAptekiException ex) {
-            return handleDublicateGroupAptekiException(ex);
-        }
         if (cause instanceof DublicateGroupTaskException ex) {
             return handleDublicateGroupTaskException(ex);
         }
@@ -111,14 +108,6 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(DublicateGroupAptekiException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleDublicateGroupAptekiException(DublicateGroupAptekiException e) {
-        log.warn("Группа аптеки уже существует: {}", e.getMessage());
-        String errorMessage = "Ошибка! Группа аптеки уже существует: " + e.getMessage();
-        return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
-    }
-
     @ExceptionHandler(DublicateGroupTaskException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleDublicateGroupTaskException(DublicateGroupTaskException e) {
@@ -127,9 +116,9 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(DublicateGroupClientException.class)
+    @ExceptionHandler(DublicateGroupUserException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleDublicateGroupClientException(DublicateGroupClientException e) {
+    public ErrorResponse handleDublicateGroupClientException(DublicateGroupUserException e) {
         log.warn("Группа сотрудников уже существует: {}", e.getMessage());
         String errorMessage = "Ошибка! Группа сотрудников уже существует: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());

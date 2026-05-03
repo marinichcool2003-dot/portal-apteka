@@ -1,10 +1,10 @@
 package com.apteka.portal.exceptions;
 
-public class DublicateGroupClientException extends RuntimeException{
-    public DublicateGroupClientException(String name){
+public class DublicateGroupUserException extends RuntimeException{
+    public DublicateGroupUserException(String name){
         super("Группа с названием: " + name + " уже существует!");
     }
-    public DublicateGroupClientException(){
+    public DublicateGroupUserException(){
         super("Группа уже существует!");
     }
 }

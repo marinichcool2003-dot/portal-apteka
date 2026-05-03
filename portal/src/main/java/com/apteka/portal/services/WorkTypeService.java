@@ -2,8 +2,11 @@ package com.apteka.portal.services;
 
 import java.util.List;
 
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +16,7 @@ import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
 import com.apteka.portal.exceptions.InvalidWorkTypeNameException;
 import com.apteka.portal.exceptions.WorkTaskNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
+import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.repository.WorkTypeRepository;
@@ -25,18 +29,24 @@ public class WorkTypeService {
     private final WorkTypeRepository workTypeRepository;
     private final GroupTaskService groupTaskService;
     private final GroupTaskSecurityService groupTaskSecurityService;
+    private final CacheManager cacheManager;
 
-    public List<WorkType> getAll() {
-        return workTypeRepository.findAll();
+    @Cacheable(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#groupTaskId")
+    public List<WorkType> getByGroupTask(Integer groupTaskId) {
+        groupTaskService.getOne(groupTaskId);
+        return workTypeRepository.findByGroupTask(groupTaskId);
     }
 
-    @Cacheable(value = "workTypes", key = "#id")
+    @Cacheable(value = CacheNames.WORK_TYPE, key = "#id")
     @Transactional(readOnly = true)
     public WorkType getOne(Integer id) {
         return workTypeRepository.findById(id)
             .orElseThrow(() -> new WorkTaskNotFoundException(id));
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#dto.groupTaskId()")
+    })
     @Transactional
     public WorkType create(WorkTypeRequestDTO dto) {
         AppUserDetails currentUser = SecurityUtils.getCurrentUser();
@@ -49,6 +59,11 @@ public class WorkTypeService {
         return workTypeRepository.save(newWorkType);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#dto.groupTaskId()")
+    }, put = {
+        @CachePut(value = CacheNames.WORK_TYPE, key = "#id")
+    })
     @Transactional
     public WorkType update(Integer id, WorkTypeRequestDTO dto) {
         AppUserDetails currentUser = SecurityUtils.getCurrentUser();
@@ -60,13 +75,17 @@ public class WorkTypeService {
         return workTypeRepository.save(upWorkType);
     }
 
-    @CacheEvict(value = "workTypes", key = "#id")
     @Transactional
     public void delete(Integer id) {
-        if (!workTypeRepository.existsById(id)) {
-            throw new WorkTaskNotFoundException(id);
-        }
-        workTypeRepository.deleteById(id);
+        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
+        WorkType workType = getOne(id);
+
+        GroupTask groupTask = workType.getGroupTask();
+        groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
+        workTypeRepository.delete(workType);
+
+        cacheManager.getCache(CacheNames.WORK_TYPE).evict(id);
+        cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(groupTask.getId());
     }
 
     private void validateWorkTypeName(WorkTypeRequestDTO dto) {

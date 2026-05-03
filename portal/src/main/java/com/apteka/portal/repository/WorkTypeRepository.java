@@ -4,6 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.apteka.portal.models.WorkType;
+
+import java.util.List;
 import java.util.Optional;
 
 
@@ -12,4 +14,6 @@ public interface WorkTypeRepository extends JpaRepository<WorkType, Integer>{
     Optional<WorkType> findByName(String name);
 
     boolean existsByNameAndGroupTaskId(String name, Integer groupTaskId);
+
+    List<WorkType> findByGroupTask(Integer groupTaskId);
 }

@@ -9,6 +9,11 @@ import com.apteka.portal.models.UserRole;
 @Component
 public class UserGroupSecurityService {
     public void checkCanCreateGroup(AppUserDetails user) {
+
+        if (user == null) {
+            throw new AccessDeniedException("Пользователь не авторизован");
+        }
+
         if (!user.getRoles().contains(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор управляет отделами");
         }

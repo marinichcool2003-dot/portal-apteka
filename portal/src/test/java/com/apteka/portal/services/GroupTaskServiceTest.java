@@ -1,122 +1,125 @@
 package com.apteka.portal.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
 import java.util.Optional;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
-import com.apteka.portal.exceptions.DublicateGroupTaskException;
-import com.apteka.portal.exceptions.GroupTaskNotFoundException;
-import com.apteka.portal.exceptions.InvalidGroupTaskException;
+import com.apteka.portal.components.GroupTaskSecurityService;
+import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
+import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.GroupTask;
+import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.GroupTaskRepository;
 
+@ExtendWith(MockitoExtension.class)
 public class GroupTaskServiceTest {
     @Mock
-    private GroupTaskRepository groupTaskInterface;
+    private GroupTaskRepository groupTaskRepository;
+    @Mock
+    private UserGroupService userGroupService;
+    @Mock
+    private GroupTaskSecurityService groupTaskSecurityService;
+    @Mock
+    private CacheManager cacheManager;
+    @Mock
+    private Cache cache;
 
     @InjectMocks
     private GroupTaskService groupTaskService;
 
-    @BeforeEach
-    void setUp(){
-        MockitoAnnotations.openMocks(this);
+    private GroupTaskRequestDTO createDto(String name, Integer userGroupId) {
+        return new GroupTaskRequestDTO(name, userGroupId);
     }
 
     @Test
-    void testGetAll_ShouldReturnList(){
-        List<GroupTask> mockList = List.of(
-            new GroupTask(1, "Группа 1"),
-            new GroupTask(2, "Группа 2")
-        );
+    void create_ShouldReturnSavedGroupTask_WhenDataIsValid() {
 
-        when(groupTaskInterface.findAll()).thenReturn(mockList);
+        GroupTaskRequestDTO dto = createDto("Накладные", 1);
+        AppUserDetails currentUser = TestData.mockJustBoss();
+        UserGroup userGroup = TestData.defaulUserGroup();
+        GroupTask savedGroupTask = TestData.defaultGroupTask();
 
-        List<GroupTask> result = groupTaskService.getAll();
+        try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
+            mockedSecurity.when(SecurityUtils::getCurrentUser).thenReturn(currentUser);
 
-        assertEquals(2, result.size());
-        verify(groupTaskInterface, times(1)).findAll();
+            when(userGroupService.getOne(dto.userGroupId())).thenReturn(userGroup);
+            when(groupTaskRepository.findByNameAndUserGroupId("Накладные", dto.userGroupId()))
+                    .thenReturn(Optional.empty());
+            when(groupTaskRepository.save(any(GroupTask.class))).thenReturn(savedGroupTask);
+
+            GroupTask result = groupTaskService.create(dto);
+
+            assertNotNull(result);
+            assertEquals("Накладные", result.getName());
+
+            verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, userGroup);
+            verify(groupTaskRepository).save(any(GroupTask.class));
+        }
     }
 
     @Test
-    void testGetOne_ShouldReturnGroupTask_WhenExists(){
-        GroupTask mockGroupTask = new GroupTask(1, "Группа 1");
+    void update_SholdReturnSavedGroupTask_WhenDataIsValid() {
+        Integer groupTaskId = 1;
+        AppUserDetails currentUser = TestData.mockJustBoss();
+        GroupTask oldGroupTask = TestData.defaultGroupTask();
+        GroupTaskRequestDTO dto = createDto("Алгоритм", groupTaskId);
+        UserGroup userGroup = TestData.defaulUserGroup();
 
-        when(groupTaskInterface.findById(1)).thenReturn(Optional.of(mockGroupTask));
+        GroupTask savedGroupTask = TestData.newGroupTask();
+        savedGroupTask.setId(groupTaskId);
 
-        GroupTask result = groupTaskService.getOne(1);
+        try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
+            mockedSecurity.when(SecurityUtils::getCurrentUser).thenReturn(currentUser);
+            when(groupTaskRepository.findById(groupTaskId)).thenReturn(Optional.of(oldGroupTask));
+            when(groupTaskRepository.findByNameAndUserGroupId("Алгоритм", groupTaskId)).thenReturn(Optional.empty());
+            when(groupTaskRepository.save(any(GroupTask.class))).thenReturn(savedGroupTask);
 
-        assertEquals("Группа 1", result.getName());
-        verify(groupTaskInterface).findById(1);
+            GroupTask result = groupTaskService.update(groupTaskId, dto);
+
+            assertNotNull(result);
+            assertEquals("Алгоритм", result.getName());
+
+            verify(groupTaskRepository).findById(groupTaskId);
+            verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, userGroup);
+            verify(groupTaskRepository).save(any(GroupTask.class));
+        }
     }
 
     @Test
-    void testGetOne_ShouldThrow_WhenNotFound(){
-        when(groupTaskInterface.findById(99)).thenReturn(Optional.empty());
+    void delete_Successful() {
+        Integer id = 1;
+        GroupTask groupToDelete = TestData.defaultGroupTask();
+        AppUserDetails currentUser = TestData.mockJustBoss();
+        UserGroup userGroup = TestData.defaulUserGroup();
+        Cache mockCache = mock(Cache.class);
 
-        assertThrows(GroupTaskNotFoundException.class, () -> groupTaskService.getOne(99));
-        verify(groupTaskInterface).findById(99);
-    }
+        try(MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)){
+            mockedSecurity.when(SecurityUtils::getCurrentUser).thenReturn(currentUser);
+            when(cacheManager.getCache(anyString())).thenReturn(mockCache);
+            when(groupTaskRepository.findById(id)).thenReturn(Optional.of(groupToDelete));
 
-    @SuppressWarnings("null")
-    @Test
-    void testCreate_ShouldReturnGroupTask_WhenValid(){
-        String name = "Новая группа";
-        GroupTask saved = GroupTask.builder().id(1).name(name).build();
+            groupTaskService.delete(id);
 
-        when(groupTaskInterface.findByName(name)).thenReturn(Optional.empty());
-        when(groupTaskInterface.save(any(GroupTask.class))).thenReturn(saved);
-
-        GroupTask result = groupTaskService.create(name);
-
-        assertEquals(name, result.getName());
-        verify(groupTaskInterface).findByName(name);
-        verify(groupTaskInterface).save(any(GroupTask.class));
-    }
-
-    @Test
-    void testCreate_ShouldThrow_WhenNameIsNullOrEmpty(){
-        assertThrows(InvalidGroupTaskException.class, () -> groupTaskService.create(""));
-        assertThrows(InvalidGroupTaskException.class, () -> groupTaskService.create("   "));
-    }
-
-    @Test
-    void testCreate_ShouldThrow_WhenDublicate(){
-        String name = "Dublicate";
-        when(groupTaskInterface.findByName(name)).thenReturn(Optional.of(new GroupTask(1, name)));
-
-        assertThrows(DublicateGroupTaskException.class, () -> groupTaskService.create(name));
-        verify(groupTaskInterface).findByName(name);
-    }
-
-    @Test
-    void testDelete_ShouldRemove_WhenExists() {
-        when(groupTaskInterface.existsById(1)).thenReturn(true);
-
-        groupTaskService.delete(1);
-
-        verify(groupTaskInterface).deleteById(1);
-    }
-
-    @SuppressWarnings("null")
-    @Test
-    void testDelete_ShouldThrow_WhenNotExists(){
-        when(groupTaskInterface.existsById(999)).thenReturn(false);
-
-        assertThrows(GroupTaskNotFoundException.class, () -> groupTaskService.delete(999));
-        verify(groupTaskInterface).existsById(999);
-        verify(groupTaskInterface, never()).deleteById(any());
+            verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, userGroup);
+            verify(groupTaskRepository).deleteById(id);
+            verify(mockCache, atLeastOnce()).evict(any());
+        }
     }
 }

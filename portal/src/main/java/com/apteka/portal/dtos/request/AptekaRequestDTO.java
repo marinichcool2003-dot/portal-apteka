@@ -14,11 +14,13 @@ public record AptekaRequestDTO(
             message = "Пароль должен содержать хотя бы одну цифру, одну заглавную букву и один спецсимвол") 
         String password,
 
+        @NotBlank(message = "Номер аптеки обязателен к заполнению")
         Integer number,
 
         @NotBlank String adress,
 
-        @Pattern(regexp = "^\\+?[0-9]{7,15}$", message = "Номер телефона должен быть в формате +123456789") String phoneNumber,
+        @Pattern(regexp = "^\\+?[0-9]{7,15}$", message = "Номер телефона должен быть в формате +123456789") 
+        String phoneNumber,
 
-        @NotNull Integer groupId) {
-}
+        @NotNull Integer groupId) 
+{}
