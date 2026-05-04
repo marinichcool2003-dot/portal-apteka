@@ -59,7 +59,7 @@ public class ClientService {
     @PreAuthorize("hasAnyRole('SENIOR','BOSS','ADMIN')")
     public Client create(ClientRequestDTO dto) throws IOException {
 
-        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
 
         if (dto.login() == null || dto.login().isBlank()) {
             throw new InvalidClientLoginException();

@@ -49,7 +49,7 @@ public class GroupTaskService {
     @Transactional
     public GroupTask create(GroupTaskRequestDTO dto) {
 
-        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         UserGroup userGroup = userGroupService.getOne(dto.userGroupId());
         String cleanName = dto.name().strip();
 
@@ -71,7 +71,7 @@ public class GroupTaskService {
     @Transactional
     public GroupTask update(Integer id, GroupTaskRequestDTO dto) {
 
-        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         GroupTask upGroup = getOne(id);
 
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, upGroup.getUserGroup());
@@ -92,7 +92,7 @@ public class GroupTaskService {
 
     @Transactional
     public void delete(Integer id) {
-        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         GroupTask deletedTask = getOne(id);
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, deletedTask.getUserGroup());
         groupTaskRepository.deleteById(id);

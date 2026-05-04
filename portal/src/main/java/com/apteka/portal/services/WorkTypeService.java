@@ -49,7 +49,7 @@ public class WorkTypeService {
     })
     @Transactional
     public WorkType create(WorkTypeRequestDTO dto) {
-        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         GroupTask groupTask = groupTaskService.getOne(dto.groupTaskId());
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
         validateWorkTypeName(dto);
@@ -66,10 +66,10 @@ public class WorkTypeService {
     })
     @Transactional
     public WorkType update(Integer id, WorkTypeRequestDTO dto) {
-        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+        WorkType upWorkType = getOne(id);
         GroupTask groupTask = groupTaskService.getOne(dto.groupTaskId());
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
-        WorkType upWorkType = getOne(id);
         validateWorkTypeName(dto);
         upWorkType.setName(dto.name());
         return workTypeRepository.save(upWorkType);
@@ -77,7 +77,7 @@ public class WorkTypeService {
 
     @Transactional
     public void delete(Integer id) {
-        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         WorkType workType = getOne(id);
 
         GroupTask groupTask = workType.getGroupTask();

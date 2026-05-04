@@ -13,9 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.TaskSecurityService;
-import com.apteka.portal.components.TaskValidateService;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.TaskRequestDTO;
+import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
+import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.UserRole;
@@ -39,16 +40,15 @@ public class TaskService {
     private final UserGroupService userGroupService;
     private final TaskAuditService taskAuditService;
     private final TaskSecurityService taskSecurityService;
-    private final TaskValidateService taskValidateService;
 
-    @Async
+    @Async("taskExecutor")
     @Transactional(readOnly = true)
     public CompletableFuture<List<Task>> getAll() {
         log.info("Получение всех задач | поток {}", Thread.currentThread().getName());
-        return CompletableFuture.supplyAsync(taskRepository::findAll);
+        return CompletableFuture.completedFuture(taskRepository.findAll());
     }
 
-    @Async
+    @Async("taskExecutor")
     @Transactional(readOnly = true)
     public CompletableFuture<Task> getOne(Long id) {
         log.info("Получение задачи id={} | поток {}", id, Thread.currentThread().getName());
@@ -59,7 +59,7 @@ public class TaskService {
         return CompletableFuture.completedFuture(task);
     }
 
-    @Async
+    @Async("taskExecutor")
     @Transactional(readOnly = true)
     public CompletableFuture<List<Task>> getDepartamentTaskWithFilters(DepartamentTaskWithFiltersDTO dto) {
         List<Task> tasks = taskRepository.findDepartmentTasksWithFilters(
@@ -75,11 +75,12 @@ public class TaskService {
     }
 
     @Transactional
-    public Task saveTask(TaskRequestDTO dto, AppUserDetails currentUser) {
+    public Task saveTask(TaskRequestDTO dto) {
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
 
-        if (currentUser == null) {
-            throw new AccessDeniedException("Пользователь не найден в SecurityContext");
-        }
+        taskSecurityService.validateCanCreate(dto, currentUser);
+        validateTitle(dto.title());
+        validateDescription(dto.description());
 
         Task task = Task.builder()
                 .title(dto.title())
@@ -101,7 +102,7 @@ public class TaskService {
     @Transactional
     public Task update(Long id, TaskRequestDTO dto) {
 
-        AppUserDetails currentUser = SecurityUtils.getCurrentUser();
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
 
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
@@ -110,12 +111,12 @@ public class TaskService {
         taskSecurityService.validateStatus(task, currentUser);
 
         if (dto.title() != null && !Objects.equals(task.getTitle(), dto.title())) {
-            taskValidateService.validateTitle(dto.title());
+            validateTitle(dto.title());
             taskAuditService.logChange(task, currentUser, "заголовок", task.getTitle(), dto.title());
         }
 
         if (dto.description() != null && !Objects.equals(task.getDescription(), dto.description())) {
-            taskValidateService.validateDescription(dto.description());
+            validateDescription(dto.description());
             taskAuditService.logChange(task, currentUser, "описание", task.getDescription(), dto.description());
             task.setDescription(dto.description());
         }
@@ -142,7 +143,9 @@ public class TaskService {
     }
 
     @Transactional
-    public void delete(Long id, AppUserDetails currentUser) {
+    public void delete(Long id) {
+
+        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
 
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
@@ -181,10 +184,25 @@ public class TaskService {
             task.setAssignedApteka(aptekaService.getOne(dto.assignedAptekaId()));
         }
     }
+
     private String getAssigneeName(Task task) {
-        if(task.getAssignedGroup() != null) return "Группа: " + task.getAssignedGroup().getName();
-        if(task.getAssignedClient() != null) return "Пользователь: " + task.getAssignedClient().getFullName();
-        if(task.getAssignedApteka() != null) return "Аптека: " + task.getAssignedApteka().getUserGroup().getName() + " " + task.getAssignedApteka().getNumber();
+        if (task.getAssignedGroup() != null)
+            return "Группа: " + task.getAssignedGroup().getName();
+        if (task.getAssignedClient() != null)
+            return "Пользователь: " + task.getAssignedClient().getFullName();
+        if (task.getAssignedApteka() != null)
+            return "Аптека: " + task.getAssignedApteka().getUserGroup().getName() + " "
+                    + task.getAssignedApteka().getNumber();
         return "Не назначен";
+    }
+
+    private void validateTitle(String title) {
+        if (title == null || title.isBlank())
+            throw new InvalidTaskTitleException();
+    }
+
+    private void validateDescription(String description) {
+        if (description == null || description.isBlank())
+            throw new InvalidTaskDescriptionException();
     }
 }

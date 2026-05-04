@@ -46,7 +46,7 @@ public class UserGroupService {
     })
     @Transactional
     public UserGroup create(UserGroupRequestDTO dto) {
-        userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getCurrentUser());
+        userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
         try {
             return userGroupRepository.save(UserGroup.builder()
                     .name(validateNameGroup(dto.name(), null))
@@ -65,7 +65,7 @@ public class UserGroupService {
     })
     @Transactional
     public UserGroup update(Integer id, UserGroupRequestDTO dto) {
-        userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getCurrentUser());
+        userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
         UserGroup upGroup = getOne(id);
         upGroup.setName(validateNameGroup(dto.name(), id));
         upGroup.setPhoneNumber(dto.phoneNumber());
@@ -81,7 +81,7 @@ public class UserGroupService {
     })
     @Transactional
     public void delete(Integer id) {
-        userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getCurrentUser());
+        userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
         UserGroup deletedGroup = getOne(id);
         userGroupRepository.delete(deletedGroup);
     }

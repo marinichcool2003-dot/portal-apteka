@@ -57,7 +57,7 @@ public class GroupTaskServiceTest {
         GroupTask savedGroupTask = TestData.defaultGroupTask();
 
         try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            mockedSecurity.when(SecurityUtils::getCurrentUser).thenReturn(currentUser);
+            mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
 
             when(userGroupService.getOne(dto.userGroupId())).thenReturn(userGroup);
             when(groupTaskRepository.findByNameAndUserGroupId("Накладные", dto.userGroupId()))
@@ -86,7 +86,7 @@ public class GroupTaskServiceTest {
         savedGroupTask.setId(groupTaskId);
 
         try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            mockedSecurity.when(SecurityUtils::getCurrentUser).thenReturn(currentUser);
+            mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
             when(groupTaskRepository.findById(groupTaskId)).thenReturn(Optional.of(oldGroupTask));
             when(groupTaskRepository.findByNameAndUserGroupId("Алгоритм", groupTaskId)).thenReturn(Optional.empty());
             when(groupTaskRepository.save(any(GroupTask.class))).thenReturn(savedGroupTask);
@@ -111,7 +111,7 @@ public class GroupTaskServiceTest {
         Cache mockCache = mock(Cache.class);
 
         try(MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)){
-            mockedSecurity.when(SecurityUtils::getCurrentUser).thenReturn(currentUser);
+            mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
             when(cacheManager.getCache(anyString())).thenReturn(mockCache);
             when(groupTaskRepository.findById(id)).thenReturn(Optional.of(groupToDelete));
 
