@@ -2,6 +2,7 @@ package com.apteka.portal.components;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.security.access.AccessDeniedException;
@@ -11,11 +12,14 @@ import com.apteka.portal.dtos.request.TaskRequestDTO;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.UserType;
+import com.apteka.portal.models.WorkType;
 import com.apteka.portal.services.ClientService;
 import com.apteka.portal.services.WorkTypeService;
 import com.apteka.portal.models.AppUserDetails;
+import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
+import com.apteka.portal.models.UserGroup;
 
 import lombok.RequiredArgsConstructor;
 
@@ -51,23 +55,16 @@ public class TaskSecurityService {
     }
 
     public void validateCanUpdate(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
-        boolean assignmentChanged = isAssignmentChanged(task, dto);
 
-        if (assignmentChanged) {
+        if (hasUpdateDescriptionTask(dto)) {
             if (currentUser.getType() == UserType.CLIENT) {
                 if (currentUser.isJustUser() && !isUserRelatedToTask(task, currentUser)) {
-                    if (!Objects.equals(workTypeService.getOne(dto.workTypeId()).getGroupTask().getUserGroup().getId(),
-                            currentUser.getUserGroup().getId())) {
-                        throw new AccessDeniedException(
-                                "Обычный пользователь не может изменять задачу вне своего отдела или к которой не имеет отношение!");
-                    }
+                    throw new AccessDeniedException(
+                            "Обычный пользователь не может изменять задачу вне своего отдела или к которой не имеет отношение!");
                 }
             }
-
             if (currentUser.getType() == UserType.APTEKA) {
-                if (!isAptekaRelatedToTask(task, currentUser)) {
-                    throw new AccessDeniedException("Аптека не может изменять задачу, к которой не имеет отношения!");
-                }
+                throw new AccessDeniedException("Аптека не может изменять описание задачи, которую уже создала");
             }
         }
     }
@@ -105,6 +102,11 @@ public class TaskSecurityService {
                         "Аптека может изменять только свои собственные или назначенные ей задачи");
             }
         }
+    }
+
+    private boolean hasUpdateDescriptionTask(TaskRequestDTO dto) {
+        return dto.title() != null || dto.description() != null ||
+                dto.comments() != null || dto.workTypeId() != null;
     }
 
     private boolean hasElevatedPrivileges(AppUserDetails user) {
@@ -153,7 +155,11 @@ public class TaskSecurityService {
     }
 
     private Integer getAssignedGroupId(Task task) {
-        return task.getWorkType().getGroupTask().getUserGroup().getId();
+        return Optional.ofNullable(task.getWorkType())
+                .map(WorkType::getGroupTask)
+                .map(GroupTask::getUserGroup)
+                .map(UserGroup::getId)
+                .orElse(null);
     }
 
     private Integer getCreatedByAptekaId(Task task) {

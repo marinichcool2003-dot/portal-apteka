@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Set;
+import java.util.UUID;
 
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
@@ -81,13 +82,18 @@ public class TestData {
 
     public static AppUserDetails mockJustApteka() {
         Apteka apteka = mock(Apteka.class);
+        lenient().when(apteka.getId()).thenReturn(1);
         lenient().when(apteka.getUserGroup()).thenReturn(defaultAptekaGroup());
         lenient().when(apteka.getRoles()).thenReturn(Set.of(UserRole.APTEKA));
+        lenient().when(apteka.getNumber()).thenReturn(100);
+        lenient().when(apteka.getLogin()).thenReturn("sarapteka100@farmp.ru");
+        lenient().when(apteka.getPassword()).thenReturn("password");
         return new AppUserDetails(apteka);
     }
 
     public static AppUserDetails mockJustUser() {
         Client client = mock(Client.class);
+        lenient().when(client.getId()).thenReturn(UUID.randomUUID());
         lenient().when(client.getRoles()).thenReturn(Set.of(UserRole.USER));
         lenient().when(client.getUserGroup()).thenReturn(defaulUserGroup());
         return new AppUserDetails(client);
