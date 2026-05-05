@@ -94,13 +94,6 @@ public class Task {
     @JoinColumn(name = "assigned_apteka_id")
     private Apteka assignedApteka;
 
-    //================================================
-    //Исполнительная группа
-    //================================================
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_user_id")
-    private UserGroup assignedGroup;
-
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<TaskComments> employeeComments;
 
@@ -115,7 +108,6 @@ public class Task {
         this.createdByClient = taskBuilder.createdByClient;
         this.assignedClient = taskBuilder.assignedClient;
         this.assignedApteka = taskBuilder.assignedApteka;
-        this.assignedGroup = taskBuilder.assignedGroup;
     }
 
     public static TaskBuilder builder() {
@@ -133,7 +125,6 @@ public class Task {
         private Client createdByClient;
         private Client assignedClient;
         private Apteka assignedApteka;
-        private UserGroup assignedGroup;
 
         public TaskBuilder title(String title) {
             this.title = title;
@@ -172,11 +163,6 @@ public class Task {
 
         public TaskBuilder assignedApteka(Apteka assignedApteka) {
             this.assignedApteka = assignedApteka;
-            return this;
-        }
-
-        public TaskBuilder assignedGroup(UserGroup assignedGroup) {
-            this.assignedGroup = assignedGroup;
             return this;
         }
 

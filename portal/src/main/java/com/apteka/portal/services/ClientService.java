@@ -52,7 +52,7 @@ public class ClientService {
     @Transactional(readOnly = true)
     public List<Client> getbyGroup(Integer userGroupId) {
         userGroupService.getOne(userGroupId);
-        return clientRepository.findByGroupId(userGroupId);
+        return clientRepository.findByUserGroupId(userGroupId);
     }
 
     @Transactional

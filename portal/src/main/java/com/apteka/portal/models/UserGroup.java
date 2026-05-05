@@ -10,7 +10,7 @@ import lombok.Builder;
 import lombok.Data;
 
 @Entity
-@Table(name = "group_client")
+@Table(name = "group_user")
 @Data
 @Builder
 public class UserGroup {

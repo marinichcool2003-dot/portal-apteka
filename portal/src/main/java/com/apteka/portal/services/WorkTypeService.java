@@ -34,7 +34,7 @@ public class WorkTypeService {
     @Cacheable(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#groupTaskId")
     public List<WorkType> getByGroupTask(Integer groupTaskId) {
         groupTaskService.getOne(groupTaskId);
-        return workTypeRepository.findByGroupTask(groupTaskId);
+        return workTypeRepository.findByGroupTaskId(groupTaskId);
     }
 
     @Cacheable(value = CacheNames.WORK_TYPE, key = "#id")

@@ -22,7 +22,7 @@ public record TaskResponseDTO(
         String createdByClientFullName,
         String assignedAptekaLogin,
         String assignedClientFullName,
-        String assignedGroup,
+        String assignedUserGroup,
         List<TaskComments> Allcomments 
 ) {
     public static TaskResponseDTO from(Task task) {
@@ -42,7 +42,7 @@ public record TaskResponseDTO(
                 task.getCreatedByClient() != null ? task.getCreatedByClient().getFullName() : null,
                 task.getAssignedApteka() != null ? task.getAssignedApteka().getLogin() : null,
                 task.getAssignedClient() != null ? task.getAssignedClient().getFullName() : null,
-                task.getAssignedGroup() != null ? task.getAssignedGroup().getName() : null,
+                task.getWorkType().getGroupTask().getUserGroup().getName(),
                 task.getEmployeeComments()
         );
     }

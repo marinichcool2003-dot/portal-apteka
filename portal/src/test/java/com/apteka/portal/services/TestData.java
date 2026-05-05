@@ -10,6 +10,7 @@ import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;
+import com.apteka.portal.models.Task;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.WorkType;
@@ -26,7 +27,7 @@ public class TestData {
 
     public static UserGroup newDefaulUserGroup() {
         return UserGroup.builder()
-                .id(1)
+                .id(2)
                 .name("АХО")
                 .phoneNumber("+79991112233")
                 .build();
@@ -34,7 +35,7 @@ public class TestData {
 
     public static UserGroup defaultAptekaGroup() {
         return UserGroup.builder()
-                .id(2)
+                .id(3)
                 .name("САР")
                 .phoneNumber("+79991112233")
                 .build();
@@ -51,7 +52,7 @@ public class TestData {
     public static GroupTask newGroupTask() {
         return GroupTask.builder().name("Алгоритм")
                 .id(2)
-                .userGroup(defaulUserGroup())
+                .userGroup(newDefaulUserGroup())
                 .build();
     }
 
@@ -65,8 +66,17 @@ public class TestData {
     public static WorkType newDefaultWorkType() {
         return WorkType.builder().name("Маркировка")
                 .id(1)
-                .groupTask(defaultGroupTask())
+                .groupTask(newGroupTask())
                 .build();
+    }
+
+    public static Task defaultTask() {
+        return Task.builder()
+            .title("Не работает касса")
+            .description("При включении не работает касса")
+            .comments(null)
+            .workType(defaultWorkType())
+            .build();
     }
 
     public static AppUserDetails mockJustApteka() {
@@ -78,7 +88,8 @@ public class TestData {
 
     public static AppUserDetails mockJustUser() {
         Client client = mock(Client.class);
-        when(client.getRoles()).thenReturn(Set.of(UserRole.USER));
+        lenient().when(client.getRoles()).thenReturn(Set.of(UserRole.USER));
+        lenient().when(client.getUserGroup()).thenReturn(defaulUserGroup());
         return new AppUserDetails(client);
     }
 

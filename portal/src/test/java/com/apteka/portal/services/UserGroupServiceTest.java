@@ -62,8 +62,8 @@ class UserGroupServiceTest {
 
     @Test
     void update_ShouldThrowException_WhenNameIsTakenByAnotherGroup() {
-        Integer existingId = 1;
-        UserGroupRequestDTO dto = createDto("Новое наименование группы");
+        Integer existingId = 2;
+        UserGroupRequestDTO dto = createDto("АХО");
 
         UserGroup existingInDb = TestData.defaulUserGroup();
         UserGroup anotherGroup = TestData.newDefaulUserGroup();
@@ -74,7 +74,7 @@ class UserGroupServiceTest {
             mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
 
             when(userGroupRepository.findById(existingId)).thenReturn(Optional.of(existingInDb));
-            when(userGroupRepository.findByName("Новое наименование группы")).thenReturn(Optional.of(anotherGroup));
+            when(userGroupRepository.findByName(dto.name())).thenReturn(Optional.of(anotherGroup));
 
             assertThrows(DublicateGroupUserException.class, () -> userGroupService.update(existingId, dto));
         }

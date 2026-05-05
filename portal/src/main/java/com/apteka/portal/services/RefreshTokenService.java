@@ -39,6 +39,6 @@ public class RefreshTokenService {
     }
 
     public void deleteByUser(String username) {
-        repository.deleteByUserName(username);
+        repository.deleteByUsername(username);
     }
 }

@@ -20,6 +20,5 @@ public record TaskRequestDTO(
     String statusDescription,
 
     Integer assignedAptekaId,
-    UUID assignedClientId,
-    Integer assignedGroupId
+    UUID assignedClientId
 ) {}

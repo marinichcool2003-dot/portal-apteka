@@ -19,7 +19,7 @@ public interface AptekaRepository extends JpaRepository<Apteka, Integer> {
     @Query("""
     SELECT a FROM Apteka a
     WHERE (:login IS NULL OR LOWER(a.login) LIKE LOWER(CONCAT(:login, '%')))
-    AND (:groupId IS NULL OR a.groupApteki.id = :groupId)
+    AND (:groupId IS NULL OR a.userGroup.id = :groupId)
     AND (:number IS NULL OR a.number = :number)
     AND (:phoneNumber IS NULL OR LOWER(a.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
     """)

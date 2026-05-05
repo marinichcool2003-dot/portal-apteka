@@ -12,6 +12,7 @@ import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.UserType;
 import com.apteka.portal.services.ClientService;
+import com.apteka.portal.services.WorkTypeService;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
@@ -23,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class TaskSecurityService {
 
     private final ClientService clientService;
+    private final WorkTypeService workTypeService;
 
     public void validateCanCreate(TaskRequestDTO dto, AppUserDetails currentUser) {
         if (currentUser.getType() == UserType.CLIENT) {
@@ -33,7 +35,7 @@ public class TaskSecurityService {
             if (currentUser.isJustUser()) {
                 // Логика: обычный юзер не может назначать задачи чужим группам (кроме аптек)
                 boolean isAssigningToHisGroup = Objects.equals(currentUser.getUserGroup().getId(),
-                        dto.assignedGroupId());
+                        workTypeService.getOne(dto.workTypeId()).getGroupTask().getUserGroup().getId());
                 if (!isAssigningToHisGroup && dto.assignedAptekaId() == null) {
                     throw new AccessDeniedException(
                             "Вы можете ставить задачи только сотрудникам своей группы или аптекам");
@@ -42,7 +44,7 @@ public class TaskSecurityService {
         }
 
         if (currentUser.getType() == UserType.APTEKA) {
-            if (dto.assignedGroupId() != null && dto.assignedClientId() != null) {
+            if (dto.assignedClientId() != null) {
                 throw new AccessDeniedException("Аптека не может ставить задачи на конкретного сотрудника");
             }
         }
@@ -54,8 +56,8 @@ public class TaskSecurityService {
         if (assignmentChanged) {
             if (currentUser.getType() == UserType.CLIENT) {
                 if (currentUser.isJustUser() && !isUserRelatedToTask(task, currentUser)) {
-                    if (dto.assignedGroupId() != null
-                            && !Objects.equals(dto.assignedGroupId(), currentUser.getUserGroup().getId())) {
+                    if (!Objects.equals(workTypeService.getOne(dto.workTypeId()).getGroupTask().getUserGroup().getId(),
+                            currentUser.getUserGroup().getId())) {
                         throw new AccessDeniedException(
                                 "Обычный пользователь не может изменять задачу вне своего отдела или к которой не имеет отношение!");
                     }
@@ -71,10 +73,12 @@ public class TaskSecurityService {
     }
 
     public boolean changeAssigner(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
-        if(isAssignmentChanged(task, dto)) {
-            if (hasElevatedPrivileges(currentUser)) return true;
-            if (!isUserRelatedToTask(task, currentUser) || !isAssignerOfSameGroup(dto, currentUser)) 
-                throw new AccessDeniedException("Пользователь без прав доступа может изменять исполнителей только своих собственных или назначенных ему задач и переводить их внутри своей группы");
+        if (isAssignmentChanged(task, dto)) {
+            if (hasElevatedPrivileges(currentUser))
+                return true;
+            if (!isUserRelatedToTask(task, currentUser) || !isAssignerOfSameGroup(dto, currentUser))
+                throw new AccessDeniedException(
+                        "Пользователь без прав доступа может изменять исполнителей только своих собственных или назначенных ему задач и переводить их внутри своей группы");
             return true;
         }
         return false;
@@ -128,12 +132,15 @@ public class TaskSecurityService {
     private boolean isAssignmentChanged(Task task, TaskRequestDTO dto) {
         return !Objects.equals(getAssignedAptekaId(task), dto.assignedAptekaId()) ||
                 !Objects.equals(getAssignedClientId(task), dto.assignedClientId()) ||
-                !Objects.equals(getAssignedGroupId(task), dto.assignedGroupId());
+                !Objects.equals(getAssignedGroupId(task),
+                        workTypeService.getOne(dto.workTypeId()).getGroupTask().getUserGroup().getId());
     }
 
     private boolean isAssignerOfSameGroup(TaskRequestDTO dto, AppUserDetails currentUser) {
-        return !Objects.equals(currentUser.getUserGroup().getId(), dto.assignedGroupId()) && 
-            !Objects.equals(currentUser.getUserGroup().getId(), clientService.getOne(dto.assignedClientId()).getUserGroup().getId());
+        return !Objects.equals(currentUser.getUserGroup().getId(),
+                workTypeService.getOne(dto.workTypeId()).getGroupTask().getUserGroup().getId()) &&
+                !Objects.equals(currentUser.getUserGroup().getId(),
+                        clientService.getOne(dto.assignedClientId()).getUserGroup().getId());
     }
 
     // Безопасное извлечение ID из сущностей (Null-safe)
@@ -146,7 +153,7 @@ public class TaskSecurityService {
     }
 
     private Integer getAssignedGroupId(Task task) {
-        return task.getAssignedGroup() != null ? task.getAssignedGroup().getId() : null;
+        return task.getWorkType().getGroupTask().getUserGroup().getId();
     }
 
     private Integer getCreatedByAptekaId(Task task) {

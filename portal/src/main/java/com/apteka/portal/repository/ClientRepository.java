@@ -12,7 +12,7 @@ public interface ClientRepository extends JpaRepository<Client, UUID>{
 
     Optional<Client> findByLogin(String login);
 
-    List<Client> findByGroupId(Integer groupId);
+    List<Client> findByUserGroupId(Integer groupId);
 
     boolean existsByLogin(String login);
 }

@@ -20,15 +20,16 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @Query("""
                 SELECT DISTINCT t FROM Task t
                 JOIN FETCH t.workType w
-                JOIN FETCH w.groupTask g
-                WHERE t.assignedGroup.id = :groupId
-                    AND(:creatorClientId IS NULL OR t.createdByClient.id = :creatorClientId)
-                    AND(:creatorAptekaId IS NULL OR t.createdByApteka.id = :creatorAptekaId)
+                JOIN FETCH w.groupTask gt
+                JOIN gt.userGroup ug
+                WHERE ug.id = :groupId
+                    AND (:creatorClientId IS NULL OR t.createdByClient.id = :creatorClientId)
+                    AND (:creatorAptekaId IS NULL OR t.createdByApteka.id = :creatorAptekaId)
                     AND (:specificClientId IS NULL OR t.assignedClient.id = :specificClientId)
                     AND (:specificAptekaId IS NULL OR t.assignedApteka.id = :specificAptekaId)
                     AND (:status IS NULL OR t.status = :status)
                     AND (:priority IS NULL OR t.priority = :priority)
-                    AND (:groupTaskId IS NULL OR g.id = :groupTaskId)
+                    AND (:groupTaskId IS NULL OR gt.id = :groupTaskId)
                 ORDER BY t.creationDate DESC
             """)
     List<Task> findDepartmentTasksWithFilters(
@@ -42,39 +43,50 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             @Param("groupTaskId") Integer groupTaskId);
 
     @Query("""
-            SELECT new com.apteka.portal.dtos.response.TaskStatsDTO(
-                COUNT(t),
-                SUM(CASE WHEN t.status = 'OPEN' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN t.status = 'CLOSE' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN t.status = 'DENIED' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN t.status = 'PROCESSED' THEN 1 ELSE 0 END)
-            )
-            FROM Task t
-            WHERE t.assignedClient.id = :clientId
+                SELECT new com.apteka.portal.dtos.response.TaskStatsDTO(
+                    COUNT(t),
+                    SUM(CASE WHEN t.status = :open THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN t.status = :closed THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN t.status = :denied THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN t.status = :processed THEN 1 ELSE 0 END)
+                )
+                FROM Task t
+                WHERE t.assignedClient.id = :clientId
             """)
-    TaskStatsDTO getClientTaskStats(@Param("clientId") UUID clientId);
+    TaskStatsDTO getClientTaskStats(
+            @Param("clientId") UUID clientId,
+            @Param("open") TaskStatus open,
+            @Param("closed") TaskStatus closed,
+            @Param("denied") TaskStatus denied,
+            @Param("processed") TaskStatus processed);
 
     @Query("""
                 SELECT t.assignedClient.id,
                        COUNT(t),
-                       SUM(CASE WHEN t.status IN ('OPEN', 'PROCESSED') THEN 1 ELSE 0 END)
+                       SUM(CASE WHEN t.status IN :statuses THEN 1 ELSE 0 END)
                 FROM Task t
-                WHERE t.assignedGroup.id = :groupId
+                JOIN t.workType w
+                JOIN w.groupTask gt
+                WHERE gt.userGroup.id = :groupId
                 GROUP BY t.assignedClient.id
             """)
-    List<Object[]> getDepartmentPerformance(@Param("groupId") Integer groupId);
+    List<Object[]> getDepartmentPerformance(
+            @Param("groupId") Integer groupId,
+            @Param("statuses") List<TaskStatus> statuses);
 
     @Query("""
                 SELECT new com.apteka.portal.dtos.response.GroupTaskStatsDTO(
-                    g.id,
-                    g.name,
-                    SUM(CASE WHEN t.status IN ('OPEN', 'PROCESSED') THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN t.status = 'CLOSE' THEN 1 ELSE 0 END),
+                    ug.id,
+                    ug.name,
+                    SUM(CASE WHEN str(t.status) IN ('OPEN', 'PROCESSED') THEN 1L ELSE 0L END),
+                    SUM(CASE WHEN str(t.status) = 'CLOSE' THEN 1L ELSE 0L END),
                     COUNT(t)
                 )
                 FROM Task t
-                JOIN t.assignedGroup g
-                GROUP BY g.id, g.name
+                JOIN t.workType w
+                JOIN w.groupTask gt
+                JOIN gt.userGroup ug
+                GROUP BY ug.id, ug.name
             """)
     List<GroupTaskStatsDTO> getGroupUserStats();
 }

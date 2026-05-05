@@ -37,7 +37,6 @@ public class TaskService {
     private final AptekaService aptekaService;
     private final ClientService clientService;
     private final WorkTypeRepository workTypeRepository;
-    private final UserGroupService userGroupService;
     private final TaskAuditService taskAuditService;
     private final TaskSecurityService taskSecurityService;
 
@@ -75,7 +74,7 @@ public class TaskService {
     }
 
     @Transactional
-    public Task saveTask(TaskRequestDTO dto) {
+    public Task create(TaskRequestDTO dto) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
 
         taskSecurityService.validateCanCreate(dto, currentUser);
@@ -176,9 +175,7 @@ public class TaskService {
     }
 
     private void setAssignee(Task task, TaskRequestDTO dto) {
-        if (dto.assignedGroupId() != null) {
-            task.setAssignedGroup(userGroupService.getOne(dto.assignedGroupId()));
-        } else if (dto.assignedClientId() != null) {
+        if (dto.assignedClientId() != null) {
             task.setAssignedClient(clientService.getOne(dto.assignedClientId()));
         } else if (dto.assignedAptekaId() != null) {
             task.setAssignedApteka(aptekaService.getOne(dto.assignedAptekaId()));
@@ -186,14 +183,17 @@ public class TaskService {
     }
 
     private String getAssigneeName(Task task) {
-        if (task.getAssignedGroup() != null)
-            return "Группа: " + task.getAssignedGroup().getName();
-        if (task.getAssignedClient() != null)
-            return "Пользователь: " + task.getAssignedClient().getFullName();
-        if (task.getAssignedApteka() != null)
-            return "Аптека: " + task.getAssignedApteka().getUserGroup().getName() + " "
-                    + task.getAssignedApteka().getNumber();
-        return "Не назначен";
+        String assigneeName = task.getWorkType().getGroupTask().getUserGroup().getName();
+        StringBuilder assigneeNameBuilder = new StringBuilder(assigneeName);
+        if (task.getAssignedClient() != null) {
+            assigneeNameBuilder.append(" - ").append(task.getAssignedClient().getFullName());
+            return assigneeNameBuilder.toString();
+        }
+        if (task.getAssignedApteka() != null) {
+            assigneeNameBuilder.append(" - ").append("Аптека №").append(task.getAssignedApteka().getNumber());
+            return assigneeNameBuilder.toString();
+        }
+        return assigneeNameBuilder.append(" (Не назначен)").toString();
     }
 
     private void validateTitle(String title) {
