@@ -46,7 +46,7 @@ public class Task {
     @Column(name = "creation_date")
     private LocalDateTime creationDate;
 
-    @Setter(AccessLevel.NONE)
+    @Setter
     @Column(name = "closing_date")
     private LocalDateTime closingDate;
 

@@ -16,6 +16,7 @@ import com.apteka.portal.models.WorkType;
 import com.apteka.portal.services.ClientService;
 import com.apteka.portal.services.WorkTypeService;
 import com.apteka.portal.models.AppUserDetails;
+import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
@@ -31,15 +32,26 @@ public class TaskSecurityService {
     private final WorkTypeService workTypeService;
 
     public void validateCanCreate(TaskRequestDTO dto, AppUserDetails currentUser) {
+
+        UserGroup taskGroup = getUserGroupFromWorkTypeId(dto.workTypeId());
+        Integer taskGroupId = (taskGroup != null) ? taskGroup.getId() : null;
+
         if (currentUser.getType() == UserType.CLIENT) {
+
+            if (dto.assignedClientId() != null) {
+                Client targetClient = clientService.getOne(dto.assignedClientId());
+                if (!Objects.equals(targetClient.getUserGroup().getId(), taskGroupId)) {
+
+                }
+            }
+
             if (hasElevatedPrivileges(currentUser)) {
                 return;
             }
 
             if (currentUser.isJustUser()) {
-                // Логика: обычный юзер не может назначать задачи чужим группам (кроме аптек)
-                boolean isAssigningToHisGroup = Objects.equals(currentUser.getUserGroup().getId(),
-                        workTypeService.getOne(dto.workTypeId()).getGroupTask().getUserGroup().getId());
+                Integer userGroupId = (currentUser.getUserGroup() != null) ? currentUser.getUserGroup().getId() : null;
+                boolean isAssigningToHisGroup = Objects.equals(userGroupId, taskGroupId);
                 if (!isAssigningToHisGroup && dto.assignedAptekaId() == null) {
                     throw new AccessDeniedException(
                             "Вы можете ставить задачи только сотрудникам своей группы или аптекам");
@@ -70,15 +82,25 @@ public class TaskSecurityService {
     }
 
     public boolean changeAssigner(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
-        if (isAssignmentChanged(task, dto)) {
-            if (hasElevatedPrivileges(currentUser))
-                return true;
-            if (!isUserRelatedToTask(task, currentUser) || !isAssignerOfSameGroup(dto, currentUser))
-                throw new AccessDeniedException(
-                        "Пользователь без прав доступа может изменять исполнителей только своих собственных или назначенных ему задач и переводить их внутри своей группы");
+        UserGroup targetTaskGroup = getUserGroupFromWorkTypeId(dto.workTypeId());
+
+        if (!isAssignmentChanged(task, dto, targetTaskGroup)) {
+            return false;
+        }
+
+        if (hasElevatedPrivileges(currentUser)) {
             return true;
         }
-        return false;
+
+        boolean isSameGroup = isWithinSameGroup(dto, currentUser, targetTaskGroup);
+        boolean isRelated = isUserRelatedToTask(task, currentUser);
+
+        if (!isSameGroup || !isRelated) {
+            throw new AccessDeniedException(
+                    "Пользователь без прав доступа может изменять исполнителей только своих собственных или назначенных ему задач и переводить их внутри своей группы");
+        }
+
+        return true;
     }
 
     public void validateStatus(Task task, AppUserDetails currentUser) {
@@ -131,27 +153,48 @@ public class TaskSecurityService {
                         && LocalDateTime.now().isAfter(task.getClosingDate().plusMonths(1)));
     }
 
-    private boolean isAssignmentChanged(Task task, TaskRequestDTO dto) {
+    private boolean isAssignmentChanged(Task task, TaskRequestDTO dto, UserGroup targetTaskGroup) {
+        Integer targetGroupId = (targetTaskGroup != null) ? targetTaskGroup.getId() : null;
+
         return !Objects.equals(getAssignedAptekaId(task), dto.assignedAptekaId()) ||
                 !Objects.equals(getAssignedClientId(task), dto.assignedClientId()) ||
-                !Objects.equals(getAssignedGroupId(task),
-                        workTypeService.getOne(dto.workTypeId()).getGroupTask().getUserGroup().getId());
+                !Objects.equals(getAssignedGroupId(task), targetGroupId);
     }
 
-    private boolean isAssignerOfSameGroup(TaskRequestDTO dto, AppUserDetails currentUser) {
-        return !Objects.equals(currentUser.getUserGroup().getId(),
-                workTypeService.getOne(dto.workTypeId()).getGroupTask().getUserGroup().getId()) &&
-                !Objects.equals(currentUser.getUserGroup().getId(),
-                        clientService.getOne(dto.assignedClientId()).getUserGroup().getId());
+    private boolean isWithinSameGroup(TaskRequestDTO dto, AppUserDetails currentUser, UserGroup targetTaskGroup) {
+        Integer userGroupId = (currentUser.getUserGroup() != null) ? currentUser.getUserGroup().getId() : null;
+        Integer targetGroupId = (targetTaskGroup != null) ? targetTaskGroup.getId() : null;
+
+        if (!Objects.equals(userGroupId, targetGroupId)) {
+            return false;
+        }
+
+        if (dto.assignedClientId() != null) {
+            Client newClient = clientService.getOne(dto.assignedClientId());
+            Integer newClientGroupId = (newClient != null && newClient.getUserGroup() != null)
+                    ? newClient.getUserGroup().getId()
+                    : null;
+
+            return Objects.equals(userGroupId, newClientGroupId);
+        }
+
+        return true;
     }
 
-    // Безопасное извлечение ID из сущностей (Null-safe)
     private Integer getAssignedAptekaId(Task task) {
         return task.getAssignedApteka() != null ? task.getAssignedApteka().getId() : null;
     }
 
     private UUID getAssignedClientId(Task task) {
         return task.getAssignedClient() != null ? task.getAssignedClient().getId() : null;
+    }
+
+    private UserGroup getUserGroupFromWorkTypeId(Integer workTypeId) {
+        WorkType workType = workTypeService.getOne(workTypeId);
+        return Optional.ofNullable(workType)
+                .map(WorkType::getGroupTask)
+                .map(GroupTask::getUserGroup)
+                .orElse(null);
     }
 
     private Integer getAssignedGroupId(Task task) {

@@ -102,6 +102,7 @@ public class TestData {
     public static AppUserDetails mockJustSenior() {
         Client client = mock(Client.class);
         when(client.getRoles()).thenReturn(Set.of(UserRole.SENIOR));
+        when(client.getUserGroup()).thenReturn(newDefaulUserGroup());
         return new AppUserDetails(client);
     }
 
