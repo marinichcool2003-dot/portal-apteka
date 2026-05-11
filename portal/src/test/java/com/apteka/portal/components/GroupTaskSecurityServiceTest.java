@@ -20,7 +20,7 @@ public class GroupTaskSecurityServiceTest {
 
     @Test 
     void validateBossOrAdminInGroup_Success() {
-        UserGroup userGroup = TestData.defaulUserGroup();
+        UserGroup userGroup = TestData.newDefaulUserGroup();
         AppUserDetails currentUser = TestData.mockJustBoss();
         assertDoesNotThrow(() -> {
             securityService.validateBossOrAdminInGroup(currentUser, userGroup);

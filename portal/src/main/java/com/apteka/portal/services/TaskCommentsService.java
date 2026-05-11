@@ -47,14 +47,20 @@ public class TaskCommentsService {
 
     @Transactional
     public TaskComments create(String comment, Long taskId, AppUserDetails currentUser) {
-        
+
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new TaskNotFoundException(taskId));
 
         TaskComments.TaskCommentsBuilder builder = TaskComments.builder()
                 .comment(comment)
                 .task(task);
+        
+        setCommentAutor(builder, currentUser);
 
+        return taskCommentsRepository.save(builder.build());
+    }
+
+    private void setCommentAutor(TaskComments.TaskCommentsBuilder builder, AppUserDetails currentUser) {
         if (currentUser.isClient()) {
             builder.client(clientRepository.getReferenceById(currentUser.getClientId()));
         } else if (currentUser.isApteka()) {
@@ -62,17 +68,15 @@ public class TaskCommentsService {
         } else {
             throw new AvtorCommentNotInputException("Автор комментария не был указан или не существует.");
         }
-
-        return taskCommentsRepository.save(builder.build());
     }
 
     // @Transactional
     // public TaskComments update(Long id, String comment) {
-    //     TaskComments taskComment = getOne(id);
-    //     if (comment == null || comment.isBlank()) {
-    //         throw new InvalidTaskCommentException();
-    //     }
-    //     taskComment.setComment(comment.strip());
-    //     return taskCommentsRepository.save(taskComment);
+    // TaskComments taskComment = getOne(id);
+    // if (comment == null || comment.isBlank()) {
+    // throw new InvalidTaskCommentException();
+    // }
+    // taskComment.setComment(comment.strip());
+    // return taskCommentsRepository.save(taskComment);
     // }
 }

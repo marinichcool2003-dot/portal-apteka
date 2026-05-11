@@ -20,30 +20,46 @@ public class AvatarClientService {
     private final long maxFileSize = 2 * 1024 * 1024;
 
     public String uploadAvatar(MultipartFile file, UUID clientId) throws IOException {
+        validateFile(file);
 
-        String contentType = file.getContentType();
-        if (contentType == null || !allowedContentTypes.contains(contentType)) {
-            throw new IllegalArgumentException("Неподдерживаемый формат файла. Только PNG и JPEG разрешены.");
-        }
-
-        String originalFileName = file.getOriginalFilename();
-        if (originalFileName == null ||
-            !(originalFileName.toLowerCase().endsWith(".png") || originalFileName.toLowerCase().endsWith(".jpg") || originalFileName.toLowerCase().endsWith(".jpeg"))) {
-            throw new IllegalArgumentException("Неподдерживаемое расширение файла. Только .png и .jpg разрешены.");
-        }
-
-        if (file.getSize() > maxFileSize) {
-            throw new IllegalArgumentException("Файл слишком большой. Максимальный размер — 2 МБ.");
-        }
-
-        String extension = originalFileName.substring(originalFileName.lastIndexOf("."));
+        String extension = getExtension(file.getOriginalFilename());
         String fileName = clientId + extension;
-        Path path = Paths.get(uploadDir + "/" + fileName);
+        Path path = Paths.get(uploadDir).resolve(fileName).toAbsolutePath();
 
         Files.createDirectories(path.getParent());
+
+        deleteAvatarIfExists(clientId);
 
         Files.write(path, file.getBytes());
 
         return "/avatars/" + fileName;
+    }
+
+    public void deleteAvatarIfExists(UUID clientId) {
+        try (var files = Files.list(Paths.get(uploadDir).toAbsolutePath())) {
+            files.filter(p -> p.getFileName().toString().startsWith(clientId.toString()))
+                    .forEach(p -> {
+                        try {
+                            Files.delete(p);
+                        } catch (IOException ignored) {
+                        }
+                    });
+        } catch (IOException e) {
+
+        }
+    }
+
+    private void validateFile(MultipartFile file) {
+        String contentType = file.getContentType();
+        if (contentType == null || !allowedContentTypes.contains(contentType)) {
+            throw new IllegalArgumentException("Неподдерживаемый формат файла. Только PNG и JPEG разрешены.");
+        }
+        if (file.getSize() > maxFileSize) {
+            throw new IllegalArgumentException("Файл слишком большой. Максимальный размер — 2 МБ.");
+        }
+    }
+
+    private String getExtension(String fileName) {
+        return fileName.substring(fileName.lastIndexOf(".")).toLowerCase();
     }
 }

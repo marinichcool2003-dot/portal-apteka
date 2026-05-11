@@ -102,14 +102,14 @@ public class TestData {
     public static AppUserDetails mockJustSenior() {
         Client client = mock(Client.class);
         when(client.getRoles()).thenReturn(Set.of(UserRole.SENIOR));
-        when(client.getUserGroup()).thenReturn(newDefaulUserGroup());
+        when(client.getUserGroup()).thenReturn(defaulUserGroup());
         return new AppUserDetails(client);
     }
 
     public static AppUserDetails mockJustBoss() {
         Client client = mock(Client.class);
         lenient().when(client.getRoles()).thenReturn(Set.of(UserRole.BOSS));
-        lenient().when(client.getUserGroup()).thenReturn(defaulUserGroup());
+        lenient().when(client.getUserGroup()).thenReturn(newDefaulUserGroup());
         return new AppUserDetails(client);
     }
 

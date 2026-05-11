@@ -44,21 +44,19 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Query("""
                 SELECT new com.apteka.portal.dtos.response.TaskStatsDTO(
+                    t.assignedClient.id,
                     COUNT(t),
-                    SUM(CASE WHEN t.status = :open THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN t.status = :closed THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN t.status = :denied THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN t.status = :processed THEN 1 ELSE 0 END)
+                    SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.OPEN THEN 1L ELSE 0L END),
+                    SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.CLOSED THEN 1L ELSE 0L END),
+                    SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.DENIED THEN 1L ELSE 0L END),
+                    SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.PROCESSED THEN 1L ELSE 0L END)
                 )
                 FROM Task t
-                WHERE t.assignedClient.id = :clientId
+                WHERE t.assignedClient.id IN :clientIds
+                GROUP BY t.assignedClient.id
             """)
-    TaskStatsDTO getClientTaskStats(
-            @Param("clientId") UUID clientId,
-            @Param("open") TaskStatus open,
-            @Param("closed") TaskStatus closed,
-            @Param("denied") TaskStatus denied,
-            @Param("processed") TaskStatus processed);
+    List<TaskStatsDTO> getClientTaskStatsBatch(
+            @Param("clientIds") List<UUID> clientId);
 
     @Query("""
                 SELECT t.assignedClient.id,

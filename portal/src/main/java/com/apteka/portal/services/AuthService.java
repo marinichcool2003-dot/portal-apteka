@@ -56,4 +56,8 @@ public class AuthService {
     public void logout(String username) {
         refreshTokenService.deleteByUser(username);
     }
+
+    public void invalidateAllSession(String username) {
+        refreshTokenService.deleteByUser(username);
+    }
 }

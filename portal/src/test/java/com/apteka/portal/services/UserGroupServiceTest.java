@@ -66,7 +66,7 @@ class UserGroupServiceTest {
         UserGroupRequestDTO dto = createDto("АХО");
 
         UserGroup existingInDb = TestData.defaulUserGroup();
-        UserGroup anotherGroup = TestData.newDefaulUserGroup();
+        UserGroup anotherGroup = UserGroup.builder().name(dto.name()).build();
 
         AppUserDetails currentUser = TestData.mockJustAdmin();
 

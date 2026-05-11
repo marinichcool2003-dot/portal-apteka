@@ -38,13 +38,13 @@ public class Client{
     @Column(name = "id")
     private UUID id;
 
-    @Column(name = "login", nullable = false)
+    @Column(name = "login", nullable = false, length = 50)
     private String login;
 
-    @Column(name = "password", nullable = false)
+    @Column(name = "password", nullable = false, length = 100)
     private String password;
 
-    @Column(name = "full_name", nullable = false)
+    @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
     @Builder.Default
@@ -58,7 +58,7 @@ public class Client{
     @JoinColumn(name = "group_id", nullable = false)
     private UserGroup userGroup;
 
-    @Column(name = "avatar_url")
+    @Column(name = "avatar_url", length = 255)
     private String avatarURL;
 
 }

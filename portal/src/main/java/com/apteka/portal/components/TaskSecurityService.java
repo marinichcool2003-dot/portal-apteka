@@ -41,7 +41,7 @@ public class TaskSecurityService {
             if (dto.assignedClientId() != null) {
                 Client targetClient = clientService.getOne(dto.assignedClientId());
                 if (!Objects.equals(targetClient.getUserGroup().getId(), taskGroupId)) {
-
+                    throw new AccessDeniedException("Вы можете ставить задачи сотруднику в рамке вида работ его группы");
                 }
             }
 
