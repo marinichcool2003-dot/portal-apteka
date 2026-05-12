@@ -19,7 +19,7 @@ import com.apteka.portal.components.ClientSecurityService;
 import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
-import com.apteka.portal.dtos.request.PasswordValidator;
+import com.apteka.portal.components.PasswordValidator;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;

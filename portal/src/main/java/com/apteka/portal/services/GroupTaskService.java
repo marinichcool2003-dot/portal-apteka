@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
 import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
+import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.exceptions.DublicateGroupTaskException;
+import com.apteka.portal.exceptions.GroupClientNotFoundException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
 import com.apteka.portal.exceptions.InvalidGroupTaskException;
 import com.apteka.portal.models.AppUserDetails;
@@ -20,6 +22,8 @@ import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.GroupTaskRepository;
+import com.apteka.portal.repository.UserGroupRepository;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -27,30 +31,35 @@ import lombok.RequiredArgsConstructor;
 public class GroupTaskService {
 
     private final GroupTaskRepository groupTaskRepository;
-    private final UserGroupService userGroupService;
+    private final UserGroupRepository userGroupRepository;
     private final GroupTaskSecurityService groupTaskSecurityService;
     private final CacheManager cacheManager;
 
-    @Cacheable(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#userGroupId")
+    @Cacheable(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#userGroupId", sync = true)
     @Transactional(readOnly = true)
-    public List<GroupTask> getByUserGroup(Integer userGroupId) {
-        userGroupService.getOne(userGroupId);
-        return groupTaskRepository.findByUserGroupId(userGroupId);
+    public List<GroupTaskResponseDTO> getByUserGroup(Integer userGroupId) {
+        if (userGroupRepository.existsById(userGroupId)) {
+            return groupTaskRepository.findByUserGroupId(userGroupId).stream()
+                    .map(GroupTaskResponseDTO::from).toList();
+        }
+        throw new GroupClientNotFoundException(userGroupId);
     }
 
-    @Cacheable(value = CacheNames.GROUP_TASK, key = "#id")
+    @Cacheable(value = CacheNames.GROUP_TASK, key = "#id", sync = true)
     @Transactional(readOnly = true)
-    public GroupTask getOne(Integer id) {
-        return groupTaskRepository.findById(id)
+    public GroupTaskResponseDTO getOne(Integer id) {
+        GroupTask groupTask = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
+        return GroupTaskResponseDTO.from(groupTask);
     }
 
     @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#dto.userGroupId()")
     @Transactional
-    public GroupTask create(GroupTaskRequestDTO dto) {
+    public GroupTaskResponseDTO create(GroupTaskRequestDTO dto) {
 
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
-        UserGroup userGroup = userGroupService.getOne(dto.userGroupId());
+        UserGroup userGroup = userGroupRepository.findById(dto.userGroupId())
+                .orElseThrow(() -> new GroupClientNotFoundException(dto.userGroupId()));
         String cleanName = dto.name().strip();
 
         validateGroupTaskName(cleanName, userGroup);
@@ -61,44 +70,46 @@ public class GroupTaskService {
                 .userGroup(userGroup)
                 .build());
 
-        return saved;
+        return GroupTaskResponseDTO.from(saved);
     }
 
     @Caching(evict = {
-        @CacheEvict(value = CacheNames.GROUP_TASK, key = "#id"),
-        @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#result.userGroup.id")
+            @CacheEvict(value = CacheNames.GROUP_TASK, key = "#id"),
+            @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#result.userGroup().id()")
     })
     @Transactional
-    public GroupTask update(Integer id, GroupTaskRequestDTO dto) {
+    public GroupTaskResponseDTO update(Integer id, GroupTaskRequestDTO dto) {
 
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
-        GroupTask upGroup = getOne(id);
+        GroupTask upGroup = groupTaskRepository.findById(id)
+                .orElseThrow(() -> new GroupTaskNotFoundException(id));
 
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, upGroup.getUserGroup());
 
         String cleanName = dto.name().strip();
 
         if (Objects.equals(cleanName, upGroup.getName())) {
-            return upGroup;
+            return GroupTaskResponseDTO.from(upGroup);
         }
 
         validateGroupTaskName(cleanName, upGroup.getUserGroup());
         upGroup.setName(cleanName);
 
         GroupTask saved = groupTaskRepository.save(upGroup);
-  
-        return saved;
+
+        return GroupTaskResponseDTO.from(saved);
     }
 
     @Transactional
     public void delete(Integer id) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
-        GroupTask deletedTask = getOne(id);
-        groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, deletedTask.getUserGroup());
+        GroupTask deletedGroupTask = groupTaskRepository.findById(id)
+                .orElseThrow(() -> new GroupTaskNotFoundException(id));
+        groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, deletedGroupTask.getUserGroup());
         groupTaskRepository.deleteById(id);
 
         cacheManager.getCache(CacheNames.GROUP_TASK).evict(id);
-        cacheManager.getCache(CacheNames.GROUP_TASKS_BY_GROUP).evict(deletedTask.getUserGroup().getId());
+        cacheManager.getCache(CacheNames.GROUP_TASKS_BY_GROUP).evict(deletedGroupTask.getUserGroup().getId());
         cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(id);
     }
 

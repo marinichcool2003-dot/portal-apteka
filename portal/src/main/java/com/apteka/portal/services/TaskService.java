@@ -93,7 +93,7 @@ public class TaskService {
             case CLIENT -> task.setCreatedByClient(clientService.getOne(currentUser.getClientId()));
         }
 
-        setAssignee(task, dto);
+        setAssignee(task, dto, currentUser);
 
         return taskRepository.save(task);
     }
@@ -120,9 +120,13 @@ public class TaskService {
             task.setDescription(dto.description());
         }
 
+        if(taskSecurityService.changeWorkTypeToAnotherDepartament(task, dto, currentUser)) {
+            task.setWorkType(workTypeRepository.getReferenceById(dto.workTypeId()));
+        }
+
         if (taskSecurityService.changeAssigner(task, dto, currentUser)) {
             String oldAssigneName = getAssigneeName(task);
-            setAssignee(task, dto);
+            setAssignee(task, dto, currentUser);
             String newAssigneeName = getAssigneeName(task);
 
             taskAuditService.logChange(task, currentUser, "исполнителя", oldAssigneName, newAssigneeName);
@@ -174,10 +178,12 @@ public class TaskService {
         return task;
     }
 
-    private void setAssignee(Task task, TaskRequestDTO dto) {
+    private void setAssignee(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
         if (dto.assignedClientId() != null) {
+            if (currentUser.isApteka()) throw new AccessDeniedException("Аптека не может назначать задачи на конкретного сотрудника");
             task.setAssignedClient(clientService.getOne(dto.assignedClientId()));
         } else if (dto.assignedAptekaId() != null) {
+            if (currentUser.isApteka()) throw new AccessDeniedException("Аптека не может назначать задачи на другие аптеки");
             task.setAssignedApteka(aptekaService.getOne(dto.assignedAptekaId()));
         }
     }

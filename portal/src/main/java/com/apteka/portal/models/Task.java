@@ -98,6 +98,7 @@ public class Task {
     private List<TaskComments> employeeComments;
 
     private Task(TaskBuilder taskBuilder) {
+        this.id = taskBuilder.id;
         this.title = taskBuilder.title;
         this.description = taskBuilder.description;
         this.comments = taskBuilder.comments;
@@ -115,6 +116,7 @@ public class Task {
     }
 
     public static class TaskBuilder {
+        private Long id;
         private String title;
         private String description;
         private String comments;
@@ -125,6 +127,11 @@ public class Task {
         private Client createdByClient;
         private Client assignedClient;
         private Apteka assignedApteka;
+
+        public TaskBuilder id(Long id) {
+            this.id = id;
+            return this;
+        }
 
         public TaskBuilder title(String title) {
             this.title = title;

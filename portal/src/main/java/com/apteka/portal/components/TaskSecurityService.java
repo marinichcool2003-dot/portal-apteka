@@ -41,7 +41,8 @@ public class TaskSecurityService {
             if (dto.assignedClientId() != null) {
                 Client targetClient = clientService.getOne(dto.assignedClientId());
                 if (!Objects.equals(targetClient.getUserGroup().getId(), taskGroupId)) {
-                    throw new AccessDeniedException("Вы можете ставить задачи сотруднику в рамке вида работ его группы");
+                    throw new AccessDeniedException(
+                            "Вы можете ставить задачи сотруднику в рамке вида работ его группы");
                 }
             }
 
@@ -101,6 +102,15 @@ public class TaskSecurityService {
         }
 
         return true;
+    }
+
+    public boolean changeWorkTypeToAnotherDepartament(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
+        if (!Objects.equals(task.getWorkType().getId(), dto.workTypeId())) {
+            if (hasElevatedPrivileges(currentUser)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void validateStatus(Task task, AppUserDetails currentUser) {

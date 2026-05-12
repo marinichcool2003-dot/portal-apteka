@@ -3,15 +3,11 @@ package com.apteka.portal.services;
 import java.util.Date;
 import java.util.UUID;
 import java.util.function.Function;
-
 import javax.crypto.SecretKey;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-
 import com.apteka.portal.models.AppUserDetails;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
@@ -49,15 +45,6 @@ public class JwtService {
 
     public String generateRefreshToken() {
         return UUID.randomUUID().toString();
-    }
-
-    public String extractUserName(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {

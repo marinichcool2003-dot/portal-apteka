@@ -31,13 +31,13 @@ public class WorkTypeService {
     private final GroupTaskSecurityService groupTaskSecurityService;
     private final CacheManager cacheManager;
 
-    @Cacheable(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#groupTaskId")
+    @Cacheable(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#groupTaskId", sync = true)
     public List<WorkType> getByGroupTask(Integer groupTaskId) {
         groupTaskService.getOne(groupTaskId);
         return workTypeRepository.findByGroupTaskId(groupTaskId);
     }
 
-    @Cacheable(value = CacheNames.WORK_TYPE, key = "#id")
+    @Cacheable(value = CacheNames.WORK_TYPE, key = "#id", sync = true)
     @Transactional(readOnly = true)
     public WorkType getOne(Integer id) {
         return workTypeRepository.findById(id)

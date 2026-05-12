@@ -14,7 +14,7 @@ import com.apteka.portal.models.Apteka;
 public interface AptekaRepository extends JpaRepository<Apteka, Integer> {
     boolean existsByLogin(String login);
 
-    boolean existsByUserGroupAndNumber(Integer userGroupId, Integer number);
+    boolean existsByUserGroup_IdAndNumber(Integer userGroupId, Integer number);
 
     Optional<Apteka> findByLogin(String login);
 

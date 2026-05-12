@@ -32,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.apteka.portal.components.AvatarClientService;
 import com.apteka.portal.components.ClientSecurityService;
+import com.apteka.portal.components.PasswordValidator;
 import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
@@ -60,6 +61,8 @@ public class ClientServiceTest {
     private TaskRepository taskRepository;
     @Mock
     private ClientSecurityService clientSecurityService;
+    @Mock
+    private PasswordValidator passwordValidator;
 
     @InjectMocks
     private ClientService clientService;

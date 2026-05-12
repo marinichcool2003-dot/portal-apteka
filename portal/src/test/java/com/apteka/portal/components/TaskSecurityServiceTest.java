@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -35,286 +36,500 @@ import com.apteka.portal.services.WorkTypeService;
 
 @ExtendWith(MockitoExtension.class)
 public class TaskSecurityServiceTest {
-        @Mock
-        private ClientService clientService;
-        @Mock
-        private WorkTypeService workTypeService;
+	@Mock
+	private ClientService clientService;
+	@Mock
+	private WorkTypeService workTypeService;
 
-        @InjectMocks
-        private TaskSecurityService taskSecurityService;
+	@InjectMocks
+	private TaskSecurityService taskSecurityService;
 
-        @Test
-        void validateCanCreate_UserToGroup() {
-                Integer workTypeId = TestData.defaultWorkType().getId();
+	@Test
+	void validateCanCreate_UserToGroup() {
+		Integer workTypeId = TestData.defaultWorkType().getId();
 
-                TaskRequestDTO dto = TaskRequestDTO.builder()
-                                .workTypeId(workTypeId)
-                                .build();
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.workTypeId(workTypeId)
+				.build();
 
-                AppUserDetails currentUser = TestData.mockJustUser();
+		AppUserDetails currentUser = TestData.mockJustUser();
 
-                when(workTypeService.getOne(workTypeId)).thenReturn(TestData.defaultWorkType());
+		when(workTypeService.getOne(workTypeId)).thenReturn(TestData.defaultWorkType());
 
-                assertDoesNotThrow(() -> {
-                        taskSecurityService.validateCanCreate(dto, currentUser);
-                });
+		assertDoesNotThrow(() -> {
+			taskSecurityService.validateCanCreate(dto, currentUser);
+		});
 
-                verify(workTypeService, times(1)).getOne(workTypeId);
-        }
+		verify(workTypeService, times(1)).getOne(workTypeId);
+	}
 
-        @Test
-        void validateCanCreate_UserToAnotherUserInGroup() {
-                Integer workTypeId = TestData.newDefaultWorkType().getId();
-                UUID assignedClientId = TestData.mockJustSenior().getClientId();
-                TaskRequestDTO dto = TaskRequestDTO.builder()
-                                .workTypeId(workTypeId)
-                                .assignedClientId(assignedClientId)
-                                .build();
-                AppUserDetails currentUser = TestData.mockJustUser();
+	@Test
+	void validateCanCreate_UserToAnotherUserInGroup() {
+		Integer workTypeId = TestData.newDefaultWorkType().getId();
+		UUID assignedClientId = TestData.mockJustSenior().getClientId();
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.workTypeId(workTypeId)
+				.assignedClientId(assignedClientId)
+				.build();
+		AppUserDetails currentUser = TestData.mockJustUser();
 
-                when(workTypeService.getOne(workTypeId)).thenReturn(TestData.newDefaultWorkType());
+		when(workTypeService.getOne(workTypeId)).thenReturn(TestData.newDefaultWorkType());
 
-                AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                                () -> taskSecurityService.validateCanCreate(dto, currentUser));
+		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+				() -> taskSecurityService.validateCanCreate(dto, currentUser));
 
-                assertEquals("Вы можете ставить задачи только сотрудникам своей группы или аптекам",
-                                exception.getMessage());
+		assertEquals("Вы можете ставить задачи только сотрудникам своей группы или аптекам",
+				exception.getMessage());
 
-                verify(workTypeService, times(1)).getOne(workTypeId);
-        }
+		verify(workTypeService, times(1)).getOne(workTypeId);
+	}
 
-        @Test
-        void validateCanCreate_WhenCurrentUserIsApteka() {
-                AppUserDetails currentUser = TestData.mockJustApteka();
+	@Test
+	void validateCanCreate_WhenCurrentUserIsApteka() {
+		AppUserDetails currentUser = TestData.mockJustApteka();
 
-                Integer workTypeId = TestData.newDefaultWorkType().getId();
-                TaskRequestDTO dto = TaskRequestDTO.builder()
-                                .workTypeId(workTypeId)
-                                .assignedClientId(UUID.randomUUID())
-                                .build();
+		Integer workTypeId = 2;
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.workTypeId(workTypeId)
+				.assignedClientId(UUID.randomUUID())
+				.build();
 
-                AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                                () -> taskSecurityService.validateCanCreate(dto, currentUser));
+		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+				() -> taskSecurityService.validateCanCreate(dto, currentUser));
 
-                assertEquals("Аптека не может ставить задачи на конкретного сотрудника", exception.getMessage());
-        }
+		assertEquals("Аптека не может ставить задачи на конкретного сотрудника", exception.getMessage());
+	}
 
-        @Test
-        void validateCanCreate_WhenWorkTypeNotForAssignedUser() {
-                AppUserDetails currentUser = TestData.mockJustBoss();
-                WorkType workType = TestData.defaultWorkType();
-                UserGroup userGroup = TestData.defaulUserGroup();
-                Client client = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
+	@Test
+	void validateCanCreate_WhenWorkTypeNotForAssignedUser() {
+		AppUserDetails currentUser = TestData.mockJustBoss();
+		WorkType workType = TestData.defaultWorkType();
+		UserGroup userGroup = TestData.defaulUserGroup();
+		Client client = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
 
-                TaskRequestDTO dto = TaskRequestDTO.builder()
-                                .assignedClientId(client.getId())
-                                .workTypeId(workType.getId())
-                                .build();
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.assignedClientId(client.getId())
+				.workTypeId(workType.getId())
+				.build();
 
-                when(clientService.getOne(client.getId())).thenReturn(client);
+		when(clientService.getOne(client.getId())).thenReturn(client);
 
-                AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                                () -> taskSecurityService.validateCanCreate(dto, currentUser));
+		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+				() -> taskSecurityService.validateCanCreate(dto, currentUser));
 
-                assertEquals("Вы можете ставить задачи сотруднику в рамке вида работ его группы",
-                                exception.getMessage());
+		assertEquals("Вы можете ставить задачи сотруднику в рамке вида работ его группы",
+				exception.getMessage());
 
-                verify(clientService, times(1)).getOne(client.getId());
-        }
+		verify(clientService, times(1)).getOne(client.getId());
+	}
 
-        @Test
-        void validateCanCreate_WhenHasElevatedPrivileges() {
-                AppUserDetails currentUser = TestData.mockJustSenior();
-                WorkType workType = TestData.defaultWorkType();
-                UserGroup userGroup = TestData.defaulUserGroup();
-                Client client = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
+	@Test
+	void validateCanCreate_WhenHasElevatedPrivileges() {
+		AppUserDetails currentUser = TestData.mockJustSenior();
+		WorkType workType = TestData.defaultWorkType();
+		UserGroup userGroup = TestData.defaulUserGroup();
+		Client client = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
 
-                TaskRequestDTO dto = TaskRequestDTO.builder()
-                                .assignedClientId(client.getId())
-                                .workTypeId(workType.getId())
-                                .build();
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.assignedClientId(client.getId())
+				.workTypeId(workType.getId())
+				.build();
 
-                when(clientService.getOne(client.getId())).thenReturn(client);
-                when(workTypeService.getOne(workType.getId())).thenReturn(workType);
+		when(clientService.getOne(client.getId())).thenReturn(client);
+		when(workTypeService.getOne(workType.getId())).thenReturn(workType);
 
-                assertDoesNotThrow(() -> taskSecurityService.validateCanCreate(dto, currentUser));
+		assertDoesNotThrow(() -> taskSecurityService.validateCanCreate(dto, currentUser));
 
-                verify(clientService, times(1)).getOne(client.getId());
-                verify(workTypeService, times(1)).getOne(workType.getId());
-        }
+		verify(clientService, times(1)).getOne(client.getId());
+		verify(workTypeService, times(1)).getOne(workType.getId());
+	}
 
-        @Test
-        void validateCanUpdate_WhenUserUpdateHisTask() {
-                AppUserDetails currentUser = TestData.mockJustUser();
-                Client assignedClient = Client.builder()
-                                .id(currentUser.getClientId())
-                                .build();
-                Task task = Task.builder()
-                                .description("Описание")
-                                .assignedClient(assignedClient)
-                                .build();
-                TaskRequestDTO dto = TaskRequestDTO.builder()
-                                .description("Новое Описание")
-                                .build();
+	@Test
+	void validateCanUpdate_WhenUserUpdateHisTask() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+		Client assignedClient = Client.builder()
+				.id(currentUser.getClientId())
+				.build();
+		Task task = Task.builder()
+				.description("Описание")
+				.assignedClient(assignedClient)
+				.build();
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.description("Новое Описание")
+				.build();
 
-                assertDoesNotThrow(() -> {
-                        taskSecurityService.validateCanUpdate(task, dto, currentUser);
-                });
+		assertDoesNotThrow(() -> {
+			taskSecurityService.validateCanUpdate(task, dto, currentUser);
+		});
 
-        }
+	}
 
-        @Test
-        void validateCanUpdate_WhenUserUpdateNotHisTask() {
-                AppUserDetails currentUser = TestData.mockJustUser();
-                Client assignedClient = Client.builder()
-                                .id(UUID.randomUUID())
-                                .build();
-                Task task = Task.builder()
-                                .description("Описание")
-                                .assignedClient(assignedClient)
-                                .build();
-                TaskRequestDTO dto = TaskRequestDTO.builder()
-                                .description("Новое Описание")
-                                .build();
+	@Test
+	void validateCanUpdate_WhenUserUpdateNotHisTask() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+		Client assignedClient = Client.builder()
+				.id(UUID.randomUUID())
+				.build();
+		Task task = Task.builder()
+				.description("Описание")
+				.assignedClient(assignedClient)
+				.build();
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.description("Новое Описание")
+				.build();
 
-                AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                                () -> taskSecurityService.validateCanUpdate(task, dto, currentUser));
+		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+				() -> taskSecurityService.validateCanUpdate(task, dto, currentUser));
 
-                assertEquals(
-                                "Обычный пользователь не может изменять задачу вне своего отдела или к которой не имеет отношение!",
-                                exception.getMessage());
-        }
+		assertEquals(
+				"Обычный пользователь не может изменять задачу вне своего отдела или к которой не имеет отношение!",
+				exception.getMessage());
+	}
 
-        @Test
-        void validateCanUpdate_WhenUserIsApteka() {
-                AppUserDetails currentUser = TestData.mockJustApteka();
-                Task task = Task.builder()
-                                .description("Описание")
-                                .build();
-                TaskRequestDTO dto = TaskRequestDTO.builder()
-                                .description("Новое Описание")
-                                .build();
+	@Test
+	void validateCanUpdate_WhenUserIsApteka() {
+		AppUserDetails currentUser = TestData.mockJustApteka();
+		Task task = Task.builder()
+				.description("Описание")
+				.build();
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.description("Новое Описание")
+				.build();
 
-                AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                                () -> taskSecurityService.validateCanUpdate(task, dto, currentUser));
+		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+				() -> taskSecurityService.validateCanUpdate(task, dto, currentUser));
 
-                assertEquals("Аптека не может изменять описание задачи, которую уже создала", exception.getMessage());
-        }
+		assertEquals("Аптека не может изменять описание задачи, которую уже создала", exception.getMessage());
+	}
 
-        @Test
-        void changeAssigner_WhenUserHasElevatedPrivileges() {
-                AppUserDetails currentUser = TestData.mockJustSenior();
-                WorkType workType = TestData.newDefaultWorkType();
-                Integer workTypeId = workType.getId();
+	@Test
+	void changeAssigner_WhenUserHasElevatedPrivileges() {
+		AppUserDetails currentUser = TestData.mockJustSenior();
+		WorkType workType = TestData.newDefaultWorkType();
+		Integer workTypeId = workType.getId();
 
-                when(workTypeService.getOne(workTypeId)).thenReturn(workType);
+		when(workTypeService.getOne(workTypeId)).thenReturn(workType);
 
-                Task task = Task.builder().assignedClient(null).workType(workType).build();
-                TaskRequestDTO dto = TaskRequestDTO.builder().assignedClientId(UUID.randomUUID()).workTypeId(workTypeId)
-                                .build();
+		Task task = Task.builder().assignedClient(null).workType(workType).build();
+		TaskRequestDTO dto = TaskRequestDTO.builder().assignedClientId(UUID.randomUUID()).workTypeId(workTypeId)
+				.build();
 
-                boolean result = assertDoesNotThrow(() -> taskSecurityService.changeAssigner(task, dto, currentUser));
+		boolean result = assertDoesNotThrow(() -> taskSecurityService.changeAssigner(task, dto, currentUser));
 
-                assertTrue(result, "Метод должен вернуть true");
-        }
+		assertTrue(result, "Метод должен вернуть true");
+	}
 
-        @Test
-        void changeAssigner_WhenUsersInGroupAndUserRelatedToTask() {
-                AppUserDetails currentUser = TestData.mockJustUser();
-                UserGroup userGroup = TestData.defaulUserGroup();
-                Client oldAssignedClient = Client.builder().id(currentUser.getClientId()).userGroup(userGroup).build();
-                Client newAssignedClient = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
-                WorkType workType = TestData.defaultWorkType();
-                Task task = Task.builder().assignedClient(oldAssignedClient).workType(workType).build();
-                TaskRequestDTO dto = TaskRequestDTO.builder().assignedClientId(newAssignedClient.getId())
-                                .workTypeId(workType.getId()).build();
+	@Test
+	void changeAssigner_WhenUsersInGroupAndUserRelatedToTask() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+		UserGroup userGroup = TestData.defaulUserGroup();
+		Client oldAssignedClient = Client.builder().id(currentUser.getClientId()).userGroup(userGroup).build();
+		Client newAssignedClient = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
+		WorkType workType = TestData.defaultWorkType();
+		Task task = Task.builder().assignedClient(oldAssignedClient).workType(workType).build();
+		TaskRequestDTO dto = TaskRequestDTO.builder().assignedClientId(newAssignedClient.getId())
+				.workTypeId(workType.getId()).build();
 
-                when(workTypeService.getOne(workType.getId())).thenReturn(workType);
-                when(clientService.getOne(newAssignedClient.getId())).thenReturn(newAssignedClient);
+		when(workTypeService.getOne(workType.getId())).thenReturn(workType);
+		when(clientService.getOne(newAssignedClient.getId())).thenReturn(newAssignedClient);
 
-                boolean result = assertDoesNotThrow(() -> taskSecurityService.changeAssigner(task, dto, currentUser));
-                assertTrue(result, "Метод должен вернуть true");
+		boolean result = assertDoesNotThrow(() -> taskSecurityService.changeAssigner(task, dto, currentUser));
+		assertTrue(result, "Метод должен вернуть true");
 
-                verify(workTypeService, times(1)).getOne(workType.getId());
-                verify(clientService, times(1)).getOne(newAssignedClient.getId());
-        }
+		verify(workTypeService, times(1)).getOne(workType.getId());
+		verify(clientService, times(1)).getOne(newAssignedClient.getId());
+	}
 
-        @Test
-        void changeAssigner_WhenAssignerUserInAnotherGroup() {
-                AppUserDetails currentUser = TestData.mockJustUser();
-                UserGroup myGroup = currentUser.getUserGroup();
-                UserGroup anotherGroup = TestData.newDefaulUserGroup();
-                Client oldAssignedClient = Client.builder().id(currentUser.getClientId()).userGroup(myGroup).build();
-                Client newAssignedClient = Client.builder().id(UUID.randomUUID()).userGroup(anotherGroup).build();
-                WorkType workType = TestData.defaultWorkType();
+	@Test
+	void changeAssigner_WhenAssignerUserInAnotherGroup() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+		UserGroup myGroup = currentUser.getUserGroup();
+		UserGroup anotherGroup = TestData.newDefaulUserGroup();
+		Client oldAssignedClient = Client.builder().id(currentUser.getClientId()).userGroup(myGroup).build();
+		Client newAssignedClient = Client.builder().id(UUID.randomUUID()).userGroup(anotherGroup).build();
+		WorkType workType = TestData.defaultWorkType();
 
-                workType.getGroupTask().setUserGroup(myGroup);
+		workType.getGroupTask().setUserGroup(myGroup);
 
-                Task task = Task.builder()
-                                .assignedClient(oldAssignedClient)
-                                .workType(workType)
-                                .build();
+		Task task = Task.builder()
+				.assignedClient(oldAssignedClient)
+				.workType(workType)
+				.build();
 
-                TaskRequestDTO dto = TaskRequestDTO.builder()
-                                .assignedClientId(newAssignedClient.getId())
-                                .workTypeId(workType.getId())
-                                .build();
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.assignedClientId(newAssignedClient.getId())
+				.workTypeId(workType.getId())
+				.build();
 
-                when(workTypeService.getOne(dto.workTypeId())).thenReturn(workType);
-                when(clientService.getOne(dto.assignedClientId())).thenReturn(newAssignedClient);
+		when(workTypeService.getOne(dto.workTypeId())).thenReturn(workType);
+		when(clientService.getOne(dto.assignedClientId())).thenReturn(newAssignedClient);
 
-                AccessDeniedException exception = assertThrows(AccessDeniedException.class,
-                                () -> taskSecurityService.changeAssigner(task, dto, currentUser));
+		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+				() -> taskSecurityService.changeAssigner(task, dto, currentUser));
 
-                assertEquals(
-                                "Пользователь без прав доступа может изменять исполнителей только своих собственных или назначенных ему задач и переводить их внутри своей группы",
-                                exception.getMessage());
+		assertEquals(
+				"Пользователь без прав доступа может изменять исполнителей только своих собственных или назначенных ему задач и переводить их внутри своей группы",
+				exception.getMessage());
 
-                verify(workTypeService, times(1)).getOne(dto.workTypeId());
-                verify(clientService, times(1)).getOne(dto.assignedClientId());
-        }
+		verify(workTypeService, times(1)).getOne(dto.workTypeId());
+		verify(clientService, times(1)).getOne(dto.assignedClientId());
+	}
 
-        @Test
-        void validateStatus_WhenAptekaChangeStatus_Succesful() {
-                AppUserDetails currentUser = TestData.mockJustApteka();
-                Apteka apteka = Apteka.builder().id(currentUser.getAptekaId()).build();
-                Task task = Task.builder().createdByApteka(apteka).build();
-                task.changeStatus(TaskStatus.OPEN);
+	@Test
+	void validateStatus_WhenAptekaChangeStatus_Succesful() {
+		AppUserDetails currentUser = TestData.mockJustApteka();
+		Apteka apteka = Apteka.builder().id(currentUser.getAptekaId()).build();
+		Task task = Task.builder().createdByApteka(apteka).build();
+		task.changeStatus(TaskStatus.OPEN);
 
-                assertDoesNotThrow(() -> {
-                        taskSecurityService.validateStatus(task, currentUser);
-                });
-        }
+		assertDoesNotThrow(() -> {
+			taskSecurityService.validateStatus(task, currentUser);
+		});
+	}
 
-        @Test
-        void validateStatus_WhenSeniorChangeStatus_Succesful() {
-                AppUserDetails currentUser = TestData.mockJustSenior();
-                Task task = Task.builder().title("Заголовок").build();
-                task.changeStatus(TaskStatus.OPEN);
+	@Test
+	void validateStatus_WhenSeniorChangeStatus_Succesful() {
+		AppUserDetails currentUser = TestData.mockJustSenior();
+		Task task = Task.builder().title("Заголовок").build();
+		task.changeStatus(TaskStatus.OPEN);
 
-                assertDoesNotThrow(() -> {
-                        taskSecurityService.validateStatus(task, currentUser);
-                });
-        }
+		assertDoesNotThrow(() -> {
+			taskSecurityService.validateStatus(task, currentUser);
+		});
+	}
 
-        @Test
-        void validateStatus_WhenSeniorChangeStatusAlreadyClosedTask() {
-                AppUserDetails currentUser = TestData.mockJustSenior();
-                Task task = Task.builder().title("Заголовок").build();
-                task.changeStatus(TaskStatus.CLOSED);
+	@Test
+	void validateStatus_WhenSeniorChangeStatusAlreadyClosedTask() {
+		AppUserDetails currentUser = TestData.mockJustSenior();
+		Task task = Task.builder().title("Заголовок").build();
+		task.changeStatus(TaskStatus.CLOSED);
 
-                LocalDateTime closeDate = LocalDateTime.of(2023, 1, 1, 12, 0);
-                task.changeStatus(TaskStatus.CLOSED);
-                task.setClosingDate(closeDate);
+		LocalDateTime closeDate = LocalDateTime.of(2023, 1, 1, 12, 0);
+		task.changeStatus(TaskStatus.CLOSED);
+		task.setClosingDate(closeDate);
 
-                LocalDateTime marchDate = LocalDateTime.of(2023, 3, 1, 12, 0);
+		LocalDateTime marchDate = LocalDateTime.of(2023, 3, 1, 12, 0);
 
-                try (MockedStatic<LocalDateTime> mockedTime = mockStatic(LocalDateTime.class)) {
-                        mockedTime.when(LocalDateTime::now).thenReturn(marchDate);
+		try (MockedStatic<LocalDateTime> mockedTime = mockStatic(LocalDateTime.class)) {
+			mockedTime.when(LocalDateTime::now).thenReturn(marchDate);
 
-                        assertThrows(BlockChangeIfNotActuallyTaskException.class, () -> {
-                                taskSecurityService.validateStatus(task, currentUser);
-                        });
-                }
-        }
+			assertThrows(BlockChangeIfNotActuallyTaskException.class, () -> {
+				taskSecurityService.validateStatus(task, currentUser);
+			});
+		}
+	}
+
+	@Test
+	void changeAssigner_WhenAssignmentNotChanged_ReturnFalse() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+
+		Client assignedClient = Client.builder()
+				.id(currentUser.getClientId())
+				.userGroup(TestData.defaulUserGroup())
+				.build();
+
+		WorkType workType = TestData.defaultWorkType();
+
+		Task task = Task.builder()
+				.assignedClient(assignedClient)
+				.workType(workType)
+				.build();
+
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.assignedClientId(assignedClient.getId())
+				.workTypeId(workType.getId())
+				.build();
+
+		when(workTypeService.getOne(workType.getId()))
+				.thenReturn(workType);
+
+		boolean result = taskSecurityService.changeAssigner(task, dto, currentUser);
+
+		assertTrue(!result);
+
+		verify(workTypeService, times(1))
+				.getOne(workType.getId());
+	}
+
+	@Test
+	void changeWorkTypeToAnotherDepartament_WhenSenior_ReturnTrue() {
+		AppUserDetails currentUser = TestData.mockJustSenior();
+
+		WorkType oldWorkType = TestData.defaultWorkType();
+		WorkType newWorkType = TestData.newDefaultWorkType();
+		newWorkType.setId(2);
+
+		Task task = Task.builder()
+				.workType(oldWorkType)
+				.build();
+
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.workTypeId(newWorkType.getId())
+				.build();
+
+		boolean result = taskSecurityService
+				.changeWorkTypeToAnotherDepartament(task, dto, currentUser);
+
+		assertTrue(result);
+	}
+
+	@Test
+	void changeWorkTypeToAnotherDepartament_WhenJustUser_ReturnFalse() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+
+		WorkType oldWorkType = TestData.defaultWorkType();
+		WorkType newWorkType = TestData.newDefaultWorkType();
+
+		Task task = Task.builder()
+				.workType(oldWorkType)
+				.build();
+
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.workTypeId(newWorkType.getId())
+				.build();
+
+		boolean result = taskSecurityService
+				.changeWorkTypeToAnotherDepartament(task, dto, currentUser);
+
+		assertTrue(!result);
+	}
+
+	@Test
+	void validateStatus_WhenUserRelatedToTask_Success() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+
+		Client assignedClient = Client.builder()
+				.id(currentUser.getClientId())
+				.build();
+
+		Task task = Task.builder()
+				.assignedClient(assignedClient)
+				.build();
+
+		task.changeStatus(TaskStatus.OPEN);
+
+		assertDoesNotThrow(() -> {
+			taskSecurityService.validateStatus(task, currentUser);
+		});
+	}
+
+	@Test
+	void validateStatus_WhenUserNotRelated_Throws() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+
+		Client assignedClient = Client.builder()
+				.id(UUID.randomUUID())
+				.build();
+
+		Task task = Task.builder()
+				.assignedClient(assignedClient)
+				.build();
+
+		task.changeStatus(TaskStatus.OPEN);
+
+		AccessDeniedException exception = assertThrows(
+				AccessDeniedException.class,
+				() -> taskSecurityService.validateStatus(task, currentUser));
+
+		assertEquals(
+				"Пользователь без прав доступа может изменять только свои собственные или назначенные ему задачи",
+				exception.getMessage());
+	}
+
+	@Test
+	void validateStatus_WhenAptekaNotRelated_Throws() {
+		AppUserDetails currentUser = TestData.mockJustApteka();
+
+		Apteka anotherApteka = Apteka.builder()
+				.id(999)
+				.build();
+
+		Task task = Task.builder()
+				.createdByApteka(anotherApteka)
+				.build();
+
+		task.changeStatus(TaskStatus.OPEN);
+
+		AccessDeniedException exception = assertThrows(
+				AccessDeniedException.class,
+				() -> taskSecurityService.validateStatus(task, currentUser));
+
+		assertEquals(
+				"Аптека может изменять только свои собственные или назначенные ей задачи",
+				exception.getMessage());
+	}
+
+	@Test
+	void validateStatus_WhenTaskDenied_Throws() {
+		AppUserDetails currentUser = TestData.mockJustSenior();
+
+		Task task = Task.builder()
+				.title("Task")
+				.build();
+
+		task.changeStatus(TaskStatus.DENIED);
+
+		assertThrows(
+				BlockChangeIfNotActuallyTaskException.class,
+				() -> taskSecurityService.validateStatus(task, currentUser));
+	}
+
+	@Test
+	void validateStatus_WhenTaskClosedLessThanMonth_Success() {
+		AppUserDetails currentUser = TestData.mockJustSenior();
+
+		Task task = Task.builder()
+				.title("Task")
+				.build();
+
+		task.changeStatus(TaskStatus.CLOSED);
+
+		LocalDateTime closeDate = LocalDateTime.now().minusDays(10);
+		task.setClosingDate(closeDate);
+
+		assertDoesNotThrow(() -> {
+			taskSecurityService.validateStatus(task, currentUser);
+		});
+	}
+
+	@Test
+	void validateCanCreate_WhenUserAssignTaskToAptekaFromAnotherGroup_Success() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+
+		WorkType workType = TestData.newDefaultWorkType();
+
+		TaskRequestDTO dto = TaskRequestDTO.builder()
+				.workTypeId(workType.getId())
+				.assignedAptekaId(10)
+				.build();
+
+		when(workTypeService.getOne(workType.getId()))
+				.thenReturn(workType);
+
+		assertDoesNotThrow(() -> {
+			taskSecurityService.validateCanCreate(dto, currentUser);
+		});
+
+		verify(workTypeService, times(1))
+				.getOne(workType.getId());
+	}
+
+	@Test
+	void validateCanUpdate_WhenDtoIsEmpty_Success() {
+		AppUserDetails currentUser = TestData.mockJustUser();
+
+		Task task = Task.builder()
+				.title("Title")
+				.description("Description")
+				.build();
+
+		TaskRequestDTO dto = TaskRequestDTO.builder().build();
+
+		assertDoesNotThrow(() -> {
+			taskSecurityService.validateCanUpdate(task, dto, currentUser);
+		});
+
+		verifyNoInteractions(clientService);
+		verifyNoInteractions(workTypeService);
+	}
 }

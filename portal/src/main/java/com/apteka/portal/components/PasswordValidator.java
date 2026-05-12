@@ -1,4 +1,4 @@
-package com.apteka.portal.dtos.request;
+package com.apteka.portal.components;
 
 import org.springframework.stereotype.Component;
 

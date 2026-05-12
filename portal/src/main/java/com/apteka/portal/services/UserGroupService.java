@@ -2,6 +2,7 @@ package com.apteka.portal.services;
 
 import com.apteka.portal.components.UserGroupSecurityService;
 import com.apteka.portal.dtos.request.UserGroupRequestDTO;
+import com.apteka.portal.dtos.response.UserGroupResponseDTO;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,34 +29,37 @@ public class UserGroupService {
     private final UserGroupSecurityService userGroupSecurityService;
     private final UserGroupRepository userGroupRepository;
 
-    @Cacheable(value = CacheNames.USER_GROUPS_LIST)
+    @Cacheable(value = CacheNames.USER_GROUPS_LIST, sync = true)
     @Transactional(readOnly = true)
-    public List<UserGroup> getAll() {
-        return userGroupRepository.findAll();
+    public List<UserGroupResponseDTO> getAll() {
+        return userGroupRepository.findAll().stream()
+                .map(UserGroupResponseDTO::from)
+                .toList();
     }
 
-    @Cacheable(value = CacheNames.USER_GROUP, key = "#id")
+    @Cacheable(value = CacheNames.USER_GROUP, key = "#id", sync = true)
     @Transactional(readOnly = true)
-    public UserGroup getOne(Integer id) {
-        return userGroupRepository.findById(id)
+    public UserGroupResponseDTO getOne(Integer id) {
+        UserGroup group = userGroupRepository.findById(id)
                 .orElseThrow(() -> new GroupClientNotFoundException(id));
+        return UserGroupResponseDTO.from(group);
     }
 
     @Caching(evict = {
             @CacheEvict(value = CacheNames.USER_GROUPS_LIST, allEntries = true)
     })
     @Transactional
-    public UserGroup create(UserGroupRequestDTO dto) {
+    public UserGroupResponseDTO create(UserGroupRequestDTO dto) {
         userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
         try {
-            return userGroupRepository.save(UserGroup.builder()
+            UserGroup group = userGroupRepository.save(UserGroup.builder()
                     .name(validateNameGroup(dto.name(), null))
                     .phoneNumber(dto.phoneNumber())
                     .build());
+            return UserGroupResponseDTO.from(group);
         } catch (DataIntegrityViolationException e) {
             throw new DublicateGroupUserException(dto.name());
         }
-
     }
 
     @Caching(evict = {
@@ -64,12 +68,13 @@ public class UserGroupService {
             @CachePut(value = CacheNames.USER_GROUP, key = "#id")
     })
     @Transactional
-    public UserGroup update(Integer id, UserGroupRequestDTO dto) {
+    public UserGroupResponseDTO update(Integer id, UserGroupRequestDTO dto) {
         userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
-        UserGroup upGroup = getOne(id);
+        UserGroup upGroup = userGroupRepository.findById(id)
+                .orElseThrow(() -> new GroupClientNotFoundException(id));
         upGroup.setName(validateNameGroup(dto.name(), id));
         upGroup.setPhoneNumber(dto.phoneNumber());
-        return upGroup;
+        return UserGroupResponseDTO.from(upGroup);
     }
 
     @Caching(evict = {
@@ -77,12 +82,13 @@ public class UserGroupService {
             @CacheEvict(value = CacheNames.USER_GROUPS_LIST, allEntries = true),
             @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#id"),
             @CacheEvict(value = CacheNames.GROUP_TASK, allEntries = true),
-            @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, allEntries = true) 
+            @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, allEntries = true)
     })
     @Transactional
     public void delete(Integer id) {
         userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
-        UserGroup deletedGroup = getOne(id);
+        UserGroup deletedGroup = userGroupRepository.findById(id)
+                .orElseThrow(() -> new GroupClientNotFoundException(id));
         userGroupRepository.delete(deletedGroup);
     }
 
@@ -94,8 +100,7 @@ public class UserGroupService {
                 throw new DublicateGroupUserException();
             }
         });
-
+        
         return cleanName;
     }
-
 }

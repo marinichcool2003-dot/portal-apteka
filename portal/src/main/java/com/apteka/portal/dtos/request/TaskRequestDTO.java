@@ -18,7 +18,6 @@ public record TaskRequestDTO(
     @NotBlank
     Integer workTypeId,
 
-    @NotBlank
     String statusDescription,
 
     Integer assignedAptekaId,

@@ -7,9 +7,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.apteka.portal.components.PasswordValidator;
 import com.apteka.portal.dtos.request.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
-import com.apteka.portal.dtos.request.PasswordValidator;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.DublicateAptekaFullNameException;
@@ -61,6 +61,7 @@ public class AptekaService {
         validateAptekaNumberInGroup(dto.number(), dto.groupId());
         valdiateAptekaAdress(dto.adress());
         validatePhoneNumber(dto.phoneNumber());
+        String cleanPhoneNumber = dto.phoneNumber().replaceAll("\\D", "");
 
         String cleanLogin = dto.login().strip();
 
@@ -69,6 +70,7 @@ public class AptekaService {
                 .password(passwordEncoder.encode(dto.password()))
                 .number(dto.number())
                 .userGroup(userGroup)
+                .phoneNumber(cleanPhoneNumber)
                 .build();
 
         return aptekaRepository.save(apteka);
@@ -119,6 +121,12 @@ public class AptekaService {
             apteka.setUserGroup(userGroup);
         }
 
+        if (dto.phoneNumber() != null && !dto.phoneNumber().isBlank()) {
+            validatePhoneNumber(dto.phoneNumber());
+            String cleanPhoneNumber = dto.phoneNumber().replaceAll("\\D", "");
+            apteka.setPhoneNumber(cleanPhoneNumber);
+        }
+
         Apteka savedApteka = aptekaRepository.save(apteka);
 
         if (needsLogout) {
@@ -154,7 +162,7 @@ public class AptekaService {
         if (number == 0 || number == null) {
             throw new InvalidAptekaNumberException();
         }
-        if (aptekaRepository.existsByUserGroupAndNumber(groupId, number)) {
+        if (aptekaRepository.existsByUserGroup_IdAndNumber(groupId, number)) {
             throw new DublicateAptekaFullNameException("Аптека с таким юридическим лицом и номером уже существует");
         }
     }
