@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.apteka.portal.dtos.response.TaskCommentResponseDTO;
 import com.apteka.portal.exceptions.AvtorCommentNotInputException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
@@ -20,10 +21,10 @@ import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.Task;
-import com.apteka.portal.models.TaskComments;
+import com.apteka.portal.models.TaskComment;
 import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.repository.ClientRepository;
-import com.apteka.portal.repository.TaskCommentsRepository;
+import com.apteka.portal.repository.TaskCommentRepository;
 import com.apteka.portal.repository.TaskRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,7 +34,7 @@ public class TaskCommentsServiceTest {
     private AptekaRepository aptekaRepository;
 
     @Mock
-    private TaskCommentsRepository taskCommentsRepository;
+    private TaskCommentRepository taskCommentsRepository;
 
     @Mock
     private TaskRepository taskRepository;
@@ -42,14 +43,14 @@ public class TaskCommentsServiceTest {
     private ClientRepository clientRepository;
 
     @InjectMocks
-    private TaskCommentsService taskCommentsService;
+    private TaskCommentService taskCommentsService;
 
     @Test
     void getAll_Success() {
         when(taskCommentsRepository.findAll())
-                .thenReturn(List.of(TaskComments.builder().build()));
+                .thenReturn(List.of(TaskComment.builder().build()));
 
-        List<TaskComments> result = taskCommentsService.getAll();
+        List<TaskCommentResponseDTO> result = taskCommentsService.getAll();
 
         assertEquals(1, result.size());
         verify(taskCommentsRepository, times(1)).findAll();
@@ -61,9 +62,9 @@ public class TaskCommentsServiceTest {
 
         when(taskRepository.existsById(taskId)).thenReturn(true);
         when(taskCommentsRepository.findByTaskId(taskId))
-                .thenReturn(List.of(TaskComments.builder().build()));
+                .thenReturn(List.of(TaskComment.builder().build()));
 
-        List<TaskComments> result = taskCommentsService.getByTask(taskId);
+        List<TaskCommentResponseDTO> result = taskCommentsService.getByTask(taskId);
 
         assertEquals(1, result.size());
 
@@ -88,12 +89,12 @@ public class TaskCommentsServiceTest {
     void getOne_WhenExists_Success() {
         Long id = 1L;
 
-        TaskComments comment = TaskComments.builder().build();
+        TaskComment comment = TaskComment.builder().build();
 
         when(taskCommentsRepository.findById(id))
                 .thenReturn(Optional.of(comment));
 
-        TaskComments result = taskCommentsService.getOne(id);
+        TaskCommentResponseDTO result = taskCommentsService.getOne(id);
 
         assertNotNull(result);
         verify(taskCommentsRepository, times(1)).findById(id);
@@ -125,7 +126,7 @@ public class TaskCommentsServiceTest {
                 .id(user.getClientId())
                 .build();
 
-        TaskComments saved = TaskComments.builder()
+        TaskComment saved = TaskComment.builder()
                 .comment(comment)
                 .task(task)
                 .client(client)
@@ -137,10 +138,10 @@ public class TaskCommentsServiceTest {
         when(clientRepository.getReferenceById(user.getClientId()))
                 .thenReturn(client);
 
-        when(taskCommentsRepository.save(any(TaskComments.class)))
+        when(taskCommentsRepository.save(any(TaskComment.class)))
                 .thenReturn(saved);
 
-        TaskComments result = taskCommentsService.create(comment, taskId, user);
+        TaskComment result = taskCommentsService.create(comment, taskId, user);
 
         assertNotNull(result);
         assertEquals(comment, result.getComment());
@@ -149,7 +150,7 @@ public class TaskCommentsServiceTest {
 
         verify(taskRepository, times(1)).findById(taskId);
         verify(clientRepository, times(1)).getReferenceById(user.getClientId());
-        verify(taskCommentsRepository, times(1)).save(any(TaskComments.class));
+        verify(taskCommentsRepository, times(1)).save(any(TaskComment.class));
     }
 
     @Test
@@ -165,7 +166,7 @@ public class TaskCommentsServiceTest {
                 .id(user.getAptekaId())
                 .build();
 
-        TaskComments saved = TaskComments.builder()
+        TaskComment saved = TaskComment.builder()
                 .comment(comment)
                 .task(task)
                 .apteka(apteka)
@@ -177,10 +178,10 @@ public class TaskCommentsServiceTest {
         when(aptekaRepository.getReferenceById(user.getAptekaId()))
                 .thenReturn(apteka);
 
-        when(taskCommentsRepository.save(any(TaskComments.class)))
+        when(taskCommentsRepository.save(any(TaskComment.class)))
                 .thenReturn(saved);
 
-        TaskComments result = taskCommentsService.create(comment, taskId, user);
+        TaskComment result = taskCommentsService.create(comment, taskId, user);
 
         assertNotNull(result);
         assertEquals(comment, result.getComment());
@@ -189,7 +190,7 @@ public class TaskCommentsServiceTest {
 
         verify(taskRepository, times(1)).findById(taskId);
         verify(aptekaRepository, times(1)).getReferenceById(user.getAptekaId());
-        verify(taskCommentsRepository, times(1)).save(any(TaskComments.class));
+        verify(taskCommentsRepository, times(1)).save(any(TaskComment.class));
     }
 
     @Test

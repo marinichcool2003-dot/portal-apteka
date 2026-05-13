@@ -6,7 +6,7 @@ import java.util.Optional;
 
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.Task;
-import com.apteka.portal.models.TaskComments;
+import com.apteka.portal.models.TaskComment;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.WorkType;
 
@@ -27,7 +27,7 @@ public record TaskResponseDTO(
         String assignedAptekaLogin,
         String assignedClientFullName,
         String assignedUserGroup,
-        List<TaskComments> Allcomments 
+        List<TaskComment> Allcomments 
 ) {
     public static TaskResponseDTO from(Task task) {
         return new TaskResponseDTO(

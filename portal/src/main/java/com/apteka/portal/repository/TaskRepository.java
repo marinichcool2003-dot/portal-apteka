@@ -1,6 +1,7 @@
 package com.apteka.portal.repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -77,7 +78,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
                     ug.id,
                     ug.name,
                     SUM(CASE WHEN str(t.status) IN ('OPEN', 'PROCESSED') THEN 1L ELSE 0L END),
-                    SUM(CASE WHEN str(t.status) = 'CLOSE' THEN 1L ELSE 0L END),
+                    SUM(CASE WHEN str(t.status) = 'CLOSED' THEN 1L ELSE 0L END),
                     COUNT(t)
                 )
                 FROM Task t
@@ -87,4 +88,13 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
                 GROUP BY ug.id, ug.name
             """)
     List<GroupTaskStatsDTO> getGroupUserStats();
+
+    @Query("""
+                SELECT DISTINCT t FROM Task t
+                JOIN FETCH t.workType w
+                LEFT JOIN FETCH t.pictures
+                LEFT JOIN FETCH t.employeeComments
+                WHERE t.id = :id
+            """)
+    Optional<Task> findByIdWithPicturesAndComments(@Param("id") Long id);
 }

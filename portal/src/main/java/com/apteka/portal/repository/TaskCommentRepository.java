@@ -5,9 +5,9 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.apteka.portal.models.TaskComments;
+import com.apteka.portal.models.TaskComment;
 
 @Repository
-public interface TaskCommentsRepository extends JpaRepository<TaskComments, Long>{
-    List<TaskComments> findByTaskId(Long taskId);
+public interface TaskCommentRepository extends JpaRepository<TaskComment, Long>{
+    List<TaskComment> findByTaskId(Long taskId);
 }

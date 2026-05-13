@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -30,16 +31,16 @@ import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.WorkType;
-import com.apteka.portal.services.ClientService;
+import com.apteka.portal.repository.ClientRepository;
+import com.apteka.portal.repository.WorkTypeRepository;
 import com.apteka.portal.services.TestData;
-import com.apteka.portal.services.WorkTypeService;
 
 @ExtendWith(MockitoExtension.class)
 public class TaskSecurityServiceTest {
 	@Mock
-	private ClientService clientService;
+	private ClientRepository clientRepository;
 	@Mock
-	private WorkTypeService workTypeService;
+	private WorkTypeRepository workTypeRepository;
 
 	@InjectMocks
 	private TaskSecurityService taskSecurityService;
@@ -54,13 +55,13 @@ public class TaskSecurityServiceTest {
 
 		AppUserDetails currentUser = TestData.mockJustUser();
 
-		when(workTypeService.getOne(workTypeId)).thenReturn(TestData.defaultWorkType());
+		when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(TestData.defaultWorkType()));
 
 		assertDoesNotThrow(() -> {
 			taskSecurityService.validateCanCreate(dto, currentUser);
 		});
 
-		verify(workTypeService, times(1)).getOne(workTypeId);
+		verify(workTypeRepository, times(1)).findById(workTypeId);
 	}
 
 	@Test
@@ -73,7 +74,7 @@ public class TaskSecurityServiceTest {
 				.build();
 		AppUserDetails currentUser = TestData.mockJustUser();
 
-		when(workTypeService.getOne(workTypeId)).thenReturn(TestData.newDefaultWorkType());
+		when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(TestData.newDefaultWorkType()));
 
 		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
 				() -> taskSecurityService.validateCanCreate(dto, currentUser));
@@ -81,7 +82,7 @@ public class TaskSecurityServiceTest {
 		assertEquals("Вы можете ставить задачи только сотрудникам своей группы или аптекам",
 				exception.getMessage());
 
-		verify(workTypeService, times(1)).getOne(workTypeId);
+		verify(workTypeRepository, times(1)).findById(workTypeId);
 	}
 
 	@Test
@@ -89,30 +90,36 @@ public class TaskSecurityServiceTest {
 		AppUserDetails currentUser = TestData.mockJustApteka();
 
 		Integer workTypeId = 2;
+		WorkType workType = new WorkType().builder().id(workTypeId).build();
 		TaskRequestDTO dto = TaskRequestDTO.builder()
 				.workTypeId(workTypeId)
 				.assignedClientId(UUID.randomUUID())
 				.build();
+		when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(workType));
 
 		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
 				() -> taskSecurityService.validateCanCreate(dto, currentUser));
 
 		assertEquals("Аптека не может ставить задачи на конкретного сотрудника", exception.getMessage());
+		verify(workTypeRepository, times(1)).findById(workTypeId);
 	}
 
 	@Test
 	void validateCanCreate_WhenWorkTypeNotForAssignedUser() {
 		AppUserDetails currentUser = TestData.mockJustBoss();
-		WorkType workType = TestData.defaultWorkType();
+		Integer anotherWorkTypeId = 222;
+		WorkType anotherWorkType = WorkType.builder().id(anotherWorkTypeId).build();
 		UserGroup userGroup = TestData.defaulUserGroup();
 		Client client = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
 
 		TaskRequestDTO dto = TaskRequestDTO.builder()
 				.assignedClientId(client.getId())
-				.workTypeId(workType.getId())
+				.workTypeId(anotherWorkTypeId)
 				.build();
 
-		when(clientService.getOne(client.getId())).thenReturn(client);
+		when(workTypeRepository.findById(anotherWorkTypeId)).thenReturn(Optional.of(anotherWorkType));
+
+		when(clientRepository.findById(client.getId())).thenReturn(Optional.of(client));
 
 		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
 				() -> taskSecurityService.validateCanCreate(dto, currentUser));
@@ -120,7 +127,8 @@ public class TaskSecurityServiceTest {
 		assertEquals("Вы можете ставить задачи сотруднику в рамке вида работ его группы",
 				exception.getMessage());
 
-		verify(clientService, times(1)).getOne(client.getId());
+		verify(clientRepository, times(1)).findById(client.getId());
+		verify(workTypeRepository, times(1)).findById(anotherWorkTypeId);
 	}
 
 	@Test
@@ -135,13 +143,13 @@ public class TaskSecurityServiceTest {
 				.workTypeId(workType.getId())
 				.build();
 
-		when(clientService.getOne(client.getId())).thenReturn(client);
-		when(workTypeService.getOne(workType.getId())).thenReturn(workType);
+		when(clientRepository.findById(client.getId())).thenReturn(Optional.of(client));
+		when(workTypeRepository.findById(workType.getId())).thenReturn(Optional.of(workType));
 
 		assertDoesNotThrow(() -> taskSecurityService.validateCanCreate(dto, currentUser));
 
-		verify(clientService, times(1)).getOne(client.getId());
-		verify(workTypeService, times(1)).getOne(workType.getId());
+		verify(clientRepository, times(1)).findById(client.getId());
+		verify(workTypeRepository, times(1)).findById(workType.getId());
 	}
 
 	@Test
@@ -208,7 +216,7 @@ public class TaskSecurityServiceTest {
 		WorkType workType = TestData.newDefaultWorkType();
 		Integer workTypeId = workType.getId();
 
-		when(workTypeService.getOne(workTypeId)).thenReturn(workType);
+		when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(workType));
 
 		Task task = Task.builder().assignedClient(null).workType(workType).build();
 		TaskRequestDTO dto = TaskRequestDTO.builder().assignedClientId(UUID.randomUUID()).workTypeId(workTypeId)
@@ -217,6 +225,8 @@ public class TaskSecurityServiceTest {
 		boolean result = assertDoesNotThrow(() -> taskSecurityService.changeAssigner(task, dto, currentUser));
 
 		assertTrue(result, "Метод должен вернуть true");
+
+		verify(workTypeRepository, times(1)).findById(workTypeId);
 	}
 
 	@Test
@@ -230,14 +240,14 @@ public class TaskSecurityServiceTest {
 		TaskRequestDTO dto = TaskRequestDTO.builder().assignedClientId(newAssignedClient.getId())
 				.workTypeId(workType.getId()).build();
 
-		when(workTypeService.getOne(workType.getId())).thenReturn(workType);
-		when(clientService.getOne(newAssignedClient.getId())).thenReturn(newAssignedClient);
+		when(workTypeRepository.findById(workType.getId())).thenReturn(Optional.of(workType));
+		when(clientRepository.findById(newAssignedClient.getId())).thenReturn(Optional.of(newAssignedClient));
 
 		boolean result = assertDoesNotThrow(() -> taskSecurityService.changeAssigner(task, dto, currentUser));
 		assertTrue(result, "Метод должен вернуть true");
 
-		verify(workTypeService, times(1)).getOne(workType.getId());
-		verify(clientService, times(1)).getOne(newAssignedClient.getId());
+		verify(workTypeRepository, times(1)).findById(workType.getId());
+		verify(clientRepository, times(1)).findById(newAssignedClient.getId());
 	}
 
 	@Test
@@ -261,8 +271,8 @@ public class TaskSecurityServiceTest {
 				.workTypeId(workType.getId())
 				.build();
 
-		when(workTypeService.getOne(dto.workTypeId())).thenReturn(workType);
-		when(clientService.getOne(dto.assignedClientId())).thenReturn(newAssignedClient);
+		when(workTypeRepository.findById(workType.getId())).thenReturn(Optional.of(workType));
+		when(clientRepository.findById(dto.assignedClientId())).thenReturn(Optional.of(newAssignedClient));
 
 		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
 				() -> taskSecurityService.changeAssigner(task, dto, currentUser));
@@ -271,8 +281,8 @@ public class TaskSecurityServiceTest {
 				"Пользователь без прав доступа может изменять исполнителей только своих собственных или назначенных ему задач и переводить их внутри своей группы",
 				exception.getMessage());
 
-		verify(workTypeService, times(1)).getOne(dto.workTypeId());
-		verify(clientService, times(1)).getOne(dto.assignedClientId());
+		verify(workTypeRepository, times(1)).findById(dto.workTypeId());
+		verify(clientRepository, times(1)).findById(dto.assignedClientId());
 	}
 
 	@Test
@@ -340,15 +350,15 @@ public class TaskSecurityServiceTest {
 				.workTypeId(workType.getId())
 				.build();
 
-		when(workTypeService.getOne(workType.getId()))
-				.thenReturn(workType);
+		when(workTypeRepository.findById(workType.getId()))
+				.thenReturn(Optional.of(workType));
 
 		boolean result = taskSecurityService.changeAssigner(task, dto, currentUser);
 
 		assertTrue(!result);
 
-		verify(workTypeService, times(1))
-				.getOne(workType.getId());
+		verify(workTypeRepository, times(1))
+				.findById(workType.getId());
 	}
 
 	@Test
@@ -503,15 +513,15 @@ public class TaskSecurityServiceTest {
 				.assignedAptekaId(10)
 				.build();
 
-		when(workTypeService.getOne(workType.getId()))
-				.thenReturn(workType);
+		when(workTypeRepository.findById(workType.getId()))
+				.thenReturn(Optional.of(workType));
 
 		assertDoesNotThrow(() -> {
 			taskSecurityService.validateCanCreate(dto, currentUser);
 		});
 
-		verify(workTypeService, times(1))
-				.getOne(workType.getId());
+		verify(workTypeRepository, times(1))
+				.findById(workType.getId());
 	}
 
 	@Test
@@ -529,7 +539,7 @@ public class TaskSecurityServiceTest {
 			taskSecurityService.validateCanUpdate(task, dto, currentUser);
 		});
 
-		verifyNoInteractions(clientService);
-		verifyNoInteractions(workTypeService);
+		verifyNoInteractions(clientRepository);
+		verifyNoInteractions(workTypeRepository);
 	}
 }

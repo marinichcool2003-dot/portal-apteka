@@ -20,11 +20,13 @@ import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
 import com.apteka.portal.components.PasswordValidator;
+import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.DublicateClientLoginException;
+import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidClientFullNameException;
 import com.apteka.portal.exceptions.InvalidClientLoginException;
 import com.apteka.portal.models.AppUserDetails;
@@ -33,6 +35,7 @@ import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.TaskRepository;
+import com.apteka.portal.repository.UserGroupRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -41,59 +44,62 @@ import lombok.RequiredArgsConstructor;
 public class ClientService {
 
     private final AuthService authService;
-    private final UserGroupService groupClientService;
     private final ClientRepository clientRepository;
     private final AvatarClientService avatarClientService;
     private final PasswordEncoder passwordEncoder;
-    private final UserGroupService userGroupService;
+    private final UserGroupRepository userGroupRepository;
     private final TaskRepository taskRepository;
     private final ClientSecurityService clientSecurityService;
     private final PasswordValidator passwordValidator;
 
     @Transactional(readOnly = true)
-    public List<Client> getAll() {
+    public List<ClientResponseDTO> getAll() {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("У вас нет прав на просмотр списка всех сотрудников");
         }
-        return clientRepository.findAll();
+        return clientRepository.findAll().stream()
+                .map(ClientResponseDTO::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public Client getOne(UUID id) {
+    public ClientResponseDTO getOne(UUID id) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         clientSecurityService.validateWhoCanSelectClients(currentUser);
-        return clientRepository.findById(id)
+        Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
+        return ClientResponseDTO.from(client);
     }
 
     @Transactional(readOnly = true)
-    public List<Client> getbyGroup(Integer userGroupId) {
+    public List<ClientResponseDTO> getbyGroup(Integer userGroupId) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         clientSecurityService.validateWhoCanSelectClients(currentUser);
-        userGroupService.getOne(userGroupId);
-        return clientRepository.findByUserGroupId(userGroupId);
+        if (!userGroupRepository.existsById(userGroupId))
+            throw new GroupUserNotFoundException(userGroupId);
+        return clientRepository.findByUserGroupId(userGroupId).stream()
+                .map(ClientResponseDTO::from).toList();
     }
 
     @Transactional(readOnly = true)
     public List<ClientWithStatsDTO> getWithNumberOfTask(Integer userGroupId) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         clientSecurityService.validateHasElevatedPrivelegesInGroup(currentUser, userGroupId);
-        List<Client> clients = getbyGroup(userGroupId);
+        List<ClientResponseDTO> clients = getbyGroup(userGroupId);
         if (clients.isEmpty())
             return List.of();
 
-        List<UUID> clientIds = clients.stream().map(Client::getId).toList();
+        List<UUID> clientIds = clients.stream().map(ClientResponseDTO::id).toList();
 
         Map<UUID, TaskStatsDTO> statsMap = taskRepository.getClientTaskStatsBatch(clientIds)
                 .stream()
                 .collect(Collectors.toMap(TaskStatsDTO::clientId, dto -> dto));
 
         return clients.stream()
-                .map(client -> new ClientWithStatsDTO(
-                        client,
-                        statsMap.getOrDefault(client.getId(),
-                                new TaskStatsDTO(client.getId(), 0L, 0L, 0L, 0L, 0L))))
+                .map(clientDto -> new ClientWithStatsDTO(
+                        clientDto,
+                        statsMap.getOrDefault(clientDto.id(),
+                                new TaskStatsDTO(clientDto.id(), 0L, 0L, 0L, 0L, 0L))))
                 .toList();
     }
 
@@ -110,7 +116,8 @@ public class ClientService {
         String cleanLogin = dto.login().strip();
         String normalizedName = dto.fullName().trim().replaceAll("\\s+", " ");
 
-        UserGroup group = groupClientService.getOne(dto.groupClientId());
+        UserGroup group = userGroupRepository.findById(dto.groupClientId())
+                .orElseThrow(() -> new GroupUserNotFoundException(dto.groupClientId()));
 
         Set<UserRole> roles = dto.rolesCode()
                 .stream()
@@ -134,7 +141,8 @@ public class ClientService {
     public Client addRole(UUID id, String code) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         UserRole role = UserRole.fromCode(code);
-        Client client = getOne(id);
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.canGiveRoleToClient(Set.of(role), currentUser, client.getUserGroup());
         client.getRoles().add(role);
         return clientRepository.save(client);
@@ -145,7 +153,8 @@ public class ClientService {
         if (role == UserRole.USER) {
             throw new AccessDeniedException("Вы не можете удалить стандартную роль пользователя");
         }
-        Client client = getOne(id);
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ClientNotFoundException(id));
         client.getRoles().remove(role);
         return clientRepository.save(client);
     }
@@ -164,7 +173,7 @@ public class ClientService {
     }
 
     @Transactional
-    public Client fullUpdate(UUID id, FullClientUpdateRequestDTO dto) throws IOException{
+    public Client fullUpdate(UUID id, FullClientUpdateRequestDTO dto) throws IOException {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор может полностью изменять сотрудника");
@@ -181,7 +190,8 @@ public class ClientService {
             if (thisClientStats.openCount() + thisClientStats.processedCount() > 0) {
                 throw new AccessDeniedException("У пользователя еще имеются открытые задачи");
             }
-            UserGroup group = userGroupService.getOne(dto.groupClientId());
+            UserGroup group = userGroupRepository.findById(dto.groupClientId())
+                    .orElseThrow(() -> new GroupUserNotFoundException(dto.groupClientId()));
             savedClient.setUserGroup(group);
         }
 
@@ -199,7 +209,8 @@ public class ClientService {
         }
     }
 
-    private Client updateBasicClientForm(UUID id, String login, String password, MultipartFile avatar) throws IOException{
+    private Client updateBasicClientForm(UUID id, String login, String password, MultipartFile avatar)
+            throws IOException {
         Client upClient = clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
 

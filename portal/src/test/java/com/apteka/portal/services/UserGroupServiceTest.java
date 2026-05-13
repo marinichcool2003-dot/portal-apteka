@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.apteka.portal.components.UserGroupSecurityService;
 import com.apteka.portal.dtos.request.UserGroupRequestDTO;
+import com.apteka.portal.dtos.response.UserGroupResponseDTO;
 import com.apteka.portal.exceptions.DublicateGroupUserException;
 import com.apteka.portal.models.AppUserDetails; 
 import com.apteka.portal.models.UserGroup;
@@ -50,10 +51,10 @@ class UserGroupServiceTest {
             when(userGroupRepository.findByName("Розница")).thenReturn(Optional.empty());
             when(userGroupRepository.save(any(UserGroup.class))).thenReturn(savedGroup);
 
-            UserGroup result = userGroupService.create(dto);
+            UserGroupResponseDTO result = userGroupService.create(dto);
 
             assertNotNull(result);
-            assertEquals("Розница", result.getName());
+            assertEquals("Розница", result.name());
 
             verify(userGroupSecurityService).checkCanCreateGroup(currentUser);
             verify(userGroupRepository).save(any(UserGroup.class));

@@ -2,6 +2,7 @@ package com.apteka.portal.models;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -25,22 +26,21 @@ import lombok.ToString;
 @Entity
 @Table(name = "task")
 @Getter
-@ToString
+@ToString(onlyExplicitlyIncluded = true)
 @Setter
 public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
+    @ToString.Include
     private Long id;
 
     @Column(name = "title", nullable = false)
+    @ToString.Include
     private String title;
 
     @Column(name = "description", nullable = false)
     private String description;
-
-    @Column(name = "comments")
-    private String comments;
 
     @Setter(AccessLevel.NONE)
     @Column(name = "creation_date")
@@ -56,6 +56,7 @@ public class Task {
     @Setter(AccessLevel.NONE)
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
+    @ToString.Include
     private TaskStatus status;
 
     @Enumerated(EnumType.STRING)
@@ -66,42 +67,32 @@ public class Task {
     @JoinColumn(name = "work_type_id", nullable = false)
     private WorkType workType;
 
-    //================================================
-    //Создатель АПТЕКА
-    //================================================
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_apteka_id")
     private Apteka createdByApteka;
 
-    //================================================
-    //Создатель СОТРУДНИК
-    //================================================
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_client_id")
     private Client createdByClient;
 
-    //================================================
-    //Исполнитель СОТРУДНИК
-    //================================================
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_client_id")
     private Client assignedClient;
 
-    //================================================
-    //Исполнитель АПТЕКА
-    //================================================
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_apteka_id")
     private Apteka assignedApteka;
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<TaskComments> employeeComments;
+    private Set<TaskComment> employeeComments;
+
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<TaskPicture> pictures;
 
     private Task(TaskBuilder taskBuilder) {
         this.id = taskBuilder.id;
         this.title = taskBuilder.title;
         this.description = taskBuilder.description;
-        this.comments = taskBuilder.comments;
         this.updatedDate = taskBuilder.updatedDate;
         this.priority = taskBuilder.priority;
         this.workType = taskBuilder.workType;
@@ -119,7 +110,6 @@ public class Task {
         private Long id;
         private String title;
         private String description;
-        private String comments;
         private LocalDateTime updatedDate;
         private TaskPriority priority;
         private WorkType workType;
@@ -140,11 +130,6 @@ public class Task {
 
         public TaskBuilder description(String description) {
             this.description = description;
-            return this;
-        }
-
-        public TaskBuilder comments(String comments) {
-            this.comments = comments;
             return this;
         }
 

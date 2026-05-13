@@ -1,12 +1,12 @@
 package com.apteka.portal.exceptions;
 
-public class WorkTaskNotFoundException extends RuntimeException{
+public class WorkTypeNotFoundException extends RuntimeException{
 
-    public WorkTaskNotFoundException() {
+    public WorkTypeNotFoundException() {
         super("Тип работ не найден");
     }
 
-    public WorkTaskNotFoundException(Integer id) {
+    public WorkTypeNotFoundException(Integer id) {
         super("Тип работ с ID: " + id + "не найден");
     }
 }

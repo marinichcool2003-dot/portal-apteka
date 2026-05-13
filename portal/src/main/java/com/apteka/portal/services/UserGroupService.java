@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.exceptions.DublicateGroupUserException;
-import com.apteka.portal.exceptions.GroupClientNotFoundException;
+import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.UserGroupRepository;
@@ -41,7 +41,7 @@ public class UserGroupService {
     @Transactional(readOnly = true)
     public UserGroupResponseDTO getOne(Integer id) {
         UserGroup group = userGroupRepository.findById(id)
-                .orElseThrow(() -> new GroupClientNotFoundException(id));
+                .orElseThrow(() -> new GroupUserNotFoundException(id));
         return UserGroupResponseDTO.from(group);
     }
 
@@ -71,7 +71,7 @@ public class UserGroupService {
     public UserGroupResponseDTO update(Integer id, UserGroupRequestDTO dto) {
         userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
         UserGroup upGroup = userGroupRepository.findById(id)
-                .orElseThrow(() -> new GroupClientNotFoundException(id));
+                .orElseThrow(() -> new GroupUserNotFoundException(id));
         upGroup.setName(validateNameGroup(dto.name(), id));
         upGroup.setPhoneNumber(dto.phoneNumber());
         return UserGroupResponseDTO.from(upGroup);
@@ -88,7 +88,7 @@ public class UserGroupService {
     public void delete(Integer id) {
         userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
         UserGroup deletedGroup = userGroupRepository.findById(id)
-                .orElseThrow(() -> new GroupClientNotFoundException(id));
+                .orElseThrow(() -> new GroupUserNotFoundException(id));
         userGroupRepository.delete(deletedGroup);
     }
 

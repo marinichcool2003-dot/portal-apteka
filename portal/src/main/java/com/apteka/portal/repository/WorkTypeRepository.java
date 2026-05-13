@@ -15,5 +15,7 @@ public interface WorkTypeRepository extends JpaRepository<WorkType, Integer>{
 
     boolean existsByNameAndGroupTaskId(String name, Integer groupTaskId);
 
+    boolean existsByGroupTaskId(Integer groupTaskId);
+
     List<WorkType> findByGroupTaskId(Integer groupTaskId);
 }

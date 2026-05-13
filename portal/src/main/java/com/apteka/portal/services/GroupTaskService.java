@@ -14,7 +14,7 @@ import com.apteka.portal.components.GroupTaskSecurityService;
 import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
 import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.exceptions.DublicateGroupTaskException;
-import com.apteka.portal.exceptions.GroupClientNotFoundException;
+import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
 import com.apteka.portal.exceptions.InvalidGroupTaskException;
 import com.apteka.portal.models.AppUserDetails;
@@ -42,7 +42,7 @@ public class GroupTaskService {
             return groupTaskRepository.findByUserGroupId(userGroupId).stream()
                     .map(GroupTaskResponseDTO::from).toList();
         }
-        throw new GroupClientNotFoundException(userGroupId);
+        throw new GroupUserNotFoundException(userGroupId);
     }
 
     @Cacheable(value = CacheNames.GROUP_TASK, key = "#id", sync = true)
@@ -59,7 +59,7 @@ public class GroupTaskService {
 
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         UserGroup userGroup = userGroupRepository.findById(dto.userGroupId())
-                .orElseThrow(() -> new GroupClientNotFoundException(dto.userGroupId()));
+                .orElseThrow(() -> new GroupUserNotFoundException(dto.userGroupId()));
         String cleanName = dto.name().strip();
 
         validateGroupTaskName(cleanName, userGroup);

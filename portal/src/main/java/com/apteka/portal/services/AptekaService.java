@@ -2,6 +2,7 @@ package com.apteka.portal.services;
 
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -10,10 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.apteka.portal.components.PasswordValidator;
 import com.apteka.portal.dtos.request.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
+import com.apteka.portal.dtos.response.AptekaResponseDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.DublicateAptekaFullNameException;
 import com.apteka.portal.exceptions.DublicateAptekaLoginException;
+import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidAptekaLoginException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
 import com.apteka.portal.exceptions.InvalidAptekaAdressException;
@@ -23,6 +26,7 @@ import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.AptekaRepository;
+import com.apteka.portal.repository.UserGroupRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -30,36 +34,41 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AptekaService {
     private final AptekaRepository aptekaRepository;
-    private final UserGroupService userGroupService;
+    private final UserGroupRepository userGroupRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidator passwordValidator;
     private final AuthService authService;
 
     @Transactional(readOnly = true)
-    public List<Apteka> getAll() {
-        return aptekaRepository.findAll();
+    public List<AptekaResponseDTO> getAll() {
+        return aptekaRepository.findAll().stream()
+            .map(AptekaResponseDTO::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public Apteka getOne(Integer id) {
-        return aptekaRepository.findById(id)
+    public AptekaResponseDTO getOne(Integer id) {
+        Apteka apteka = aptekaRepository.findById(id)
                 .orElseThrow(() -> new AptekaNotFoundException(id));
+        return AptekaResponseDTO.from(apteka);
     }
 
     @Transactional(readOnly = true)
-    public List<Apteka> filter(AptekaFilterRequestDTO dto) {
-        return aptekaRepository.filter(dto.login(), dto.groupId(), dto.number(), dto.phoneNumber());
+    public List<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto, Pageable pageable) {
+        return aptekaRepository.filter(dto.login(), dto.groupId(), dto.number(), dto.phoneNumber(), pageable)
+            .stream().map(AptekaResponseDTO::from).toList();
     }
 
     @Transactional
-    public Apteka create(AptekaRequestDTO dto) {
+    public AptekaResponseDTO create(AptekaRequestDTO dto) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         hasAccessToApteki(currentUser);
         validateLogin(dto.login());
         passwordValidator.validatePassword(dto.password(), false);
-        UserGroup userGroup = userGroupService.getOne(dto.groupId());
+        UserGroup userGroup = userGroupRepository.findById(dto.groupId())
+                .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
         validateAptekaNumberInGroup(dto.number(), dto.groupId());
         valdiateAptekaAdress(dto.adress());
+        String cleanAdress = dto.adress().replaceAll("(?<=\\S)\\s+(?=\\S)", " ").strip();
         validatePhoneNumber(dto.phoneNumber());
         String cleanPhoneNumber = dto.phoneNumber().replaceAll("\\D", "");
 
@@ -69,19 +78,22 @@ public class AptekaService {
                 .login(cleanLogin)
                 .password(passwordEncoder.encode(dto.password()))
                 .number(dto.number())
+                .adress(cleanAdress)
                 .userGroup(userGroup)
                 .phoneNumber(cleanPhoneNumber)
                 .build();
 
-        return aptekaRepository.save(apteka);
+        aptekaRepository.save(apteka);
+        return AptekaResponseDTO.from(apteka);
     }
 
     @Transactional
-    public Apteka update(Integer id, AptekaRequestDTO dto) {
+    public AptekaResponseDTO update(Integer id, AptekaRequestDTO dto) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         hasAccessToApteki(currentUser);
 
-        Apteka apteka = getOne(id);
+        Apteka apteka = aptekaRepository.findById(id)
+            .orElseThrow(() -> new AptekaNotFoundException(id));
         String oldLogin = apteka.getLogin();
         boolean needsLogout = false;
 
@@ -105,7 +117,8 @@ public class AptekaService {
 
         if (dto.adress() != null && !dto.adress().isBlank()) {
             valdiateAptekaAdress(dto.adress());
-            apteka.setAdress(dto.adress().strip());
+            String cleanAdress = dto.adress().replaceAll("(?<=\\S)\\s+(?=\\S)", " ").strip();
+            apteka.setAdress(cleanAdress);
         }
 
         if (dto.number() != null && dto.number() > 0) {
@@ -116,7 +129,8 @@ public class AptekaService {
         }
 
         if (dto.groupId() != null && dto.groupId() > 0) {
-            UserGroup userGroup = userGroupService.getOne(dto.groupId());
+            UserGroup userGroup = userGroupRepository.findById(dto.groupId())
+                    .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
             validateAptekaNumberInGroup(apteka.getNumber(), dto.groupId());
             apteka.setUserGroup(userGroup);
         }
@@ -133,7 +147,7 @@ public class AptekaService {
             authService.invalidateAllSession(oldLogin);
         }
 
-        return savedApteka;
+        return AptekaResponseDTO.from(savedApteka);
     }
 
     @Transactional

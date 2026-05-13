@@ -1,10 +1,10 @@
 package com.apteka.portal.exceptions;
 
-public class GroupClientNotFoundException extends RuntimeException{
-    public GroupClientNotFoundException(Integer id){
+public class GroupUserNotFoundException extends RuntimeException{
+    public GroupUserNotFoundException(Integer id){
         super("Группа с ID " + id + " не найдена!");
     }
-    public GroupClientNotFoundException(){
+    public GroupUserNotFoundException(){
         super("Группа с ID не найдена!");
     }
 }

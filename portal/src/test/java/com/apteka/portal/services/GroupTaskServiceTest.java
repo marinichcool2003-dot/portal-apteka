@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -23,17 +24,19 @@ import org.springframework.cache.CacheManager;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
 import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
+import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.GroupTaskRepository;
+import com.apteka.portal.repository.UserGroupRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class GroupTaskServiceTest {
     @Mock
     private GroupTaskRepository groupTaskRepository;
     @Mock
-    private UserGroupService userGroupService;
+    private UserGroupRepository userGroupRepository;
     @Mock
     private GroupTaskSecurityService groupTaskSecurityService;
     @Mock
@@ -59,15 +62,15 @@ public class GroupTaskServiceTest {
         try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
             mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
 
-            when(userGroupService.getOne(dto.userGroupId())).thenReturn(userGroup);
+            when(userGroupRepository.findById(dto.userGroupId())).thenReturn(Optional.of(userGroup));
             when(groupTaskRepository.findByNameAndUserGroupId("Накладные", dto.userGroupId()))
                     .thenReturn(Optional.empty());
             when(groupTaskRepository.save(any(GroupTask.class))).thenReturn(savedGroupTask);
 
-            GroupTask result = groupTaskService.create(dto);
+            GroupTaskResponseDTO result = groupTaskService.create(dto);
 
             assertNotNull(result);
-            assertEquals("Накладные", result.getName());
+            assertEquals("Накладные", result.name());
 
             verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, userGroup);
             verify(groupTaskRepository).save(any(GroupTask.class));
@@ -80,7 +83,6 @@ public class GroupTaskServiceTest {
         AppUserDetails currentUser = TestData.mockJustBoss();
         GroupTask oldGroupTask = TestData.defaultGroupTask();
         GroupTaskRequestDTO dto = createDto("Алгоритм", groupTaskId);
-        UserGroup userGroup = TestData.defaulUserGroup();
 
         GroupTask savedGroupTask = TestData.newGroupTask();
         savedGroupTask.setId(groupTaskId);
@@ -91,13 +93,13 @@ public class GroupTaskServiceTest {
             when(groupTaskRepository.findByNameAndUserGroupId("Алгоритм", groupTaskId)).thenReturn(Optional.empty());
             when(groupTaskRepository.save(any(GroupTask.class))).thenReturn(savedGroupTask);
 
-            GroupTask result = groupTaskService.update(groupTaskId, dto);
+            GroupTaskResponseDTO result = groupTaskService.update(groupTaskId, dto);
 
             assertNotNull(result);
-            assertEquals("Алгоритм", result.getName());
+            assertEquals("Алгоритм", result.name());
 
             verify(groupTaskRepository).findById(groupTaskId);
-            verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, userGroup);
+            verify(groupTaskSecurityService).validateBossOrAdminInGroup(eq(currentUser), any(UserGroup.class));
             verify(groupTaskRepository).save(any(GroupTask.class));
         }
     }
@@ -117,7 +119,7 @@ public class GroupTaskServiceTest {
 
             groupTaskService.delete(id);
 
-            verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, userGroup);
+            verify(groupTaskSecurityService).validateBossOrAdminInGroup(eq(currentUser), any(UserGroup.class));
             verify(groupTaskRepository).deleteById(id);
             verify(mockCache, atLeastOnce()).evict(any());
         }

@@ -22,17 +22,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.apteka.portal.components.PasswordValidator;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
+import com.apteka.portal.dtos.response.AptekaResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.AptekaRepository;
+import com.apteka.portal.repository.UserGroupRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class AptekaServiceTest {
     @Mock
     private AptekaRepository aptekaRepository;
     @Mock
-    private UserGroupService userGroupService;
+    private UserGroupRepository userGroupRepository;
     @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
@@ -50,7 +52,7 @@ public class AptekaServiceTest {
         AptekaRequestDTO dto = new AptekaRequestDTO("  sakapteka123@farmp.ru",
                 "ddfKK925_!",
                 123,
-                "город Ростов-на-Дону,    ул Космонатов 11",
+                " город Ростов-на-Дону,    ул Космонатов 11",
                 "+79891112233",
                 group.getId());
         Apteka savedApteka = Apteka.builder()
@@ -66,20 +68,19 @@ public class AptekaServiceTest {
         try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
             mockedStatic.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
             when(aptekaRepository.existsByUserGroup_IdAndNumber(group.getId(), dto.number())).thenReturn(false);
-            when(userGroupService.getOne(group.getId())).thenReturn(group);
+            when(userGroupRepository.findById(group.getId())).thenReturn(Optional.of(group));
             when(passwordEncoder.encode(any(String.class))).thenReturn("Hashed_password");
             when(aptekaRepository.save(any(Apteka.class))).thenReturn(savedApteka);
 
-            Apteka result = aptekaService.create(dto);
+            AptekaResponseDTO result = aptekaService.create(dto);
 
             assertNotNull(result);
-            assertEquals(savedApteka.getLogin(), result.getLogin());
-            assertEquals(savedApteka.getPassword(), result.getPassword());
-            assertEquals(savedApteka.getAdress(), result.getAdress());
-            assertEquals(savedApteka.getPhoneNumber(), result.getPhoneNumber());
+            assertEquals(savedApteka.getLogin(), result.login());
+            assertEquals(savedApteka.getAdress(), result.adress());
+            assertEquals(savedApteka.getPhoneNumber(), result.phoneNumber());
 
             verify(aptekaRepository, times(1)).existsByUserGroup_IdAndNumber(group.getId(), dto.number());
-            verify(userGroupService, times(1)).getOne(group.getId());
+            verify(userGroupRepository, times(1)).findById(group.getId());
             verify(passwordEncoder, times(1)).encode(anyString());
             verify(aptekaRepository, times(1)).save(any(Apteka.class));
         }
@@ -126,17 +127,16 @@ public class AptekaServiceTest {
 
             when(passwordEncoder.matches(eq(dto.password()), anyString())).thenReturn(false);
             when(passwordEncoder.encode(dto.password())).thenReturn("new_hashed_password");
-            when(userGroupService.getOne(group.getId())).thenReturn(group);
+            when(userGroupRepository.findById(group.getId())).thenReturn(Optional.of(group));
 
             when(aptekaRepository.save(any(Apteka.class))).thenReturn(savedApteka);
 
-            Apteka result = aptekaService.update(existingApteka.getId(), dto);
+            AptekaResponseDTO result = aptekaService.update(existingApteka.getId(), dto);
 
             assertNotNull(result);
-            assertEquals("new_sakapteka123@farmp.ru", result.getLogin());
-            assertEquals("new_hashed_password", result.getPassword());
-            assertEquals("город Ростов-на-Дону, ул Космонатов 11", result.getAdress());
-            assertEquals("79891112233", result.getPhoneNumber());
+            assertEquals("new_sakapteka123@farmp.ru", result.login());
+            assertEquals("город Ростов-на-Дону, ул Космонатов 11", result.adress());
+            assertEquals("79891112233", result.phoneNumber());
 
             verify(authService, times(1)).invalidateAllSession(oldLogin);
             verify(aptekaRepository, times(1)).save(any(Apteka.class));

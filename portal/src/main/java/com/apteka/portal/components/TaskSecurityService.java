@@ -10,11 +10,14 @@ import org.springframework.stereotype.Component;
 
 import com.apteka.portal.dtos.request.TaskRequestDTO;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
+import com.apteka.portal.exceptions.ClientNotFoundException;
+import com.apteka.portal.exceptions.WorkTypeNotFoundException;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.UserType;
 import com.apteka.portal.models.WorkType;
+import com.apteka.portal.repository.ClientRepository;
+import com.apteka.portal.repository.WorkTypeRepository;
 import com.apteka.portal.services.ClientService;
-import com.apteka.portal.services.WorkTypeService;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;
@@ -28,8 +31,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TaskSecurityService {
 
-    private final ClientService clientService;
-    private final WorkTypeService workTypeService;
+    private final ClientRepository clientRepository;
+    private final WorkTypeRepository workTypeRepository;
 
     public void validateCanCreate(TaskRequestDTO dto, AppUserDetails currentUser) {
 
@@ -39,7 +42,8 @@ public class TaskSecurityService {
         if (currentUser.getType() == UserType.CLIENT) {
 
             if (dto.assignedClientId() != null) {
-                Client targetClient = clientService.getOne(dto.assignedClientId());
+                Client targetClient = clientRepository.findById(dto.assignedClientId())
+                    .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
                 if (!Objects.equals(targetClient.getUserGroup().getId(), taskGroupId)) {
                     throw new AccessDeniedException(
                             "Вы можете ставить задачи сотруднику в рамке вида работ его группы");
@@ -180,7 +184,8 @@ public class TaskSecurityService {
         }
 
         if (dto.assignedClientId() != null) {
-            Client newClient = clientService.getOne(dto.assignedClientId());
+            Client newClient = clientRepository.findById(dto.assignedClientId())
+                .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
             Integer newClientGroupId = (newClient != null && newClient.getUserGroup() != null)
                     ? newClient.getUserGroup().getId()
                     : null;
@@ -200,7 +205,8 @@ public class TaskSecurityService {
     }
 
     private UserGroup getUserGroupFromWorkTypeId(Integer workTypeId) {
-        WorkType workType = workTypeService.getOne(workTypeId);
+        WorkType workType = workTypeRepository.findById(workTypeId)
+            .orElseThrow(() -> new WorkTypeNotFoundException(workTypeId));
         return Optional.ofNullable(workType)
                 .map(WorkType::getGroupTask)
                 .map(GroupTask::getUserGroup)

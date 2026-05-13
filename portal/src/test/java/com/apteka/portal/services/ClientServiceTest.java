@@ -44,6 +44,7 @@ import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.TaskRepository;
+import com.apteka.portal.repository.UserGroupRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class ClientServiceTest {
@@ -56,7 +57,7 @@ public class ClientServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
     @Mock
-    private UserGroupService userGroupService;
+    private UserGroupRepository userGroupRepository;
     @Mock
     private TaskRepository taskRepository;
     @Mock
@@ -78,16 +79,18 @@ public class ClientServiceTest {
         try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
             mockedStatic.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
 
+            when(userGroupRepository.existsById(userGroup.getId())).thenReturn(true);
             when(clientRepository.findByUserGroupId(userGroup.getId())).thenReturn(List.of(client));
             when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(stats));
 
             List<ClientWithStatsDTO> result = clientService.getWithNumberOfTask(userGroup.getId());
 
             assertEquals(1, result.size());
-            assertEquals(clientId, result.get(0).client().getId());
+            assertEquals(clientId, result.get(0).client().id());
             assertEquals(10L, result.get(0).stats().totalCount());
 
             verify(clientSecurityService).validateHasElevatedPrivelegesInGroup(any(), eq(userGroup.getId()));
+            verify(userGroupRepository, times(1)).existsById(userGroup.getId());
         }
     }
 
@@ -116,7 +119,7 @@ public class ClientServiceTest {
         try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
             mockedStatic.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
 
-            when(userGroupService.getOne(userGroup.getId())).thenReturn(userGroup);
+            when(userGroupRepository.findById(userGroup.getId())).thenReturn(Optional.of(userGroup));
             when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
             when(clientRepository.save(any(Client.class))).thenReturn(savedClient);
 
@@ -130,7 +133,7 @@ public class ClientServiceTest {
             verify(clientSecurityService).validateCanCreateClient(currentUser, userGroup.getId());
             verify(clientSecurityService).canGiveRoleToClient(anySet(), eq(currentUser), eq(userGroup));
             verify(clientRepository).save(any(Client.class));
-            verify(userGroupService, times(1)).getOne(userGroup.getId());
+            verify(userGroupRepository, times(1)).findById(userGroup.getId());
             verify(passwordEncoder, times(1)).encode(eq(dto.password()));
         }
     }
@@ -189,7 +192,7 @@ public class ClientServiceTest {
             when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
             TaskStatsDTO stats = new TaskStatsDTO(clientId, 0L, 0L, 344L, 14L, 0L);
             when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(stats));
-            when(userGroupService.getOne(newGroup.getId())).thenReturn(newGroup);
+            when(userGroupRepository.findById(newGroup.getId())).thenReturn(Optional.of(newGroup));
             when(clientRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
             Client result = clientService.fullUpdate(clientId, dto);
@@ -197,7 +200,9 @@ public class ClientServiceTest {
             assertEquals("Иванов Иван Иванович", result.getFullName());
             assertEquals("admin_new_login", result.getLogin());
             assertEquals(newGroup.getId(), result.getUserGroup().getId());
+
             verify(authService).invalidateAllSession("old_login");
+            verify(userGroupRepository, times(1)).findById(newGroup.getId());
         }
     }
 

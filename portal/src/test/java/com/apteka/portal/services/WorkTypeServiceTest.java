@@ -24,16 +24,18 @@ import org.springframework.cache.CacheManager;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
 import com.apteka.portal.dtos.request.WorkTypeRequestDTO;
+import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
 import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.WorkType;
+import com.apteka.portal.repository.GroupTaskRepository;
 import com.apteka.portal.repository.WorkTypeRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class WorkTypeServiceTest {
     @Mock private WorkTypeRepository workTypeRepository;
-    @Mock private GroupTaskService groupTaskService;
+    @Mock private GroupTaskRepository groupTaskRepository;
     @Mock private GroupTaskSecurityService groupTaskSecurityService;
     @Mock private CacheManager cacheManager;
     @Mock Cache cache;
@@ -52,14 +54,14 @@ public class WorkTypeServiceTest {
 
         try(MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
             mockedStatic.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
-            when(groupTaskService.getOne(dto.groupTaskId())).thenReturn(groupTask);
+            when(groupTaskRepository.findById(dto.groupTaskId())).thenReturn(Optional.of(groupTask));
             when(workTypeRepository.existsByNameAndGroupTaskId(dto.name(), dto.groupTaskId())).thenReturn(false);
             when(workTypeRepository.save(any(WorkType.class))).thenReturn(savedWorkType);
 
-            WorkType result = workTypeService.create(dto);
+            WorkTypeResponseDTO result = workTypeService.create(dto);
 
             assertNotNull(result);
-            assertEquals(result.getName(), savedWorkType.getName());
+            assertEquals(result.name(), savedWorkType.getName());
 
             verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
             verify(workTypeRepository).save(any(WorkType.class));
@@ -74,7 +76,7 @@ public class WorkTypeServiceTest {
 
         try(MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
             mockedStatic.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
-            when(groupTaskService.getOne(dto.groupTaskId())).thenReturn(groupTask);
+            when(groupTaskRepository.findById(dto.groupTaskId())).thenReturn(Optional.of(groupTask));
             when(workTypeRepository.existsByNameAndGroupTaskId(dto.name(), dto.groupTaskId())).thenReturn(true);
 
             assertThrows(DublicateWorkTypeNameException.class, () -> {
@@ -99,14 +101,13 @@ public class WorkTypeServiceTest {
         try(MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
             mockedStatic.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
             when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(oldWorkType));
-            when(groupTaskService.getOne(dto.groupTaskId())).thenReturn(groupTask);
-            when(groupTaskService.getOne(dto.groupTaskId())).thenReturn(groupTask);
+            when(groupTaskRepository.findById(dto.groupTaskId())).thenReturn(Optional.of(groupTask));
             when(workTypeRepository.save(any(WorkType.class))).thenReturn(newWorkType);
 
-            WorkType result = workTypeService.update(workTypeId, dto);
+            WorkTypeResponseDTO result = workTypeService.update(workTypeId, dto);
 
             assertNotNull(result);
-            assertEquals(newWorkType.getName(), result.getName());
+            assertEquals(newWorkType.getName(), result.name());
 
             verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
             verify(workTypeRepository).save(any(WorkType.class));
@@ -130,7 +131,7 @@ public class WorkTypeServiceTest {
 
             verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
             verify(workTypeRepository).delete(workTypeToDelete);
-            verify(cache, times(2)).evict(any());
+            verify(cache, times(3)).evict(any());
         }
     }
 }

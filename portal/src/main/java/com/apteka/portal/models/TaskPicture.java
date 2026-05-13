@@ -7,6 +7,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,4 +35,12 @@ public class TaskPicture {
     @ManyToOne
     @JoinColumn(name = "task_id")
     private Task task;
+
+    @PrePersist
+    @PreUpdate
+    private void cleanPath() {
+        if (this.path != null) {
+            this.path.strip();
+        }
+    }
 }

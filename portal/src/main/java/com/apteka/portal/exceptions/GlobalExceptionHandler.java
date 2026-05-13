@@ -132,9 +132,9 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(GroupClientNotFoundException.class)
+    @ExceptionHandler(GroupUserNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse handleGroupClientNotFoundException(GroupClientNotFoundException e){
+    public ErrorResponse handleGroupClientNotFoundException(GroupUserNotFoundException e){
         log.error("Группа не найдена: {}", e.getMessage(), e);
         String errorMessage = "Ошибка! Группа сотрудников не найдена: " + e.getMessage();
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage,System.currentTimeMillis());
