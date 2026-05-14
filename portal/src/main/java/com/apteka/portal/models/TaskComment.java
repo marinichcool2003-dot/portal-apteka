@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "task_comments")
+@Table(name = "task_comment")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter

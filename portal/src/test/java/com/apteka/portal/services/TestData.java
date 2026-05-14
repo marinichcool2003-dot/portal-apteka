@@ -75,7 +75,6 @@ public class TestData {
         return Task.builder()
             .title("Не работает касса")
             .description("При включении не работает касса")
-            .comments(null)
             .workType(defaultWorkType())
             .build();
     }

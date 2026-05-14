@@ -19,11 +19,17 @@ import com.apteka.portal.models.TaskStatus;
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Query("""
-                SELECT DISTINCT t FROM Task t
-                JOIN FETCH t.workType w
-                JOIN FETCH w.groupTask gt
-                JOIN gt.userGroup ug
-                WHERE ug.id = :groupId
+            SELECT DISTINCT t FROM Task t
+            JOIN FETCH t.workType w
+            JOIN FETCH w.groupTask gt
+            LEFT JOIN FETCH gt.userGroup ug
+            LEFT JOIN FETCH t.createdByClient
+            LEFT JOIN FETCH t.createdByApteka cba
+            LEFT JOIN FETCH cba.userGroup
+            LEFT JOIN FETCH t.assignedClient
+            LEFT JOIN FETCH t.assignedApteka aa
+            LEFT JOIN FETCH aa.userGroup
+            WHERE ug.id = :groupId
                     AND (:creatorClientId IS NULL OR t.createdByClient.id = :creatorClientId)
                     AND (:creatorAptekaId IS NULL OR t.createdByApteka.id = :creatorAptekaId)
                     AND (:specificClientId IS NULL OR t.assignedClient.id = :specificClientId)
@@ -32,7 +38,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
                     AND (:priority IS NULL OR t.priority = :priority)
                     AND (:groupTaskId IS NULL OR gt.id = :groupTaskId)
                 ORDER BY t.creationDate DESC
-            """)
+                    """)
     List<Task> findDepartmentTasksWithFilters(
             @Param("groupId") Integer groupId,
             @Param("creatorClientId") UUID creatorClientId,
@@ -47,10 +53,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
                 SELECT new com.apteka.portal.dtos.response.TaskStatsDTO(
                     t.assignedClient.id,
                     COUNT(t),
-                    SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.OPEN THEN 1L ELSE 0L END),
-                    SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.CLOSED THEN 1L ELSE 0L END),
-                    SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.DENIED THEN 1L ELSE 0L END),
-                    SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.PROCESSED THEN 1L ELSE 0L END)
+                    COALESCE(SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.OPEN THEN 1L ELSE 0L END), 0L),
+                    COALESCE(SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.CLOSED THEN 1L ELSE 0L END), 0L),
+                    COALESCE(SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.DENIED THEN 1L ELSE 0L END), 0L),
+                    COALESCE(SUM(CASE WHEN t.status = com.apteka.portal.models.TaskStatus.PROCESSED THEN 1L ELSE 0L END), 0L)
                 )
                 FROM Task t
                 WHERE t.assignedClient.id IN :clientIds
@@ -92,9 +98,26 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @Query("""
                 SELECT DISTINCT t FROM Task t
                 JOIN FETCH t.workType w
+                JOIN FETCH w.groupTask gt
+                LEFT JOIN FETCH gt.userGroup ug
+                LEFT JOIN FETCH t.createdByClient
+                LEFT JOIN FETCH t.createdByApteka cba
+                LEFT JOIN FETCH cba.userGroup
+                LEFT JOIN FETCH t.assignedClient
+                LEFT JOIN FETCH t.assignedApteka aa
+                LEFT JOIN FETCH aa.userGroup
                 LEFT JOIN FETCH t.pictures
-                LEFT JOIN FETCH t.employeeComments
                 WHERE t.id = :id
             """)
-    Optional<Task> findByIdWithPicturesAndComments(@Param("id") Long id);
+    Optional<Task> findByIdWithDetailsAndPictures(@Param("id") Long id);
+
+    @Query("""
+                SELECT t FROM Task t
+                LEFT JOIN FETCH t.employeeComments ec
+                LEFT JOIN FETCH ec.client
+                LEFT JOIN FETCH ec.apteka a
+                LEFT JOIN FETCH a.userGroup
+                WHERE t.id = :id
+            """)
+    Optional<Task> fetchCommentsForTask(@Param("id") Long id);
 }

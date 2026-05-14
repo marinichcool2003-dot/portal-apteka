@@ -22,6 +22,7 @@ import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskComment;
+import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.TaskCommentRepository;
@@ -30,201 +31,201 @@ import com.apteka.portal.repository.TaskRepository;
 @ExtendWith(MockitoExtension.class)
 public class TaskCommentsServiceTest {
 
-    @Mock
-    private AptekaRepository aptekaRepository;
+	@Mock
+	private AptekaRepository aptekaRepository;
 
-    @Mock
-    private TaskCommentRepository taskCommentsRepository;
+	@Mock
+	private TaskCommentRepository taskCommentsRepository;
 
-    @Mock
-    private TaskRepository taskRepository;
+	@Mock
+	private TaskRepository taskRepository;
 
-    @Mock
-    private ClientRepository clientRepository;
+	@Mock
+	private ClientRepository clientRepository;
 
-    @InjectMocks
-    private TaskCommentService taskCommentsService;
+	@InjectMocks
+	private TaskCommentService taskCommentsService;
 
-    @Test
-    void getAll_Success() {
-        when(taskCommentsRepository.findAll())
-                .thenReturn(List.of(TaskComment.builder().build()));
+	@Test
+	void getAll_Success() {
+		when(taskCommentsRepository.findAll())
+				.thenReturn(List.of(TaskComment.builder().build()));
 
-        List<TaskCommentResponseDTO> result = taskCommentsService.getAll();
+		List<TaskCommentResponseDTO> result = taskCommentsService.getAll();
 
-        assertEquals(1, result.size());
-        verify(taskCommentsRepository, times(1)).findAll();
-    }
+		assertEquals(1, result.size());
+		verify(taskCommentsRepository, times(1)).findAll();
+	}
 
-    @Test
-    void getByTask_WhenTaskExists_Success() {
-        Long taskId = 1L;
+	@Test
+	void getByTask_WhenTaskExists_Success() {
+		Long taskId = 1L;
 
-        when(taskRepository.existsById(taskId)).thenReturn(true);
-        when(taskCommentsRepository.findByTaskId(taskId))
-                .thenReturn(List.of(TaskComment.builder().build()));
+		when(taskRepository.existsById(taskId)).thenReturn(true);
+		when(taskCommentsRepository.findByTaskId(taskId))
+				.thenReturn(List.of(TaskComment.builder().build()));
 
-        List<TaskCommentResponseDTO> result = taskCommentsService.getByTask(taskId);
+		List<TaskCommentResponseDTO> result = taskCommentsService.getByTask(taskId);
 
-        assertEquals(1, result.size());
+		assertEquals(1, result.size());
 
-        verify(taskRepository, times(1)).existsById(taskId);
-        verify(taskCommentsRepository, times(1)).findByTaskId(taskId);
-    }
+		verify(taskRepository, times(1)).existsById(taskId);
+		verify(taskCommentsRepository, times(1)).findByTaskId(taskId);
+	}
 
-    @Test
-    void getByTask_WhenTaskNotFound_Throws() {
-        Long taskId = 99L;
+	@Test
+	void getByTask_WhenTaskNotFound_Throws() {
+		Long taskId = 99L;
 
-        when(taskRepository.existsById(taskId)).thenReturn(false);
+		when(taskRepository.existsById(taskId)).thenReturn(false);
 
-        assertThrows(TaskNotFoundException.class,
-                () -> taskCommentsService.getByTask(taskId));
+		assertThrows(TaskNotFoundException.class,
+				() -> taskCommentsService.getByTask(taskId));
 
-        verify(taskRepository, times(1)).existsById(taskId);
-        verifyNoInteractions(taskCommentsRepository);
-    }
+		verify(taskRepository, times(1)).existsById(taskId);
+		verifyNoInteractions(taskCommentsRepository);
+	}
 
-    @Test
-    void getOne_WhenExists_Success() {
-        Long id = 1L;
+	@Test
+	void getOne_WhenExists_Success() {
+		Long id = 1L;
+		TaskComment comment = TaskComment.builder().build();
 
-        TaskComment comment = TaskComment.builder().build();
+		when(taskCommentsRepository.findById(id))
+				.thenReturn(Optional.of(comment));
 
-        when(taskCommentsRepository.findById(id))
-                .thenReturn(Optional.of(comment));
+		TaskCommentResponseDTO result = taskCommentsService.getOne(id);
 
-        TaskCommentResponseDTO result = taskCommentsService.getOne(id);
+		assertNotNull(result);
+		verify(taskCommentsRepository, times(1)).findById(id);
+	}
 
-        assertNotNull(result);
-        verify(taskCommentsRepository, times(1)).findById(id);
-    }
+	@Test
+	void getOne_WhenNotFound_Throws() {
+		Long id = 1L;
 
-    @Test
-    void getOne_WhenNotFound_Throws() {
-        Long id = 1L;
+		when(taskCommentsRepository.findById(id))
+				.thenReturn(Optional.empty());
 
-        when(taskCommentsRepository.findById(id))
-                .thenReturn(Optional.empty());
+		assertThrows(TaskCommentNotFoundException.class,
+				() -> taskCommentsService.getOne(id));
 
-        assertThrows(TaskCommentNotFoundException.class,
-                () -> taskCommentsService.getOne(id));
+		verify(taskCommentsRepository, times(1)).findById(id);
+	}
 
-        verify(taskCommentsRepository, times(1)).findById(id);
-    }
+	@Test
+	void create_WhenClientAuthor_Success() {
+		Long taskId = 1L;
+		String commentText = "Комментарий";
 
-    @Test
-    void create_WhenClientAuthor_Success() {
-        Long taskId = 1L;
+		Task taskProxy = Task.builder().id(taskId).build();
+		AppUserDetails user = TestData.mockJustUser();
 
-        Task task = Task.builder().build();
-        String comment = "Комментарий";
+		Client client = Client.builder()
+				.id(user.getClientId())
+				.fullName("Иван Иванов")
+				.build();
 
-        AppUserDetails user = TestData.mockJustUser();
+		TaskComment saved = TaskComment.builder()
+				.id(10L)
+				.comment(commentText)
+				.task(taskProxy)
+				.client(client)
+				.build();
 
-        Client client = Client.builder()
-                .id(user.getClientId())
-                .build();
+		// Исправлено под оптимизацию сервиса: existsById и getReferenceById
+		when(taskRepository.existsById(taskId)).thenReturn(true);
+		when(taskRepository.getReferenceById(taskId)).thenReturn(taskProxy);
+		when(clientRepository.getReferenceById(user.getClientId())).thenReturn(client);
+		when(taskCommentsRepository.save(any(TaskComment.class))).thenReturn(saved);
 
-        TaskComment saved = TaskComment.builder()
-                .comment(comment)
-                .task(task)
-                .client(client)
-                .build();
+		TaskCommentResponseDTO result = taskCommentsService.create(commentText, taskId, user);
 
-        when(taskRepository.findById(taskId))
-                .thenReturn(Optional.of(task));
+		assertNotNull(result);
+		assertEquals(commentText, result.comment());
+		assertEquals(user.getClientId(), result.authorId());
+		assertEquals("CLIENT", result.authorType().name());
 
-        when(clientRepository.getReferenceById(user.getClientId()))
-                .thenReturn(client);
+		verify(taskRepository, times(1)).existsById(taskId);
+		verify(taskRepository, times(1)).getReferenceById(taskId);
+		verify(clientRepository, times(1)).getReferenceById(user.getClientId());
+		verify(taskCommentsRepository, times(1)).save(any(TaskComment.class));
+	}
 
-        when(taskCommentsRepository.save(any(TaskComment.class)))
-                .thenReturn(saved);
+	@Test
+	void create_WhenAptekaAuthor_Success() {
+		Long taskId = 1L;
+		String commentText = "Комментарий";
 
-        TaskComment result = taskCommentsService.create(comment, taskId, user);
+		Task taskProxy = Task.builder().id(taskId).build();
+		AppUserDetails user = TestData.mockJustApteka();
+		UserGroup userGroup = UserGroup.builder().id(1).name("Центральная").build();
 
-        assertNotNull(result);
-        assertEquals(comment, result.getComment());
-        assertEquals(task, result.getTask());
-        assertNotNull(result.getClient());
+		Apteka apteka = Apteka.builder()
+				.id(user.getAptekaId())
+				.number(5)
+				.userGroup(userGroup) // Настраиваем группу, чтобы избежать NPE в DTO
+				.build();
 
-        verify(taskRepository, times(1)).findById(taskId);
-        verify(clientRepository, times(1)).getReferenceById(user.getClientId());
-        verify(taskCommentsRepository, times(1)).save(any(TaskComment.class));
-    }
+		TaskComment saved = TaskComment.builder()
+				.id(20L)
+				.comment(commentText)
+				.task(taskProxy)
+				.apteka(apteka)
+				.build();
 
-    @Test
-    void create_WhenAptekaAuthor_Success() {
-        Long taskId = 1L;
+		// Исправлено под оптимизацию сервиса: existsById и getReferenceById
+		when(taskRepository.existsById(taskId)).thenReturn(true);
+		when(taskRepository.getReferenceById(taskId)).thenReturn(taskProxy);
+		when(aptekaRepository.getReferenceById(user.getAptekaId())).thenReturn(apteka);
+		when(taskCommentsRepository.save(any(TaskComment.class))).thenReturn(saved);
 
-        Task task = Task.builder().build();
-        String comment = "Комментарий";
+		TaskCommentResponseDTO result = taskCommentsService.create(commentText, taskId, user);
 
-        AppUserDetails user = TestData.mockJustApteka();
+		assertNotNull(result);
+		assertEquals(commentText, result.comment());
+		assertEquals(user.getAptekaId(), result.authorId());
+		assertEquals("APTEKA", result.authorType().name());
 
-        Apteka apteka = Apteka.builder()
-                .id(user.getAptekaId())
-                .build();
+		verify(taskRepository, times(1)).existsById(taskId);
+		verify(taskRepository, times(1)).getReferenceById(taskId);
+		verify(aptekaRepository, times(1)).getReferenceById(user.getAptekaId());
+		verify(taskCommentsRepository, times(1)).save(any(TaskComment.class));
+	}
 
-        TaskComment saved = TaskComment.builder()
-                .comment(comment)
-                .task(task)
-                .apteka(apteka)
-                .build();
+	@Test
+	void create_WhenTaskNotFound_Throws() {
+		Long taskId = 999L;
+		AppUserDetails user = TestData.mockJustUser();
 
-        when(taskRepository.findById(taskId))
-                .thenReturn(Optional.of(task));
+		// Исправлено на existsById
+		when(taskRepository.existsById(taskId)).thenReturn(false);
 
-        when(aptekaRepository.getReferenceById(user.getAptekaId()))
-                .thenReturn(apteka);
+		assertThrows(TaskNotFoundException.class,
+				() -> taskCommentsService.create("text", taskId, user));
 
-        when(taskCommentsRepository.save(any(TaskComment.class)))
-                .thenReturn(saved);
+		verify(taskRepository, times(1)).existsById(taskId);
+		verifyNoInteractions(taskCommentsRepository);
+		verifyNoInteractions(clientRepository);
+	}
 
-        TaskComment result = taskCommentsService.create(comment, taskId, user);
+	@Test
+	void create_WhenUserHasNoType_Throws() {
+		Long taskId = 1L;
+		Task taskProxy = Task.builder().id(taskId).build();
 
-        assertNotNull(result);
-        assertEquals(comment, result.getComment());
-        assertEquals(task, result.getTask());
-        assertNotNull(result.getApteka());
+		AppUserDetails user = mock(AppUserDetails.class);
+		when(user.isClient()).thenReturn(false);
+		when(user.isApteka()).thenReturn(false);
 
-        verify(taskRepository, times(1)).findById(taskId);
-        verify(aptekaRepository, times(1)).getReferenceById(user.getAptekaId());
-        verify(taskCommentsRepository, times(1)).save(any(TaskComment.class));
-    }
+		// Исправлено на existsById и getReferenceById
+		when(taskRepository.existsById(taskId)).thenReturn(true);
+		when(taskRepository.getReferenceById(taskId)).thenReturn(taskProxy);
 
-    @Test
-    void create_WhenTaskNotFound_Throws() {
-        Long taskId = 999L;
+		assertThrows(AvtorCommentNotInputException.class,
+				() -> taskCommentsService.create("text", taskId, user));
 
-        AppUserDetails user = TestData.mockJustUser();
-
-        when(taskRepository.findById(taskId))
-                .thenReturn(Optional.empty());
-
-        assertThrows(TaskNotFoundException.class,
-                () -> taskCommentsService.create("text", taskId, user));
-
-        verify(taskRepository, times(1)).findById(taskId);
-        verifyNoInteractions(taskCommentsRepository);
-    }
-
-    @Test
-    void create_WhenUserHasNoType_Throws() {
-        Long taskId = 1L;
-
-        Task task = Task.builder().build();
-
-        AppUserDetails user = mock(AppUserDetails.class);
-        when(user.isClient()).thenReturn(false);
-        when(user.isApteka()).thenReturn(false);
-
-        when(taskRepository.findById(taskId))
-                .thenReturn(Optional.of(task));
-
-        assertThrows(AvtorCommentNotInputException.class,
-                () -> taskCommentsService.create("text", taskId, user));
-
-        verify(taskRepository, times(1)).findById(taskId);
-    }
+		verify(taskRepository, times(1)).existsById(taskId);
+		verify(taskRepository, times(1)).getReferenceById(taskId);
+	}
 }

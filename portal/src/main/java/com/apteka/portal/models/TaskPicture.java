@@ -27,7 +27,7 @@ public class TaskPicture {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
-    private Integer id;
+    private Long id;
 
     @Column(name = "path")
     private String path;
@@ -40,7 +40,7 @@ public class TaskPicture {
     @PreUpdate
     private void cleanPath() {
         if (this.path != null) {
-            this.path.strip();
+            this.path = this.path.strip();
         }
     }
 }

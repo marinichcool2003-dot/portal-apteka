@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS task_comments(
+CREATE TABLE IF NOT EXISTS task_comment(
     id BIGSERIAL PRIMARY KEY,
     comment VARCHAR(255) NOT NULL,
     task_id BIGINT NOT NULL,

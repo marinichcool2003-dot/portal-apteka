@@ -1,53 +1,89 @@
 package com.apteka.portal.dtos.response;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.Task;
-import com.apteka.portal.models.TaskComment;
-import com.apteka.portal.models.UserGroup;
-import com.apteka.portal.models.WorkType;
+import com.apteka.portal.models.UserType;
 
 public record TaskResponseDTO(
         Long id,
         String title,
         String description,
-        String comments,
         LocalDateTime creationDate,
         LocalDateTime updatedDate,
         LocalDateTime closingDate,
         String status,
         String priority,
-        String workType,
-        String groupTask,
-        String createdByAptekaLogin,
-        String createdByClientFullName,
-        String assignedAptekaLogin,
-        String assignedClientFullName,
-        String assignedUserGroup,
-        List<TaskComment> Allcomments 
-) {
+
+        Integer workTypeId,
+        String workTypeName,
+        String groupTaskName,
+        String userGroupName,
+
+        UserShortInfo createdBy,
+        UserShortInfo assignedBy,
+
+        List<TaskCommentResponseDTO> comments,
+        List<TaskPictureResponseDTO> pictures) {
+        
+    public record UserShortInfo(Object id, UserType type, String displayName) {
+    }
+
     public static TaskResponseDTO from(Task task) {
         return new TaskResponseDTO(
-                task.getId(),
-                task.getTitle(),
-                task.getDescription(),
-                task.getComments(),
-                task.getCreationDate(),
-                task.getUpdatedDate(),
-                task.getClosingDate(),
-                task.getStatus().getDescription(),
-                task.getPriority().getDescription(),
-                Optional.ofNullable(task.getWorkType()).map(WorkType::getName).orElse(null),
-                Optional.ofNullable(task.getWorkType().getGroupTask()).map(GroupTask::getName).orElse(null),
-                task.getCreatedByApteka() != null ? task.getCreatedByApteka().getLogin() : null,
-                task.getCreatedByClient() != null ? task.getCreatedByClient().getFullName() : null,
-                task.getAssignedApteka() != null ? task.getAssignedApteka().getLogin() : null,
-                task.getAssignedClient() != null ? task.getAssignedClient().getFullName() : null,
-                Optional.ofNullable(task.getWorkType().getGroupTask().getUserGroup()).map(UserGroup::getName).orElse(null),
-                task.getEmployeeComments()
+            task.getId(),
+            task.getTitle(), 
+            task.getDescription(),
+            task.getCreationDate(),
+            task.getUpdatedDate(),
+            task.getClosingDate(),
+            task.getStatus() != null ? task.getStatus().name() : null,
+            task.getPriority() != null ? task.getPriority().name() : null,
+            Optional.ofNullable(task.getWorkType()).map(wt -> wt.getId()).orElse(null),
+            Optional.ofNullable(task.getWorkType()).map(wt -> wt.getName()).orElse(null),
+            Optional.ofNullable(task.getWorkType()).map(wt -> wt.getGroupTask()).map(gt -> gt.getName()).orElse(null),
+            Optional.ofNullable(task.getWorkType())
+                .map(wt -> wt.getGroupTask())
+                .map(gt -> gt.getUserGroup())
+                .map(ug -> ug.getName())
+                .orElse(null),
+            resolveCreator(task),
+            resolveAssignee(task),
+            Optional.ofNullable(task.getEmployeeComments()).orElse(Collections.emptySet()).stream()
+                .map(TaskCommentResponseDTO::from)
+                .toList(),
+            Optional.ofNullable(task.getPictures()).orElse(Collections.emptySet()).stream()
+                .map(TaskPictureResponseDTO::from)
+                .toList()
         );
+    }
+
+    private static UserShortInfo resolveCreator(Task task) {
+        if (task.getCreatedByClient() != null) {
+            return new UserShortInfo(task.getCreatedByClient().getId(), UserType.CLIENT,
+                    task.getCreatedByClient().getFullName());
+        } else if (task.getCreatedByApteka() != null) {
+            String aptekaName = Optional.ofNullable(task.getCreatedByApteka().getUserGroup())
+                    .map(ug -> ug.getName() + " " + task.getCreatedByApteka().getNumber())
+                    .orElse(task.getCreatedByApteka().getLogin());
+            return new UserShortInfo(task.getCreatedByApteka().getId(), UserType.APTEKA, aptekaName);
+        }
+        return null;
+    }
+
+    private static UserShortInfo resolveAssignee(Task task) {
+        if (task.getAssignedClient() != null) {
+            return new UserShortInfo(task.getAssignedClient().getId(), UserType.CLIENT,
+                    task.getAssignedClient().getFullName());
+        } else if (task.getAssignedApteka() != null) {
+            String aptekaName = Optional.ofNullable(task.getAssignedApteka().getUserGroup())
+                    .map(ug -> ug.getName() + " " + task.getAssignedApteka().getNumber())
+                    .orElse(task.getAssignedApteka().getLogin());
+            return new UserShortInfo(task.getAssignedApteka().getId(), UserType.APTEKA, aptekaName);
+        }
+        return null;
     }
 }

@@ -10,7 +10,6 @@ import com.apteka.portal.exceptions.AvtorCommentNotInputException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskComment;
 import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.repository.ClientRepository;
@@ -22,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class TaskCommentService {
+
     private final AptekaRepository aptekaRepository;
     private final TaskCommentRepository taskCommentsRepository;
     private final TaskRepository taskRepository;
@@ -52,18 +52,21 @@ public class TaskCommentService {
     }
 
     @Transactional
-    public TaskComment create(String comment, Long taskId, AppUserDetails currentUser) {
+    public TaskCommentResponseDTO create(String commentText, Long taskId, AppUserDetails currentUser) {
+        if (!taskRepository.existsById(taskId)) {
+            throw new TaskNotFoundException(taskId);
+        }
 
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new TaskNotFoundException(taskId));
+        var taskProxy = taskRepository.getReferenceById(taskId);
 
-        TaskComment.TaskCommentBuilder builder = TaskComment.builder()
-                .comment(comment)
-                .task(task);
+        var builder = TaskComment.builder()
+                .comment(commentText.strip())
+                .task(taskProxy);
 
-        setCommentAutor(builder, currentUser);
+        setCommentAuthor(builder, currentUser);
 
-        return taskCommentsRepository.save(builder.build());
+        TaskComment savedComment = taskCommentsRepository.save(builder.build());
+        return TaskCommentResponseDTO.from(savedComment);
     }
 
     @Transactional
@@ -74,13 +77,23 @@ public class TaskCommentService {
         taskCommentsRepository.deleteById(id);
     }
 
-    private void setCommentAutor(TaskComment.TaskCommentBuilder builder, AppUserDetails currentUser) {
+    private void setCommentAuthor(TaskComment.TaskCommentBuilder builder, AppUserDetails currentUser) {
+        if (currentUser == null) {
+            return;
+        }
+
         if (currentUser.isClient()) {
+            if (currentUser.getClientId() == null) {
+                throw new AvtorCommentNotInputException("ID клиента отсутствует в контексте безопасности.");
+            }
             builder.client(clientRepository.getReferenceById(currentUser.getClientId()));
         } else if (currentUser.isApteka()) {
+            if (currentUser.getAptekaId() == null) {
+                throw new AvtorCommentNotInputException("ID аптеки отсутствует в контексте безопасности.");
+            }
             builder.apteka(aptekaRepository.getReferenceById(currentUser.getAptekaId()));
         } else {
-            throw new AvtorCommentNotInputException("Автор комментария не был указан или не существует.");
+            throw new AvtorCommentNotInputException("Автор комментария имеет неопределенный тип аккаунта.");
         }
     }
 }
