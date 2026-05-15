@@ -23,6 +23,7 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
+import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
 import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
@@ -109,7 +110,6 @@ public class GroupTaskServiceTest {
         Integer id = 1;
         GroupTask groupToDelete = TestData.defaultGroupTask();
         AppUserDetails currentUser = TestData.mockJustBoss();
-        UserGroup userGroup = TestData.defaulUserGroup();
         Cache mockCache = mock(Cache.class);
 
         try(MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)){

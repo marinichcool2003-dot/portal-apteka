@@ -1,5 +1,6 @@
 package com.apteka.portal.services;
 
+import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.components.UserGroupSecurityService;
 import com.apteka.portal.dtos.request.UserGroupRequestDTO;
 import com.apteka.portal.dtos.response.UserGroupResponseDTO;

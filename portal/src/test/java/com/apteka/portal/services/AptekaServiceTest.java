@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.apteka.portal.components.PasswordValidator;
+import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
 import com.apteka.portal.dtos.response.AptekaResponseDTO;
 import com.apteka.portal.models.AppUserDetails;

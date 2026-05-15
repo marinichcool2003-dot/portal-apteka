@@ -33,9 +33,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.apteka.portal.components.AvatarClientService;
 import com.apteka.portal.components.ClientSecurityService;
 import com.apteka.portal.components.PasswordValidator;
+import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
+import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
 import com.apteka.portal.models.AppUserDetails;
@@ -123,12 +125,11 @@ public class ClientServiceTest {
             when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
             when(clientRepository.save(any(Client.class))).thenReturn(savedClient);
 
-            Client result = clientService.create(dto);
+            ClientResponseDTO result = clientService.create(dto);
 
-            assertEquals(savedClient.getLogin(), result.getLogin());
-            assertEquals(savedClient.getPassword(), result.getPassword());
-            assertEquals(savedClient.getFullName(), result.getFullName());
-            assertEquals(savedClient.getAvatarURL(), result.getAvatarURL());
+            assertEquals(savedClient.getLogin(), result.login());
+            assertEquals(savedClient.getFullName(), result.fullName());
+            assertEquals(savedClient.getAvatarURL(), result.avatarURL());
 
             verify(clientSecurityService).validateCanCreateClient(currentUser, userGroup.getId());
             verify(clientSecurityService).canGiveRoleToClient(anySet(), eq(currentUser), eq(userGroup));
@@ -158,9 +159,9 @@ public class ClientServiceTest {
             when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
             when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            Client result = clientService.updateYourself(clientId, dto);
+            ClientResponseDTO result = clientService.updateYourself(clientId, dto);
 
-            assertEquals("newLogin", result.getLogin());
+            assertEquals("newLogin", result.login());
             verify(clientRepository).save(any(Client.class));
             verify(authService).invalidateAllSession("oldLogin");
         }
@@ -195,11 +196,11 @@ public class ClientServiceTest {
             when(userGroupRepository.findById(newGroup.getId())).thenReturn(Optional.of(newGroup));
             when(clientRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-            Client result = clientService.fullUpdate(clientId, dto);
+            ClientResponseDTO result = clientService.fullUpdate(clientId, dto);
 
-            assertEquals("Иванов Иван Иванович", result.getFullName());
-            assertEquals("admin_new_login", result.getLogin());
-            assertEquals(newGroup.getId(), result.getUserGroup().getId());
+            assertEquals("Иванов Иван Иванович", result.fullName());
+            assertEquals("admin_new_login", result.login());
+            assertEquals(newGroup.getId(), result.userGroup().id());
 
             verify(authService).invalidateAllSession("old_login");
             verify(userGroupRepository, times(1)).findById(newGroup.getId());

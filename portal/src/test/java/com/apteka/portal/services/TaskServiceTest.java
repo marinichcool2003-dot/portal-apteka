@@ -19,9 +19,11 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.TaskSecurityService;
 import com.apteka.portal.dtos.request.TaskRequestDTO;
+import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
@@ -29,6 +31,8 @@ import com.apteka.portal.models.Task;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.models.GroupTask;
+import com.apteka.portal.repository.AptekaRepository;
+import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.TaskRepository;
 import com.apteka.portal.repository.WorkTypeRepository;
 
@@ -39,10 +43,10 @@ public class TaskServiceTest {
 	private TaskRepository taskRepository;
 
 	@Mock
-	private AptekaService aptekaService;
+	private AptekaRepository aptekaRepository;
 
 	@Mock
-	private ClientService clientService;
+	private ClientRepository clientRepository;
 
 	@Mock
 	private WorkTypeRepository workTypeRepository;
@@ -93,7 +97,6 @@ public class TaskServiceTest {
 				.id(10L)
 				.title("Не работает касса")
 				.description("Нужно проверить кассу до конца дня")
-				.comments(null)
 				.workType(workType)
 				.createdByApteka(creator)
 				.assignedClient(null)
@@ -107,19 +110,18 @@ public class TaskServiceTest {
 			when(workTypeRepository.getReferenceById(workType.getId()))
 					.thenReturn(workType);
 
-			when(aptekaService.getOne(currentUser.getAptekaId()))
-					.thenReturn(creator);
+			when(aptekaRepository.findById(currentUser.getAptekaId()))
+					.thenReturn(Optional.of(creator));
 
 			when(taskRepository.save(any(Task.class)))
 					.thenReturn(savedTask);
 
-			Task result = taskService.create(dto);
+			TaskResponseDTO result = taskService.create(dto);
 
 			assertNotNull(result);
 
-			assertEquals(savedTask.getTitle(), result.getTitle());
-			assertEquals(savedTask.getDescription(), result.getDescription());
-			assertEquals(savedTask.getComments(), result.getComments());
+			assertEquals(savedTask.getTitle(), result.title());
+			assertEquals(savedTask.getDescription(), result.description());
 
 			verify(taskSecurityService, times(1))
 					.validateCanCreate(dto, currentUser);
@@ -127,8 +129,8 @@ public class TaskServiceTest {
 			verify(workTypeRepository, times(1))
 					.getReferenceById(workType.getId());
 
-			verify(aptekaService, times(1))
-					.getOne(currentUser.getAptekaId());
+			verify(aptekaRepository, times(1))
+					.findById(currentUser.getAptekaId());
 
 			verify(taskRepository, times(1))
 					.save(any(Task.class));
@@ -163,7 +165,6 @@ public class TaskServiceTest {
 				.id(10L)
 				.title("Не работает касса")
 				.description("Нужно проверить кассу до конца дня")
-				.comments(null)
 				.workType(oldWorkType)
 				.createdByApteka(creator)
 				.assignedClient(oldAssigner)
@@ -175,15 +176,12 @@ public class TaskServiceTest {
 				.comments("Очень срочно")
 				.workTypeId(newWorkType.getId())
 				.assignedClientId(newAssigner.getId())
-				.assignedAptekaId(null)
-				.statusDescription(null)
 				.build();
 
 		Task updatedTask = Task.builder()
 				.id(10L)
 				.title("Не работает терминал")
 				.description("Нужно проверить терминал срочно")
-				.comments("Очень срочно")
 				.workType(newWorkType)
 				.createdByApteka(creator)
 				.assignedClient(newAssigner)
@@ -212,36 +210,32 @@ public class TaskServiceTest {
 			when(workTypeRepository.getReferenceById(newWorkType.getId()))
 					.thenReturn(newWorkType);
 
-			when(clientService.getOne(newAssigner.getId()))
-					.thenReturn(newAssigner);
+			when(clientRepository.findById(newAssigner.getId()))
+					.thenReturn(Optional.of(newAssigner));
 
 			when(taskRepository.save(any(Task.class)))
 					.thenReturn(updatedTask);
 
-			Task result = taskService.update(taskForUpdate.getId(), dto);
+			TaskResponseDTO result = taskService.update(taskForUpdate.getId(), dto);
 
 			assertNotNull(result);
 
-			assertEquals(updatedTask.getTitle(), result.getTitle());
-			assertEquals(updatedTask.getDescription(), result.getDescription());
-			assertEquals(updatedTask.getComments(), result.getComments());
+			assertEquals(updatedTask.getTitle(), result.title());
+			assertEquals(updatedTask.getDescription(), result.description());
 
 			assertEquals(
 					updatedTask.getWorkType().getName(),
-					result.getWorkType().getName());
+					result.workTypeName());
 
 			assertEquals(
 					updatedTask.getAssignedClient().getId(),
-					result.getAssignedClient().getId());
+					result.assignedBy().id());
 
 			verify(taskRepository, times(1))
 					.findById(taskForUpdate.getId());
 
 			verify(taskSecurityService, times(1))
 					.validateCanUpdate(taskForUpdate, dto, currentUser);
-
-			verify(taskSecurityService, times(1))
-					.validateStatus(taskForUpdate, currentUser);
 
 			verify(taskSecurityService, times(1))
 					.changeWorkTypeToAnotherDepartament(
@@ -258,8 +252,8 @@ public class TaskServiceTest {
 			verify(workTypeRepository, times(1))
 					.getReferenceById(newWorkType.getId());
 
-			verify(clientService, times(1))
-					.getOne(newAssigner.getId());
+			verify(clientRepository, times(1))
+					.findById(newAssigner.getId());
 
 			verify(taskAuditService, times(3))
 					.logChange(

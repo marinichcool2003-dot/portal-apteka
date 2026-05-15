@@ -90,7 +90,7 @@ public class TaskSecurityServiceTest {
 		AppUserDetails currentUser = TestData.mockJustApteka();
 
 		Integer workTypeId = 2;
-		WorkType workType = new WorkType().builder().id(workTypeId).build();
+		WorkType workType = WorkType.builder().id(workTypeId).build();
 		TaskRequestDTO dto = TaskRequestDTO.builder()
 				.workTypeId(workTypeId)
 				.assignedClientId(UUID.randomUUID())

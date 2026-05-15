@@ -20,6 +20,7 @@ import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
 import com.apteka.portal.components.PasswordValidator;
+import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
@@ -72,7 +73,7 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClientResponseDTO> getbyGroup(Integer userGroupId) {
+    public List<ClientResponseDTO> getByGroup(Integer userGroupId) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         clientSecurityService.validateWhoCanSelectClients(currentUser);
         if (!userGroupRepository.existsById(userGroupId))
@@ -85,7 +86,7 @@ public class ClientService {
     public List<ClientWithStatsDTO> getWithNumberOfTask(Integer userGroupId) {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         clientSecurityService.validateHasElevatedPrivelegesInGroup(currentUser, userGroupId);
-        List<ClientResponseDTO> clients = getbyGroup(userGroupId);
+        List<ClientResponseDTO> clients = getByGroup(userGroupId);
         if (clients.isEmpty())
             return List.of();
 
@@ -104,7 +105,7 @@ public class ClientService {
     }
 
     @Transactional
-    public Client create(ClientRequestDTO dto) throws IOException {
+    public ClientResponseDTO create(ClientRequestDTO dto) throws IOException {
 
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         clientSecurityService.validateCanCreateClient(currentUser, dto.groupClientId());
@@ -135,7 +136,8 @@ public class ClientService {
                 .avatarURL("/uploads/avatars/clients/default.png")
                 .build();
 
-        return clientRepository.save(newClient);
+        Client client = clientRepository.save(newClient);
+        return ClientResponseDTO.from(client);
     }
 
     public Client addRole(UUID id, String code) {
@@ -160,7 +162,7 @@ public class ClientService {
     }
 
     @Transactional
-    public Client updateYourself(UUID id, ClientUpdateRequestDTO dto) throws IOException {
+    public ClientResponseDTO updateYourself(UUID id, ClientUpdateRequestDTO dto) throws IOException {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
 
         if (!Objects.equals(currentUser.getClientId(), id)) {
@@ -169,11 +171,11 @@ public class ClientService {
 
         Client savedClient = updateBasicClientForm(id, dto.login(), dto.password(), dto.avatar());
 
-        return savedClient;
+        return ClientResponseDTO.from(savedClient);
     }
 
     @Transactional
-    public Client fullUpdate(UUID id, FullClientUpdateRequestDTO dto) throws IOException {
+    public ClientResponseDTO fullUpdate(UUID id, FullClientUpdateRequestDTO dto) throws IOException {
         AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор может полностью изменять сотрудника");
@@ -195,7 +197,7 @@ public class ClientService {
             savedClient.setUserGroup(group);
         }
 
-        return savedClient;
+        return ClientResponseDTO.from(savedClient);
     }
 
     @Transactional

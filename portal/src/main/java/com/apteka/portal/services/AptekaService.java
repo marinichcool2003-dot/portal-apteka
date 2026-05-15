@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.PasswordValidator;
+import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.request.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
 import com.apteka.portal.dtos.response.AptekaResponseDTO;

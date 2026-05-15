@@ -1,10 +1,12 @@
-package com.apteka.portal.services;
+package com.apteka.portal.components;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 
 import com.apteka.portal.models.AppUserDetails;
 
+@Component
 public class SecurityUtils {
     private static AppUserDetails getCurrentUser() {
 
