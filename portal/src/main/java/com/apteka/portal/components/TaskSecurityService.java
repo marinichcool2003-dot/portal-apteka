@@ -17,7 +17,6 @@ import com.apteka.portal.models.UserType;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.WorkTypeRepository;
-import com.apteka.portal.services.ClientService;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;

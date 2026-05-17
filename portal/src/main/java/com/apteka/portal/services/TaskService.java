@@ -9,7 +9,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.TaskSecurityService;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
@@ -78,9 +77,7 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponseDTO create(TaskRequestDTO dto) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
-
+    public TaskResponseDTO create(TaskRequestDTO dto, AppUserDetails currentUser) {
         taskSecurityService.validateCanCreate(dto, currentUser);
         validateTitle(dto.title());
         validateDescription(dto.description());
@@ -113,9 +110,7 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponseDTO update(Long id, TaskRequestDTO dto) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
-
+    public TaskResponseDTO update(Long id, TaskRequestDTO dto, AppUserDetails currentUser) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
@@ -155,9 +150,7 @@ public class TaskService {
     }
 
     @Transactional
-    public void delete(Long id) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
-
+    public void delete(Long id, AppUserDetails currentUser) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 

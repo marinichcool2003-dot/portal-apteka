@@ -1,6 +1,5 @@
 package com.apteka.portal.services;
 
-import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.components.UserGroupSecurityService;
 import com.apteka.portal.dtos.request.UserGroupRequestDTO;
 import com.apteka.portal.dtos.response.UserGroupResponseDTO;
@@ -18,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.exceptions.DublicateGroupUserException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
+import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.UserGroupRepository;
@@ -50,8 +50,8 @@ public class UserGroupService {
             @CacheEvict(value = CacheNames.USER_GROUPS_LIST, allEntries = true)
     })
     @Transactional
-    public UserGroupResponseDTO create(UserGroupRequestDTO dto) {
-        userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
+    public UserGroupResponseDTO create(UserGroupRequestDTO dto, AppUserDetails currentUser) {
+        userGroupSecurityService.checkCanCreateGroup(currentUser);
         try {
             UserGroup group = userGroupRepository.save(UserGroup.builder()
                     .name(validateNameGroup(dto.name(), null))
@@ -69,8 +69,8 @@ public class UserGroupService {
             @CachePut(value = CacheNames.USER_GROUP, key = "#id")
     })
     @Transactional
-    public UserGroupResponseDTO update(Integer id, UserGroupRequestDTO dto) {
-        userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
+    public UserGroupResponseDTO update(Integer id, UserGroupRequestDTO dto, AppUserDetails currentUser) {
+        userGroupSecurityService.checkCanCreateGroup(currentUser);
         UserGroup upGroup = userGroupRepository.findById(id)
                 .orElseThrow(() -> new GroupUserNotFoundException(id));
         upGroup.setName(validateNameGroup(dto.name(), id));
@@ -86,8 +86,8 @@ public class UserGroupService {
             @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, allEntries = true)
     })
     @Transactional
-    public void delete(Integer id) {
-        userGroupSecurityService.checkCanCreateGroup(SecurityUtils.getRequiredCurrentUser());
+    public void delete(Integer id, AppUserDetails currentUser) {
+        userGroupSecurityService.checkCanCreateGroup(currentUser);
         UserGroup deletedGroup = userGroupRepository.findById(id)
                 .orElseThrow(() -> new GroupUserNotFoundException(id));
         userGroupRepository.delete(deletedGroup);

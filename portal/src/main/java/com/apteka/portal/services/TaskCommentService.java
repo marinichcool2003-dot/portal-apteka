@@ -2,15 +2,18 @@ package com.apteka.portal.services;
 
 import java.util.List;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.apteka.portal.dtos.request.TaskCommentRequestDTO;
 import com.apteka.portal.dtos.response.TaskCommentResponseDTO;
 import com.apteka.portal.exceptions.AvtorCommentNotInputException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.TaskComment;
+import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.TaskCommentRepository;
@@ -26,13 +29,6 @@ public class TaskCommentService {
     private final TaskCommentRepository taskCommentsRepository;
     private final TaskRepository taskRepository;
     private final ClientRepository clientRepository;
-
-    @Transactional(readOnly = true)
-    public List<TaskCommentResponseDTO> getAll() {
-        return taskCommentsRepository.findAll().stream()
-                .map(TaskCommentResponseDTO::from)
-                .toList();
-    }
 
     @Transactional(readOnly = true)
     public List<TaskCommentResponseDTO> getByTask(Long taskId) {
@@ -51,16 +47,18 @@ public class TaskCommentService {
         return TaskCommentResponseDTO.from(comment);
     }
 
+    //Добавить получение по автору
+
     @Transactional
-    public TaskCommentResponseDTO create(String commentText, Long taskId, AppUserDetails currentUser) {
-        if (!taskRepository.existsById(taskId)) {
-            throw new TaskNotFoundException(taskId);
+    public TaskCommentResponseDTO create(TaskCommentRequestDTO dto, AppUserDetails currentUser) {
+        if (!taskRepository.existsById(dto.taskId())) {
+            throw new TaskNotFoundException(dto.taskId());
         }
 
-        var taskProxy = taskRepository.getReferenceById(taskId);
+        var taskProxy = taskRepository.getReferenceById(dto.taskId());
 
         var builder = TaskComment.builder()
-                .comment(commentText.strip())
+                .comment(dto.commentText().strip())
                 .task(taskProxy);
 
         setCommentAuthor(builder, currentUser);
@@ -71,6 +69,9 @@ public class TaskCommentService {
 
     @Transactional
     public void delete(Long id, AppUserDetails currentUser) {
+        if (!currentUser.hasRole(UserRole.ADMIN)) {
+            throw new AccessDeniedException("Только администратор может удалять комментарии");
+        }
         if (!taskCommentsRepository.existsById(id)) {
             throw new TaskCommentNotFoundException(id);
         }

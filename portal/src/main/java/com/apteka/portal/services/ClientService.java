@@ -20,7 +20,6 @@ import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
 import com.apteka.portal.components.PasswordValidator;
-import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
@@ -54,8 +53,7 @@ public class ClientService {
     private final PasswordValidator passwordValidator;
 
     @Transactional(readOnly = true)
-    public List<ClientResponseDTO> getAll() {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public List<ClientResponseDTO> getAll(AppUserDetails currentUser) {
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("У вас нет прав на просмотр списка всех сотрудников");
         }
@@ -64,8 +62,7 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public ClientResponseDTO getOne(UUID id) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public ClientResponseDTO getOne(UUID id, AppUserDetails currentUser) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
@@ -73,8 +70,7 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClientResponseDTO> getByGroup(Integer userGroupId) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public List<ClientResponseDTO> getByGroup(Integer userGroupId, AppUserDetails currentUser) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
         if (!userGroupRepository.existsById(userGroupId))
             throw new GroupUserNotFoundException(userGroupId);
@@ -83,10 +79,9 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClientWithStatsDTO> getWithNumberOfTask(Integer userGroupId) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public List<ClientWithStatsDTO> getWithNumberOfTask(Integer userGroupId, AppUserDetails currentUser) {
         clientSecurityService.validateHasElevatedPrivelegesInGroup(currentUser, userGroupId);
-        List<ClientResponseDTO> clients = getByGroup(userGroupId);
+        List<ClientResponseDTO> clients = getByGroup(userGroupId, currentUser);
         if (clients.isEmpty())
             return List.of();
 
@@ -105,9 +100,7 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponseDTO create(ClientRequestDTO dto) throws IOException {
-
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public ClientResponseDTO create(ClientRequestDTO dto, AppUserDetails currentUser) throws IOException {
         clientSecurityService.validateCanCreateClient(currentUser, dto.groupClientId());
 
         validateLogin(dto.login());
@@ -140,8 +133,7 @@ public class ClientService {
         return ClientResponseDTO.from(client);
     }
 
-    public Client addRole(UUID id, String code) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public Client addRole(UUID id, String code, AppUserDetails currentUser) {
         UserRole role = UserRole.fromCode(code);
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
@@ -162,9 +154,7 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponseDTO updateYourself(UUID id, ClientUpdateRequestDTO dto) throws IOException {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
-
+    public ClientResponseDTO updateYourself(UUID id, ClientUpdateRequestDTO dto, AppUserDetails currentUser) throws IOException {
         if (!Objects.equals(currentUser.getClientId(), id)) {
             throw new AccessDeniedException("Вы не можете изменять не свой профиль");
         }
@@ -175,8 +165,7 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponseDTO fullUpdate(UUID id, FullClientUpdateRequestDTO dto) throws IOException {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public ClientResponseDTO fullUpdate(UUID id, FullClientUpdateRequestDTO dto, AppUserDetails currentUser) throws IOException {
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор может полностью изменять сотрудника");
         }
@@ -201,8 +190,7 @@ public class ClientService {
     }
 
     @Transactional
-    public void delete(UUID id) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public void delete(UUID id, AppUserDetails currentUser ) {
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор может удалять сотрудников");
         }

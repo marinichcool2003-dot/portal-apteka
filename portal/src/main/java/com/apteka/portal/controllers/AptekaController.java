@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.apteka.portal.dtos.response.AptekaResponseDTO;
+import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.dtos.request.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
 import com.apteka.portal.services.AptekaService;
@@ -38,20 +40,25 @@ public class AptekaController {
         return ResponseEntity.ok(aptekaService.getOne(id));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<AptekaResponseDTO> getMe(@AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(aptekaService.getOne(currentUser.getAptekaId()));
+    }
+
     @GetMapping("/filter")
     public ResponseEntity<List<AptekaResponseDTO>> filter(@RequestBody AptekaFilterRequestDTO dto, Pageable pageable) {
         return ResponseEntity.ok().body(aptekaService.filter(dto, pageable));
     }
 
     @PostMapping
-    public ResponseEntity<AptekaResponseDTO> create(@Valid @RequestBody AptekaRequestDTO dto) {
+    public ResponseEntity<AptekaResponseDTO> create(@Valid @RequestBody AptekaRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(aptekaService.create(dto));
+                .body(aptekaService.create(dto, currentUser));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<AptekaResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody AptekaRequestDTO dto) {
-        return ResponseEntity.ok(aptekaService.update(id, dto));
+    public ResponseEntity<AptekaResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody AptekaRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(aptekaService.update(id, dto, currentUser));
     }
 
     @DeleteMapping("/{id}")

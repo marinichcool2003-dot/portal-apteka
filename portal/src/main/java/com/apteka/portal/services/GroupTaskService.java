@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
-import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
 import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.exceptions.DublicateGroupTaskException;
@@ -56,9 +55,7 @@ public class GroupTaskService {
 
     @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#dto.userGroupId()")
     @Transactional
-    public GroupTaskResponseDTO create(GroupTaskRequestDTO dto) {
-
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public GroupTaskResponseDTO create(GroupTaskRequestDTO dto, AppUserDetails currentUser) {
         UserGroup userGroup = userGroupRepository.findById(dto.userGroupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.userGroupId()));
         String cleanName = dto.name().strip();
@@ -79,9 +76,7 @@ public class GroupTaskService {
             @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#result.userGroup().id()")
     })
     @Transactional
-    public GroupTaskResponseDTO update(Integer id, GroupTaskRequestDTO dto) {
-
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public GroupTaskResponseDTO update(Integer id, GroupTaskRequestDTO dto, AppUserDetails currentUser) {
         GroupTask upGroup = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
 
@@ -102,8 +97,7 @@ public class GroupTaskService {
     }
 
     @Transactional
-    public void delete(Integer id) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public void delete(Integer id, AppUserDetails currentUser) {
         GroupTask deletedGroupTask = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, deletedGroupTask.getUserGroup());

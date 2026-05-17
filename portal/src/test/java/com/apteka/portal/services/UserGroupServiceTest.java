@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,15 +13,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.components.UserGroupSecurityService;
 import com.apteka.portal.dtos.request.UserGroupRequestDTO;
 import com.apteka.portal.dtos.response.UserGroupResponseDTO;
 import com.apteka.portal.exceptions.DublicateGroupUserException;
-import com.apteka.portal.models.AppUserDetails; 
+import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.UserGroupRepository;
 
@@ -46,20 +43,17 @@ class UserGroupServiceTest {
         UserGroup savedGroup = TestData.defaulUserGroup();
         AppUserDetails currentUser = TestData.mockJustAdmin();
 
-        try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
+        when(userGroupRepository.findByName("Розница")).thenReturn(Optional.empty());
+        when(userGroupRepository.save(any(UserGroup.class))).thenReturn(savedGroup);
 
-            when(userGroupRepository.findByName("Розница")).thenReturn(Optional.empty());
-            when(userGroupRepository.save(any(UserGroup.class))).thenReturn(savedGroup);
+        UserGroupResponseDTO result = userGroupService.create(dto, currentUser);
 
-            UserGroupResponseDTO result = userGroupService.create(dto);
+        assertNotNull(result);
+        assertEquals("Розница", result.name());
 
-            assertNotNull(result);
-            assertEquals("Розница", result.name());
+        verify(userGroupSecurityService).checkCanCreateGroup(currentUser);
+        verify(userGroupRepository).save(any(UserGroup.class));
 
-            verify(userGroupSecurityService).checkCanCreateGroup(currentUser);
-            verify(userGroupRepository).save(any(UserGroup.class));
-        }
     }
 
     @Test
@@ -72,14 +66,11 @@ class UserGroupServiceTest {
 
         AppUserDetails currentUser = TestData.mockJustAdmin();
 
-        try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
+        when(userGroupRepository.findById(existingId)).thenReturn(Optional.of(existingInDb));
+        when(userGroupRepository.findByName(dto.name())).thenReturn(Optional.of(anotherGroup));
 
-            when(userGroupRepository.findById(existingId)).thenReturn(Optional.of(existingInDb));
-            when(userGroupRepository.findByName(dto.name())).thenReturn(Optional.of(anotherGroup));
+        assertThrows(DublicateGroupUserException.class, () -> userGroupService.update(existingId, dto, currentUser));
 
-            assertThrows(DublicateGroupUserException.class, () -> userGroupService.update(existingId, dto));
-        }
     }
 
     @Test
@@ -88,15 +79,12 @@ class UserGroupServiceTest {
         UserGroup groupToDelete = TestData.defaulUserGroup();
         AppUserDetails currentUser = TestData.mockJustAdmin();
 
-        try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
+        when(userGroupRepository.findById(id)).thenReturn(Optional.of(groupToDelete));
 
-            when(userGroupRepository.findById(id)).thenReturn(Optional.of(groupToDelete));
+        userGroupService.delete(id, currentUser);
 
-            userGroupService.delete(id);
+        verify(userGroupSecurityService).checkCanCreateGroup(currentUser);
+        verify(userGroupRepository).delete(groupToDelete);
 
-            verify(userGroupSecurityService).checkCanCreateGroup(currentUser);
-            verify(userGroupRepository).delete(groupToDelete);
-        }
     }
 }

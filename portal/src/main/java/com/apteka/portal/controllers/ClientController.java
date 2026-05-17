@@ -37,55 +37,55 @@ public class ClientController {
     private final ClientService clientService;
 
     @GetMapping
-    public ResponseEntity<List<ClientResponseDTO>> getAll() {
-        return ResponseEntity.ok(clientService.getAll());
+    public ResponseEntity<List<ClientResponseDTO>> getAll(@AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(clientService.getAll(currentUser));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ClientResponseDTO> getOne(@PathVariable UUID id) {
-        return ResponseEntity.ok(clientService.getOne(id));
+    public ResponseEntity<ClientResponseDTO> getOne(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(clientService.getOne(id, currentUser));
     }
 
     @GetMapping("/me")
     public ResponseEntity<ClientResponseDTO> getMe(@AuthenticationPrincipal AppUserDetails currentUser) {
-        return ResponseEntity.ok(clientService.getOne(currentUser.getClientId()));
+        return ResponseEntity.ok(clientService.getOne(currentUser.getClientId(), currentUser));
     }
 
     @GetMapping("/by-user-group/{userGroupId}")
-    public ResponseEntity<List<ClientResponseDTO>> getByGroup(@PathVariable Integer userGroupId) {
-        return ResponseEntity.ok(clientService.getByGroup(userGroupId));
+    public ResponseEntity<List<ClientResponseDTO>> getByGroup(@PathVariable Integer userGroupId, @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(clientService.getByGroup(userGroupId, currentUser));
     }
 
     @GetMapping("/by-user-group/task-number/{userGroupId}")
-    public ResponseEntity<List<ClientWithStatsDTO>> getWithNumberOfTask(@PathVariable Integer userGroupId) {
-        return ResponseEntity.ok(clientService.getWithNumberOfTask(userGroupId));
+    public ResponseEntity<List<ClientWithStatsDTO>> getWithNumberOfTask(@PathVariable Integer userGroupId, @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(clientService.getWithNumberOfTask(userGroupId, currentUser));
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
     @PostMapping
-    public ResponseEntity<ClientResponseDTO> create(@Valid @RequestBody ClientRequestDTO dto) throws IOException {
+    public ResponseEntity<ClientResponseDTO> create(@Valid @RequestBody ClientRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(clientService.create(dto));
+                .body(clientService.create(dto, currentUser));
     }
 
     @PutMapping("/update-yourself")
     public ResponseEntity<ClientResponseDTO> updateYourself(@AuthenticationPrincipal AppUserDetails currentUser,
             @Valid @RequestBody ClientUpdateRequestDTO dto) throws IOException {
         UUID clientId = currentUser.getClientId();
-        return ResponseEntity.ok(clientService.updateYourself(clientId, dto));
+        return ResponseEntity.ok(clientService.updateYourself(clientId, dto, currentUser));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/full-update/{id}")
     public ResponseEntity<ClientResponseDTO> fullUpdate(@PathVariable UUID id,
-            @Valid @RequestBody FullClientUpdateRequestDTO dto) throws IOException {
-        return ResponseEntity.ok(clientService.fullUpdate(id, dto));
+            @Valid @RequestBody FullClientUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
+        return ResponseEntity.ok(clientService.fullUpdate(id, dto, currentUser));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        clientService.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
+        clientService.delete(id, currentUser);
         return ResponseEntity.noContent().build();
     }
 }

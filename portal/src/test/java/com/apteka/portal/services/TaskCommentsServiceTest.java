@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.apteka.portal.dtos.request.TaskCommentRequestDTO;
 import com.apteka.portal.dtos.response.TaskCommentResponseDTO;
 import com.apteka.portal.exceptions.AvtorCommentNotInputException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
@@ -45,17 +46,6 @@ public class TaskCommentsServiceTest {
 
 	@InjectMocks
 	private TaskCommentService taskCommentsService;
-
-	@Test
-	void getAll_Success() {
-		when(taskCommentsRepository.findAll())
-				.thenReturn(List.of(TaskComment.builder().build()));
-
-		List<TaskCommentResponseDTO> result = taskCommentsService.getAll();
-
-		assertEquals(1, result.size());
-		verify(taskCommentsRepository, times(1)).findAll();
-	}
 
 	@Test
 	void getByTask_WhenTaskExists_Success() {
@@ -133,13 +123,14 @@ public class TaskCommentsServiceTest {
 				.client(client)
 				.build();
 
-		// Исправлено под оптимизацию сервиса: existsById и getReferenceById
 		when(taskRepository.existsById(taskId)).thenReturn(true);
 		when(taskRepository.getReferenceById(taskId)).thenReturn(taskProxy);
 		when(clientRepository.getReferenceById(user.getClientId())).thenReturn(client);
 		when(taskCommentsRepository.save(any(TaskComment.class))).thenReturn(saved);
 
-		TaskCommentResponseDTO result = taskCommentsService.create(commentText, taskId, user);
+		TaskCommentResponseDTO result = taskCommentsService.create(TaskCommentRequestDTO.builder()
+				.commentText(commentText)
+				.taskId(taskId).build(), user);
 
 		assertNotNull(result);
 		assertEquals(commentText, result.comment());
@@ -164,7 +155,7 @@ public class TaskCommentsServiceTest {
 		Apteka apteka = Apteka.builder()
 				.id(user.getAptekaId())
 				.number(5)
-				.userGroup(userGroup) // Настраиваем группу, чтобы избежать NPE в DTO
+				.userGroup(userGroup)
 				.build();
 
 		TaskComment saved = TaskComment.builder()
@@ -174,13 +165,14 @@ public class TaskCommentsServiceTest {
 				.apteka(apteka)
 				.build();
 
-		// Исправлено под оптимизацию сервиса: existsById и getReferenceById
 		when(taskRepository.existsById(taskId)).thenReturn(true);
 		when(taskRepository.getReferenceById(taskId)).thenReturn(taskProxy);
 		when(aptekaRepository.getReferenceById(user.getAptekaId())).thenReturn(apteka);
 		when(taskCommentsRepository.save(any(TaskComment.class))).thenReturn(saved);
 
-		TaskCommentResponseDTO result = taskCommentsService.create(commentText, taskId, user);
+		TaskCommentResponseDTO result = taskCommentsService.create(TaskCommentRequestDTO.builder()
+				.commentText(commentText)
+				.taskId(taskId).build(), user);
 
 		assertNotNull(result);
 		assertEquals(commentText, result.comment());
@@ -202,7 +194,8 @@ public class TaskCommentsServiceTest {
 		when(taskRepository.existsById(taskId)).thenReturn(false);
 
 		assertThrows(TaskNotFoundException.class,
-				() -> taskCommentsService.create("text", taskId, user));
+				() -> taskCommentsService
+						.create(TaskCommentRequestDTO.builder().commentText("text").taskId(taskId).build(), user));
 
 		verify(taskRepository, times(1)).existsById(taskId);
 		verifyNoInteractions(taskCommentsRepository);
@@ -223,7 +216,8 @@ public class TaskCommentsServiceTest {
 		when(taskRepository.getReferenceById(taskId)).thenReturn(taskProxy);
 
 		assertThrows(AvtorCommentNotInputException.class,
-				() -> taskCommentsService.create("text", taskId, user));
+				() -> taskCommentsService
+						.create(TaskCommentRequestDTO.builder().commentText("text").taskId(taskId).build(), user));
 
 		verify(taskRepository, times(1)).existsById(taskId);
 		verify(taskRepository, times(1)).getReferenceById(taskId);

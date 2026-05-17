@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
-import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.request.WorkTypeRequestDTO;
 import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
 import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
@@ -52,8 +51,7 @@ public class WorkTypeService {
     }
 
     @Transactional
-    public WorkTypeResponseDTO create(WorkTypeRequestDTO dto) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public WorkTypeResponseDTO create(WorkTypeRequestDTO dto, AppUserDetails currentUser) {
         GroupTask groupTask = groupTaskRepository.findById(dto.groupTaskId())
                 .orElseThrow(() -> new GroupTaskNotFoundException(dto.groupTaskId()));
 
@@ -71,8 +69,7 @@ public class WorkTypeService {
     }
 
     @Transactional
-    public WorkTypeResponseDTO update(Integer id, WorkTypeRequestDTO dto) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public WorkTypeResponseDTO update(Integer id, WorkTypeRequestDTO dto, AppUserDetails currentUser) {
         WorkType upWorkType = workTypeRepository.findById(id)
                 .orElseThrow(() -> new WorkTypeNotFoundException(id));
 
@@ -99,8 +96,7 @@ public class WorkTypeService {
     }
 
     @Transactional
-    public void delete(Integer id) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public void delete(Integer id, AppUserDetails currentUser) {
         WorkType workType = workTypeRepository.findById(id)
                 .orElseThrow(() -> new WorkTypeNotFoundException(id));
 

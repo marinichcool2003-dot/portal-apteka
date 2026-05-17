@@ -6,6 +6,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 
+import com.apteka.portal.dtos.request.LoginRequestDTO;
+import com.apteka.portal.dtos.request.RefreshRequestDTO;
 import com.apteka.portal.dtos.response.AuthResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.RefreshToken;
@@ -20,37 +22,33 @@ public class AuthService {
     private final UserDetailsService userDetailsService;
     private final AuthenticationManager authenticationManager;
 
-
-    public AuthResponseDTO login(String login, String password) {
-        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(login, password));
+    public AuthResponseDTO login(LoginRequestDTO dto) {
+        Authentication authentication = authenticationManager
+                .authenticate(new UsernamePasswordAuthenticationToken(dto.login(), dto.password()));
         AppUserDetails user = (AppUserDetails) authentication.getPrincipal();
-        
+
         String accessToken = jwtService.generateAccessToken(user);
 
         RefreshToken refreshToken = refreshTokenService.create(user.getUsername());
 
         return new AuthResponseDTO(
-            accessToken,
-            refreshToken.getToken()
-        );
+                accessToken,
+                refreshToken.getToken());
     }
 
-    public AuthResponseDTO refresh(String refreshToken) {
-        RefreshToken token = refreshTokenService.verify(refreshToken);
+    public AuthResponseDTO refresh(RefreshRequestDTO dto) {
+        RefreshToken token = refreshTokenService.verify(dto.refreshToken());
 
-        AppUserDetails user = (AppUserDetails)
-                userDetailsService.loadUserByUsername(token.getUsername());
+        AppUserDetails user = (AppUserDetails) userDetailsService.loadUserByUsername(token.getUsername());
 
         String newAccessToken = jwtService.generateAccessToken(user);
 
         refreshTokenService.deleteByUser(token.getUsername());
 
-        RefreshToken newRefreshToken = 
-                refreshTokenService.create(token.getUsername());
+        RefreshToken newRefreshToken = refreshTokenService.create(token.getUsername());
         return new AuthResponseDTO(
-            newAccessToken,
-            newRefreshToken.getToken()
-        );
+                newAccessToken,
+                newRefreshToken.getToken());
     }
 
     public void logout(String username) {

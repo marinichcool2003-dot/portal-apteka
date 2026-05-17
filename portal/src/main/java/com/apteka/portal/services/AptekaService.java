@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.PasswordValidator;
-import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.request.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
 import com.apteka.portal.dtos.response.AptekaResponseDTO;
@@ -60,8 +59,7 @@ public class AptekaService {
     }
 
     @Transactional
-    public AptekaResponseDTO create(AptekaRequestDTO dto) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public AptekaResponseDTO create(AptekaRequestDTO dto, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
         validateLogin(dto.login());
         passwordValidator.validatePassword(dto.password(), false);
@@ -89,8 +87,7 @@ public class AptekaService {
     }
 
     @Transactional
-    public AptekaResponseDTO update(Integer id, AptekaRequestDTO dto) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public AptekaResponseDTO update(Integer id, AptekaRequestDTO dto, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
 
         Apteka apteka = aptekaRepository.findById(id)
@@ -152,8 +149,7 @@ public class AptekaService {
     }
 
     @Transactional
-    public void delete(Integer id) {
-        AppUserDetails currentUser = SecurityUtils.getRequiredCurrentUser();
+    public void delete(Integer id, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
         if (!aptekaRepository.existsById(id)) {
             throw new AptekaNotFoundException(id);

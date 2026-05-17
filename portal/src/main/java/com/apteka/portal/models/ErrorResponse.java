@@ -1,4 +1,4 @@
-package com.apteka.portal.exceptions;
+package com.apteka.portal.models;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -3,6 +3,7 @@ package com.apteka.portal.components;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import com.apteka.portal.dtos.request.TaskCommentRequestDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.services.TaskCommentService;
@@ -31,13 +32,15 @@ public class TaskAuditService {
                         oldValue != null ? oldValue.toString().strip() : "пусто",
                         newValue != null ? newValue.toString().strip() : "пусто");
 
-        taskCommentsService.create(text, task.getId(), currentUser);
+        taskCommentsService.create(TaskCommentRequestDTO.builder().commentText(text).taskId(task.getId()).build(),
+                currentUser);
     }
 
     @Async("taskExecutor")
     public void addComment(String readyText, AppUserDetails user, Task task) {
         log.info("Фоновое добавление системного комментария | Поток: {}", Thread.currentThread().getName());
 
-        taskCommentsService.create(readyText, task.getId(), user);
+        taskCommentsService.create(TaskCommentRequestDTO.builder().commentText(readyText).taskId(task.getId()).build(),
+                user);
     }
 }

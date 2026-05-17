@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
 import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
+import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.GroupTaskService;
 
 import jakarta.validation.Valid;
@@ -39,21 +41,21 @@ public class GroupTaskController {
 
     @PreAuthorize("@appSecurity.isClient() and hasAnyRole('ADMIN', 'BOSS')")
     @PostMapping
-    public ResponseEntity<GroupTaskResponseDTO> create(@Valid @RequestBody GroupTaskRequestDTO dto) {
+    public ResponseEntity<GroupTaskResponseDTO> create(@Valid @RequestBody GroupTaskRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(groupTaskService.create(dto));
+            .body(groupTaskService.create(dto, currentUser));
     }
 
     @PreAuthorize("@appSecurity.isClient() and hasAnyRole('ADMIN', 'BOSS')")
     @PutMapping
-    public ResponseEntity<GroupTaskResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody GroupTaskRequestDTO dto) {
-        return ResponseEntity.ok(groupTaskService.update(id, dto));
+    public ResponseEntity<GroupTaskResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody GroupTaskRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(groupTaskService.update(id, dto, currentUser));
     }
 
     @PreAuthorize("@appSecurity.isClient() and hasAnyRole('ADMIN', 'BOSS')")
     @DeleteMapping("/{id}") 
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        groupTaskService.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
+        groupTaskService.delete(id, currentUser);
         return ResponseEntity.noContent().build();
     }
 }

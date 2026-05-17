@@ -9,7 +9,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
@@ -33,7 +31,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.apteka.portal.components.AvatarClientService;
 import com.apteka.portal.components.ClientSecurityService;
 import com.apteka.portal.components.PasswordValidator;
-import com.apteka.portal.components.SecurityUtils;
 import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
@@ -78,22 +75,19 @@ public class ClientServiceTest {
         UserGroup userGroup = TestData.defaulUserGroup();
         AppUserDetails currentUser = TestData.mockJustSenior();
         TaskStatsDTO stats = new TaskStatsDTO(clientId, 10L, 5L, 2L, 1L, 2L);
-        try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
-            mockedStatic.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
 
-            when(userGroupRepository.existsById(userGroup.getId())).thenReturn(true);
-            when(clientRepository.findByUserGroupId(userGroup.getId())).thenReturn(List.of(client));
-            when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(stats));
+        when(userGroupRepository.existsById(userGroup.getId())).thenReturn(true);
+        when(clientRepository.findByUserGroupId(userGroup.getId())).thenReturn(List.of(client));
+        when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(stats));
 
-            List<ClientWithStatsDTO> result = clientService.getWithNumberOfTask(userGroup.getId());
+        List<ClientWithStatsDTO> result = clientService.getWithNumberOfTask(userGroup.getId(), currentUser);
 
-            assertEquals(1, result.size());
-            assertEquals(clientId, result.get(0).client().id());
-            assertEquals(10L, result.get(0).stats().totalCount());
+        assertEquals(1, result.size());
+        assertEquals(clientId, result.get(0).client().id());
+        assertEquals(10L, result.get(0).stats().totalCount());
 
-            verify(clientSecurityService).validateHasElevatedPrivelegesInGroup(any(), eq(userGroup.getId()));
-            verify(userGroupRepository, times(1)).existsById(userGroup.getId());
-        }
+        verify(clientSecurityService).validateHasElevatedPrivelegesInGroup(any(), eq(userGroup.getId()));
+        verify(userGroupRepository, times(1)).existsById(userGroup.getId());
     }
 
     @Test
@@ -118,25 +112,21 @@ public class ClientServiceTest {
                 .userGroup(userGroup)
                 .build();
 
-        try (MockedStatic<SecurityUtils> mockedStatic = mockStatic(SecurityUtils.class)) {
-            mockedStatic.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
+        when(userGroupRepository.findById(userGroup.getId())).thenReturn(Optional.of(userGroup));
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
+        when(clientRepository.save(any(Client.class))).thenReturn(savedClient);
 
-            when(userGroupRepository.findById(userGroup.getId())).thenReturn(Optional.of(userGroup));
-            when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
-            when(clientRepository.save(any(Client.class))).thenReturn(savedClient);
+        ClientResponseDTO result = clientService.create(dto, currentUser);
 
-            ClientResponseDTO result = clientService.create(dto);
+        assertEquals(savedClient.getLogin(), result.login());
+        assertEquals(savedClient.getFullName(), result.fullName());
+        assertEquals(savedClient.getAvatarURL(), result.avatarURL());
 
-            assertEquals(savedClient.getLogin(), result.login());
-            assertEquals(savedClient.getFullName(), result.fullName());
-            assertEquals(savedClient.getAvatarURL(), result.avatarURL());
-
-            verify(clientSecurityService).validateCanCreateClient(currentUser, userGroup.getId());
-            verify(clientSecurityService).canGiveRoleToClient(anySet(), eq(currentUser), eq(userGroup));
-            verify(clientRepository).save(any(Client.class));
-            verify(userGroupRepository, times(1)).findById(userGroup.getId());
-            verify(passwordEncoder, times(1)).encode(eq(dto.password()));
-        }
+        verify(clientSecurityService).validateCanCreateClient(currentUser, userGroup.getId());
+        verify(clientSecurityService).canGiveRoleToClient(anySet(), eq(currentUser), eq(userGroup));
+        verify(clientRepository).save(any(Client.class));
+        verify(userGroupRepository, times(1)).findById(userGroup.getId());
+        verify(passwordEncoder, times(1)).encode(eq(dto.password()));
     }
 
     @Test
@@ -151,20 +141,17 @@ public class ClientServiceTest {
         existingClient.setId(clientId);
         existingClient.setLogin("oldLogin");
 
-        try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            AppUserDetails mockUser = mock(AppUserDetails.class);
-            when(mockUser.getClientId()).thenReturn(clientId);
-            mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(mockUser);
+        AppUserDetails mockUser = mock(AppUserDetails.class);
+        when(mockUser.getClientId()).thenReturn(clientId);
 
-            when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
-            when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+        when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            ClientResponseDTO result = clientService.updateYourself(clientId, dto);
+        ClientResponseDTO result = clientService.updateYourself(clientId, dto, mockUser);
 
-            assertEquals("newLogin", result.login());
-            verify(clientRepository).save(any(Client.class));
-            verify(authService).invalidateAllSession("oldLogin");
-        }
+        assertEquals("newLogin", result.login());
+        verify(clientRepository).save(any(Client.class));
+        verify(authService).invalidateAllSession("oldLogin");
     }
 
     @Test
@@ -187,24 +174,21 @@ public class ClientServiceTest {
         existingClient.setLogin("old_login");
         existingClient.setUserGroup(oldGroup);
 
-        try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
+        when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+        TaskStatsDTO stats = new TaskStatsDTO(clientId, 0L, 0L, 344L, 14L, 0L);
+        when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(stats));
+        when(userGroupRepository.findById(newGroup.getId())).thenReturn(Optional.of(newGroup));
+        when(clientRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-            when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
-            TaskStatsDTO stats = new TaskStatsDTO(clientId, 0L, 0L, 344L, 14L, 0L);
-            when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(stats));
-            when(userGroupRepository.findById(newGroup.getId())).thenReturn(Optional.of(newGroup));
-            when(clientRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        ClientResponseDTO result = clientService.fullUpdate(clientId, dto, currentUser);
 
-            ClientResponseDTO result = clientService.fullUpdate(clientId, dto);
+        assertEquals("Иванов Иван Иванович", result.fullName());
+        assertEquals("admin_new_login", result.login());
+        assertEquals(newGroup.getId(), result.userGroup().id());
 
-            assertEquals("Иванов Иван Иванович", result.fullName());
-            assertEquals("admin_new_login", result.login());
-            assertEquals(newGroup.getId(), result.userGroup().id());
+        verify(authService).invalidateAllSession("old_login");
+        verify(userGroupRepository, times(1)).findById(newGroup.getId());
 
-            verify(authService).invalidateAllSession("old_login");
-            verify(userGroupRepository, times(1)).findById(newGroup.getId());
-        }
     }
 
     @Test
@@ -223,25 +207,22 @@ public class ClientServiceTest {
         existingClient.setPassword("encoded_pass");
         existingClient.setUserGroup(oldGroup);
 
-        try (MockedStatic<SecurityUtils> mockedSecurity = mockStatic(SecurityUtils.class)) {
-            mockedSecurity.when(SecurityUtils::getRequiredCurrentUser).thenReturn(currentUser);
+        when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
 
-            when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-            when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+        when(clientRepository.save(any(Client.class))).thenAnswer(i -> i.getArgument(0));
 
-            when(clientRepository.save(any(Client.class))).thenAnswer(i -> i.getArgument(0));
+        TaskStatsDTO statsWithOpenTasks = new TaskStatsDTO(clientId, 20L, 5L, 10L, 5L, 0L);
+        when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(statsWithOpenTasks));
 
-            TaskStatsDTO statsWithOpenTasks = new TaskStatsDTO(clientId, 20L, 5L, 10L, 5L, 0L);
-            when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(statsWithOpenTasks));
+        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> {
+            clientService.fullUpdate(clientId, dto, currentUser);
+        });
 
-            AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> {
-                clientService.fullUpdate(clientId, dto);
-            });
+        assertEquals("У пользователя еще имеются открытые задачи", exception.getMessage());
 
-            assertEquals("У пользователя еще имеются открытые задачи", exception.getMessage());
+        verify(clientRepository, atLeastOnce()).save(any());
 
-            verify(clientRepository, atLeastOnce()).save(any());
-        }
     }
 }

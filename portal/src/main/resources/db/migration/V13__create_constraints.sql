@@ -40,18 +40,22 @@ FOREIGN KEY (user_group_id) REFERENCES group_user(id) ON DELETE CASCADE;
 
 ALTER TABLE apteka 
 ADD CONSTRAINT fk_group_apteki
-FOREIGN KEY (group_id) REFERENCES group_user(id);
+FOREIGN KEY (group_id) REFERENCES group_user(id) ON DELETE CASCADE;
 
-ALTER TABLE task_comments
-ADD CONSTRAINT fk_task_comments_task
+ALTER TABLE client
+ADD CONSTRAINT fk_group_client
+FOREIGN KEY (group_id) REFERENCES group_user(id) ON DELETE CASCADE;
+
+ALTER TABLE task_comment
+ADD CONSTRAINT fk_task_comment_task
 FOREIGN KEY (task_id) REFERENCES task(id) ON DELETE CASCADE;
 
-ALTER TABLE task_comments
-ADD CONSTRAINT fk_task_comments_client
+ALTER TABLE task_comment
+ADD CONSTRAINT fk_task_comment_client
 FOREIGN KEY (client_id) REFERENCES client(id) ON DELETE CASCADE;
 
-ALTER TABLE task_comments
-ADD CONSTRAINT fk_task_comments_apteka
+ALTER TABLE task_comment
+ADD CONSTRAINT fk_task_comment_apteka
 FOREIGN KEY (apteka_id) REFERENCES apteka(id) ON DELETE CASCADE;
 
 ALTER TABLE task_picture
