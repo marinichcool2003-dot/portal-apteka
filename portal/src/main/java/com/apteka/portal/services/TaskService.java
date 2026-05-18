@@ -13,6 +13,7 @@ import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.TaskSecurityService;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
+import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
@@ -108,7 +109,7 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponseDTO update(Long id, TaskCreateRequestDTO dto, AppUserDetails currentUser) {
+    public TaskResponseDTO update(Long id, TaskUpdateRequestDTO dto, AppUserDetails currentUser) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
