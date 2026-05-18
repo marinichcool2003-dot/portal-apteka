@@ -3,6 +3,10 @@ package com.apteka.portal.models;
 import java.time.LocalDateTime;
 import java.util.Set;
 
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,6 +23,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
@@ -27,6 +32,8 @@ import lombok.ToString;
 @Getter
 @ToString(onlyExplicitlyIncluded = true)
 @Setter
+@DynamicInsert
+@NoArgsConstructor
 public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,10 +62,12 @@ public class Task {
     @Setter(AccessLevel.NONE)
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @ToString.Include
     private TaskStatus status;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "priority", nullable = false)
     private TaskPriority priority;
 
@@ -99,6 +108,9 @@ public class Task {
         this.createdByClient = taskBuilder.createdByClient;
         this.assignedClient = taskBuilder.assignedClient;
         this.assignedApteka = taskBuilder.assignedApteka;
+
+        this.status = TaskStatus.OPEN;
+        this.priority = taskBuilder.priority != null ? taskBuilder.priority : TaskPriority.LOW;
     }
 
     public static TaskBuilder builder() {
@@ -154,6 +166,11 @@ public class Task {
 
         public TaskBuilder assignedApteka(Apteka assignedApteka) {
             this.assignedApteka = assignedApteka;
+            return this;
+        }
+
+        public TaskBuilder priority(TaskPriority priority) {
+            this.priority = priority;
             return this;
         }
 

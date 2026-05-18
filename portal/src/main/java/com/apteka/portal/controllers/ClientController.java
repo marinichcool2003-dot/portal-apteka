@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -63,14 +64,14 @@ public class ClientController {
 
     @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
     @PostMapping
-    public ResponseEntity<ClientResponseDTO> create(@Valid @RequestBody ClientRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
+    public ResponseEntity<ClientResponseDTO> create(@Valid @ModelAttribute ClientRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(clientService.create(dto, currentUser));
     }
 
     @PutMapping("/update-yourself")
     public ResponseEntity<ClientResponseDTO> updateYourself(@AuthenticationPrincipal AppUserDetails currentUser,
-            @Valid @RequestBody ClientUpdateRequestDTO dto) throws IOException {
+            @Valid @ModelAttribute ClientUpdateRequestDTO dto) throws IOException {
         UUID clientId = currentUser.getClientId();
         return ResponseEntity.ok(clientService.updateYourself(clientId, dto, currentUser));
     }
@@ -78,7 +79,7 @@ public class ClientController {
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/full-update/{id}")
     public ResponseEntity<ClientResponseDTO> fullUpdate(@PathVariable UUID id,
-            @Valid @RequestBody FullClientUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
+            @Valid @ModelAttribute FullClientUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
         return ResponseEntity.ok(clientService.fullUpdate(id, dto, currentUser));
     }
 

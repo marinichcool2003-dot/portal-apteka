@@ -8,11 +8,14 @@ import com.apteka.portal.models.AppUserDetails;
 
 @Component("appSecurity")
 public class AppSecurityExpressions {
+
     public boolean isClient() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null || !(auth.getPrincipal() instanceof AppUserDetails)) {
+
+        if (auth == null || !auth.isAuthenticated() || !(auth.getPrincipal() instanceof AppUserDetails)) {
             return false;
         }
+
         AppUserDetails userDetails = (AppUserDetails) auth.getPrincipal();
         return userDetails.isClient();
     }

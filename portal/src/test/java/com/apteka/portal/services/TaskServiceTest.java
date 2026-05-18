@@ -19,7 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.TaskSecurityService;
-import com.apteka.portal.dtos.request.TaskRequestDTO;
+import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
@@ -80,10 +80,9 @@ public class TaskServiceTest {
 
 		Apteka creator = Apteka.builder().id(currentUser.getAptekaId()).build();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.title("   Не работает   касса  ")
 				.description("Н   ужно проверить кас  су до  конца дня")
-				.comments(null)
 				.workTypeId(workType.getId())
 				.statusDescription(null)
 				.assignedAptekaId(null)
@@ -162,10 +161,9 @@ public class TaskServiceTest {
 				.assignedClient(oldAssigner)
 				.build();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.title("Не работает терминал")
 				.description("Нужно проверить терминал срочно")
-				.comments("Очень срочно")
 				.workTypeId(newWorkType.getId())
 				.assignedClientId(newAssigner.getId())
 				.build();

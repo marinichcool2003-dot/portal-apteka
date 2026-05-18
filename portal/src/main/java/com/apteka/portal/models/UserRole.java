@@ -8,7 +8,7 @@ import lombok.Getter;
 public enum UserRole {
 
     ADMIN("ADMIN", "Администратор"),
-    BOSS("ADMIN", "Админимстратор"),
+    BOSS("BOSS", "Босс"),
     SENIOR("SENIOR", "Старший сотрудник"),
     USER("USER", "Сотрудник"),
     APTEKA("APTEKA", "Аптека");

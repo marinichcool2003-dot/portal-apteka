@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
-import com.apteka.portal.dtos.request.TaskRequestDTO;
+import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.TaskService;
@@ -45,14 +45,14 @@ public class TaskController {
     }
 
     @PostMapping
-    public ResponseEntity<TaskResponseDTO> create(@RequestBody TaskRequestDTO dto,
+    public ResponseEntity<TaskResponseDTO> create(@RequestBody TaskCreateRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(taskService.create(dto, currentUser));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TaskResponseDTO> update(@PathVariable Long id, @RequestBody TaskRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<TaskResponseDTO> update(@PathVariable Long id, @RequestBody TaskCreateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(taskService.update(id, dto, currentUser));
     }
 

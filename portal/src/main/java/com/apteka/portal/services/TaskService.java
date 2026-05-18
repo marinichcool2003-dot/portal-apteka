@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.TaskSecurityService;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
-import com.apteka.portal.dtos.request.TaskRequestDTO;
+import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
@@ -77,7 +77,7 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponseDTO create(TaskRequestDTO dto, AppUserDetails currentUser) {
+    public TaskResponseDTO create(TaskCreateRequestDTO dto, AppUserDetails currentUser) {
         taskSecurityService.validateCanCreate(dto, currentUser);
         validateTitle(dto.title());
         validateDescription(dto.description());
@@ -87,8 +87,6 @@ public class TaskService {
                 .description(dto.description().strip())
                 .workType(workTypeRepository.getReferenceById(dto.workTypeId()))
                 .build();
-
-        task.changeStatus(TaskStatus.OPEN);
 
         switch (currentUser.getType()) {
             case APTEKA -> {
@@ -110,7 +108,7 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponseDTO update(Long id, TaskRequestDTO dto, AppUserDetails currentUser) {
+    public TaskResponseDTO update(Long id, TaskCreateRequestDTO dto, AppUserDetails currentUser) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
@@ -178,23 +176,25 @@ public class TaskService {
         return task;
     }
 
-    private void setAssignee(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
+    private void setAssignee(Task task, TaskCreateRequestDTO dto, AppUserDetails currentUser) {
         if (dto.assignedClientId() != null) {
             if (currentUser.isApteka()) {
                 throw new AccessDeniedException("Аптека не может назначать задачи на конкретного сотрудника");
             }
-            task.setAssignedClient(clientRepository.findById(dto.assignedClientId())
-                    .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId())));
-
+            if (!clientRepository.existsById(dto.assignedClientId())) {
+                throw new ClientNotFoundException(dto.assignedClientId());
+            }
+            task.setAssignedClient(clientRepository.getReferenceById(dto.assignedClientId()));
             task.setAssignedApteka(null);
 
         } else if (dto.assignedAptekaId() != null) {
             if (currentUser.isApteka()) {
                 throw new AccessDeniedException("Аптека не может назначать задачи на другие аптеки");
             }
-            task.setAssignedApteka(aptekaRepository.findById(dto.assignedAptekaId())
-                    .orElseThrow(() -> new AptekaNotFoundException(dto.assignedAptekaId())));
-
+            if (!aptekaRepository.existsById(dto.assignedAptekaId())) {
+                throw new AptekaNotFoundException(dto.assignedAptekaId());
+            }
+            task.setAssignedApteka(aptekaRepository.getReferenceById(dto.assignedAptekaId()));
             task.setAssignedClient(null);
         }
     }

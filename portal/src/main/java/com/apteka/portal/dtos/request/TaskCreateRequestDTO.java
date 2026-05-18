@@ -6,14 +6,12 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 
 @Builder
-public record TaskRequestDTO(
+public record TaskCreateRequestDTO(
     @NotBlank
     String title,
 
     @NotBlank
     String description,
-
-    String comments,
 
     @NotBlank
     Integer workTypeId,

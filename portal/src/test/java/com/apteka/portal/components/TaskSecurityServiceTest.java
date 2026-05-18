@@ -22,7 +22,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
-import com.apteka.portal.dtos.request.TaskRequestDTO;
+import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
@@ -49,7 +49,7 @@ public class TaskSecurityServiceTest {
 	void validateCanCreate_UserToGroup() {
 		Integer workTypeId = TestData.defaultWorkType().getId();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.workTypeId(workTypeId)
 				.build();
 
@@ -68,7 +68,7 @@ public class TaskSecurityServiceTest {
 	void validateCanCreate_UserToAnotherUserInGroup() {
 		Integer workTypeId = TestData.newDefaultWorkType().getId();
 		UUID assignedClientId = TestData.mockJustSenior().getClientId();
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.workTypeId(workTypeId)
 				.assignedClientId(assignedClientId)
 				.build();
@@ -91,7 +91,7 @@ public class TaskSecurityServiceTest {
 
 		Integer workTypeId = 2;
 		WorkType workType = WorkType.builder().id(workTypeId).build();
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.workTypeId(workTypeId)
 				.assignedClientId(UUID.randomUUID())
 				.build();
@@ -112,7 +112,7 @@ public class TaskSecurityServiceTest {
 		UserGroup userGroup = TestData.defaulUserGroup();
 		Client client = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.assignedClientId(client.getId())
 				.workTypeId(anotherWorkTypeId)
 				.build();
@@ -138,7 +138,7 @@ public class TaskSecurityServiceTest {
 		UserGroup userGroup = TestData.defaulUserGroup();
 		Client client = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.assignedClientId(client.getId())
 				.workTypeId(workType.getId())
 				.build();
@@ -162,7 +162,7 @@ public class TaskSecurityServiceTest {
 				.description("Описание")
 				.assignedClient(assignedClient)
 				.build();
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.description("Новое Описание")
 				.build();
 
@@ -182,7 +182,7 @@ public class TaskSecurityServiceTest {
 				.description("Описание")
 				.assignedClient(assignedClient)
 				.build();
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.description("Новое Описание")
 				.build();
 
@@ -200,7 +200,7 @@ public class TaskSecurityServiceTest {
 		Task task = Task.builder()
 				.description("Описание")
 				.build();
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.description("Новое Описание")
 				.build();
 
@@ -219,7 +219,7 @@ public class TaskSecurityServiceTest {
 		when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(workType));
 
 		Task task = Task.builder().assignedClient(null).workType(workType).build();
-		TaskRequestDTO dto = TaskRequestDTO.builder().assignedClientId(UUID.randomUUID()).workTypeId(workTypeId)
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder().assignedClientId(UUID.randomUUID()).workTypeId(workTypeId)
 				.build();
 
 		boolean result = assertDoesNotThrow(() -> taskSecurityService.changeAssigner(task, dto, currentUser));
@@ -237,7 +237,7 @@ public class TaskSecurityServiceTest {
 		Client newAssignedClient = Client.builder().id(UUID.randomUUID()).userGroup(userGroup).build();
 		WorkType workType = TestData.defaultWorkType();
 		Task task = Task.builder().assignedClient(oldAssignedClient).workType(workType).build();
-		TaskRequestDTO dto = TaskRequestDTO.builder().assignedClientId(newAssignedClient.getId())
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder().assignedClientId(newAssignedClient.getId())
 				.workTypeId(workType.getId()).build();
 
 		when(workTypeRepository.findById(workType.getId())).thenReturn(Optional.of(workType));
@@ -266,7 +266,7 @@ public class TaskSecurityServiceTest {
 				.workType(workType)
 				.build();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.assignedClientId(newAssignedClient.getId())
 				.workTypeId(workType.getId())
 				.build();
@@ -345,7 +345,7 @@ public class TaskSecurityServiceTest {
 				.workType(workType)
 				.build();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.assignedClientId(assignedClient.getId())
 				.workTypeId(workType.getId())
 				.build();
@@ -373,7 +373,7 @@ public class TaskSecurityServiceTest {
 				.workType(oldWorkType)
 				.build();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.workTypeId(newWorkType.getId())
 				.build();
 
@@ -394,7 +394,7 @@ public class TaskSecurityServiceTest {
 				.workType(oldWorkType)
 				.build();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.workTypeId(newWorkType.getId())
 				.build();
 
@@ -508,7 +508,7 @@ public class TaskSecurityServiceTest {
 
 		WorkType workType = TestData.newDefaultWorkType();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder()
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.workTypeId(workType.getId())
 				.assignedAptekaId(10)
 				.build();
@@ -533,7 +533,7 @@ public class TaskSecurityServiceTest {
 				.description("Description")
 				.build();
 
-		TaskRequestDTO dto = TaskRequestDTO.builder().build();
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder().build();
 
 		assertDoesNotThrow(() -> {
 			taskSecurityService.validateCanUpdate(task, dto, currentUser);

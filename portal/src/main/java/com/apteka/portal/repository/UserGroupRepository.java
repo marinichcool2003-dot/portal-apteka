@@ -10,4 +10,5 @@ import com.apteka.portal.models.UserGroup;
 @Repository
 public interface UserGroupRepository extends JpaRepository<UserGroup, Integer>{
     Optional<UserGroup> findByName(String name);
+    boolean existsByName(String name);
 }

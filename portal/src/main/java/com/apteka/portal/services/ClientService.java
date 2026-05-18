@@ -29,6 +29,7 @@ import com.apteka.portal.exceptions.DublicateClientLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidClientFullNameException;
 import com.apteka.portal.exceptions.InvalidClientLoginException;
+import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserGroup;
@@ -103,12 +104,14 @@ public class ClientService {
     public ClientResponseDTO create(ClientRequestDTO dto, AppUserDetails currentUser) throws IOException {
         clientSecurityService.validateCanCreateClient(currentUser, dto.groupClientId());
 
-        validateLogin(dto.login());
-        passwordValidator.validatePassword(dto.password(), true);
-        validateFullName(dto.fullName());
-
         String cleanLogin = dto.login().strip();
-        String normalizedName = dto.fullName().trim().replaceAll("\\s+", " ");
+        String normalizedName = dto.fullName() != null
+                ? dto.fullName().replaceAll("[\\s_]+", " ").trim()
+                : "";
+
+        validateLogin(dto.login());
+        validateFullName(dto.fullName());
+        passwordValidator.validatePassword(dto.password(), true);
 
         UserGroup group = userGroupRepository.findById(dto.groupClientId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.groupClientId()));
@@ -154,7 +157,8 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponseDTO updateYourself(UUID id, ClientUpdateRequestDTO dto, AppUserDetails currentUser) throws IOException {
+    public ClientResponseDTO updateYourself(UUID id, ClientUpdateRequestDTO dto, AppUserDetails currentUser)
+            throws IOException {
         if (!Objects.equals(currentUser.getClientId(), id)) {
             throw new AccessDeniedException("Вы не можете изменять не свой профиль");
         }
@@ -165,7 +169,8 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponseDTO fullUpdate(UUID id, FullClientUpdateRequestDTO dto, AppUserDetails currentUser) throws IOException {
+    public ClientResponseDTO fullUpdate(UUID id, FullClientUpdateRequestDTO dto, AppUserDetails currentUser)
+            throws IOException {
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор может полностью изменять сотрудника");
         }
@@ -190,9 +195,12 @@ public class ClientService {
     }
 
     @Transactional
-    public void delete(UUID id, AppUserDetails currentUser ) {
+    public void delete(UUID id, AppUserDetails currentUser) {
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор может удалять сотрудников");
+        }
+        if (currentUser.getClientId() == id) {
+            throw new SelfDeleteException("Вы не можете удалить самого себя!");
         }
         if (clientRepository.existsById(id)) {
             clientRepository.deleteById(id);
@@ -250,25 +258,22 @@ public class ClientService {
         if (clientRepository.existsByLogin(login)) {
             throw new DublicateClientLoginException(login);
         }
+        if (!login.contains("@farmp.ru")) {
+            throw new InvalidClientLoginException("Логин должен содержать домен");
+        }
     }
 
-    private void validateFullName(String fullName) {
-        if (fullName == null) {
+    private void validateFullName(String normalizedName) {
+        if (normalizedName == null || normalizedName.isBlank()) {
             throw new InvalidClientFullNameException("ФИО не может быть пустым");
         }
-        String trimmed = fullName.trim();
 
-        if (!trimmed.matches("^[а-яА-Яa-zA-Z\\s\\-]+$")) {
-            throw new InvalidClientFullNameException("ФИО может содержать только буквы, пробелы и дефисы");
+        if (normalizedName.length() > 100) {
+            throw new InvalidClientFullNameException("ФИО не может быть длиннее 100 символов");
         }
 
-        String[] parts = trimmed.split("\\s+");
-        if (parts.length < 2) {
-            throw new InvalidClientFullNameException("Введите фамилию и имя полностью");
-        }
-
-        if (trimmed.equals(trimmed.toUpperCase()) && trimmed.length() < 5) {
-            throw new InvalidClientFullNameException("ФИО не должно быть написано только заглавными буквами");
+        if (!normalizedName.matches("^[\\p{L}'-]+(?:\\s[\\p{L}'-]+){1,2}$")) {
+            throw new InvalidClientFullNameException("Введите корректные Фамилию и Имя (или ФИО)");
         }
     }
 }

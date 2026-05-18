@@ -41,6 +41,7 @@ import com.apteka.portal.exceptions.InvalidRefreshTokenException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
 import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.InvalidWorkTypeNameException;
+import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.exceptions.TaskPictureNotFoundException;
@@ -135,14 +136,6 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        log.error("Ошибка валидации при регистрации аптеки: {}", e.getMessage());
-        String errorMessage = "Ошибка! Аптека не создана: " + e.getMessage();
-        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
-    }
-
     @ExceptionHandler(DublicateAptekaLoginException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleDublicateAptekaLoginException(DublicateAptekaLoginException e) {
@@ -156,6 +149,14 @@ public class GlobalExceptionHandler {
     public ErrorResponse handleInvalidAptekaAdressException(InvalidAptekaAdressException e) {
         log.warn("Ошибка изменения аптек: {}", e.getMessage());
         String errorMessage = "Ошибка! Ошибка изменения аптек: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(SelfDeleteException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleSelfDeleteException(SelfDeleteException e) {
+        log.warn("Ошибка изменения сотрудников: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка изменения сотрудников: " + e.getMessage();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
