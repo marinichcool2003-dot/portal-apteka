@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
+import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.TaskService;
@@ -38,7 +39,7 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getOne(id));
     }
 
-    @GetMapping("/by-group")
+    @PostMapping("/by-group")
     public ResponseEntity<List<TaskResponseDTO>> getDepartamentTaskWithFilters(
             @RequestBody DepartamentTaskWithFiltersDTO dto) {
         return ResponseEntity.ok(taskService.getDepartamentTaskWithFilters(dto));
@@ -52,7 +53,8 @@ public class TaskController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TaskResponseDTO> update(@PathVariable Long id, @RequestBody TaskCreateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<TaskResponseDTO> update(@PathVariable Long id, @RequestBody TaskUpdateRequestDTO dto,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(taskService.update(id, dto, currentUser));
     }
 

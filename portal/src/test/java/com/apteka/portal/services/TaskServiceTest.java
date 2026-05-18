@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.TaskSecurityService;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
+import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
@@ -161,7 +162,7 @@ public class TaskServiceTest {
 				.assignedClient(oldAssigner)
 				.build();
 
-		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
+		TaskUpdateRequestDTO dto = TaskUpdateRequestDTO.builder()
 				.title("Не работает терминал")
 				.description("Нужно проверить терминал срочно")
 				.workTypeId(newWorkType.getId())

@@ -13,6 +13,7 @@ import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.TaskSecurityService;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
+import com.apteka.portal.dtos.request.TaskRequestDTO;
 import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
@@ -71,10 +72,19 @@ public class TaskService {
 
     @Transactional(readOnly = true)
     public List<TaskResponseDTO> getDepartamentTaskWithFilters(DepartamentTaskWithFiltersDTO dto) {
-        return taskRepository.findDepartmentTasksWithFilters(
+        List<Long> taskIds = taskRepository.findDepartmentTaskIdsWithFilters(
                 dto.groupId(), dto.creatorClientId(), dto.creatorAptekaId(),
                 dto.specificClientId(), dto.specificAptekaId(), dto.status(),
-                dto.priority(), dto.groupTaskId()).stream().map(TaskResponseDTO::from).toList();
+                dto.priority(), dto.groupTaskId());
+
+        if (taskIds.isEmpty()) {
+            return List.of();
+        }
+
+        return taskRepository.findTasksWithDetailsByIds(taskIds)
+                .stream()
+                .map(TaskResponseDTO::from)
+                .toList();
     }
 
     @Transactional
@@ -177,7 +187,7 @@ public class TaskService {
         return task;
     }
 
-    private void setAssignee(Task task, TaskCreateRequestDTO dto, AppUserDetails currentUser) {
+    private void setAssignee(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
         if (dto.assignedClientId() != null) {
             if (currentUser.isApteka()) {
                 throw new AccessDeniedException("Аптека не может назначать задачи на конкретного сотрудника");

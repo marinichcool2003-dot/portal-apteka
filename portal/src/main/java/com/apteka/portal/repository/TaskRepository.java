@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,7 +17,32 @@ import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
 
 @Repository
-public interface TaskRepository extends JpaRepository<Task, Long> {
+public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
+
+    @Query("""
+            SELECT t.id FROM Task t
+            JOIN t.workType w
+            JOIN w.groupTask gt
+            LEFT JOIN gt.userGroup ug
+            WHERE ug.id = :groupId
+                AND (:creatorClientId IS NULL OR t.createdByClient.id = :creatorClientId)
+                AND (:creatorAptekaId IS NULL OR t.createdByApteka.id = :creatorAptekaId)
+                AND (:specificClientId IS NULL OR t.assignedClient.id = :specificClientId)
+                AND (:specificAptekaId IS NULL OR t.assignedApteka.id = :specificAptekaId)
+                AND (CONCAT(:status, '') IS NULL OR t.status = :status)
+                AND (CONCAT(:priority, '') IS NULL OR t.priority = :priority)
+                AND (:groupTaskId IS NULL OR gt.id = :groupTaskId)
+            ORDER BY t.creationDate DESC
+            """)
+    List<Long> findDepartmentTaskIdsWithFilters(
+            @Param("groupId") Integer groupId,
+            @Param("creatorClientId") UUID creatorClientId,
+            @Param("creatorAptekaId") Integer creatorAptekaId,
+            @Param("specificClientId") UUID specificClientId,
+            @Param("specificAptekaId") Integer specificAptekaId,
+            @Param("status") TaskStatus status,
+            @Param("priority") TaskPriority priority,
+            @Param("groupTaskId") Integer groupTaskId);
 
     @Query("""
             SELECT DISTINCT t FROM Task t
@@ -29,25 +55,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             LEFT JOIN FETCH t.assignedClient
             LEFT JOIN FETCH t.assignedApteka aa
             LEFT JOIN FETCH aa.userGroup
-            WHERE ug.id = :groupId
-                    AND (:creatorClientId IS NULL OR t.createdByClient.id = :creatorClientId)
-                    AND (:creatorAptekaId IS NULL OR t.createdByApteka.id = :creatorAptekaId)
-                    AND (:specificClientId IS NULL OR t.assignedClient.id = :specificClientId)
-                    AND (:specificAptekaId IS NULL OR t.assignedApteka.id = :specificAptekaId)
-                    AND (:status IS NULL OR t.status = :status)
-                    AND (:priority IS NULL OR t.priority = :priority)
-                    AND (:groupTaskId IS NULL OR gt.id = :groupTaskId)
-                ORDER BY t.creationDate DESC
-                    """)
-    List<Task> findDepartmentTasksWithFilters(
-            @Param("groupId") Integer groupId,
-            @Param("creatorClientId") UUID creatorClientId,
-            @Param("creatorAptekaId") Integer creatorAptekaId,
-            @Param("specificClientId") UUID specificClientId,
-            @Param("specificAptekaId") Integer specificAptekaId,
-            @Param("status") TaskStatus status,
-            @Param("priority") TaskPriority priority,
-            @Param("groupTaskId") Integer groupTaskId);
+            WHERE t.id IN :ids
+            ORDER BY t.creationDate DESC
+            """)
+    List<Task> findTasksWithDetailsByIds(@Param("ids") List<Long> ids);
 
     @Query("""
                 SELECT new com.apteka.portal.dtos.response.TaskStatsDTO(

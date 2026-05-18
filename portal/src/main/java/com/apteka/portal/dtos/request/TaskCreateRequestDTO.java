@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 
 @Builder
-public record TaskCreateRequestDTO(
+public record TaskCreateRequestDTO (
     @NotBlank
     String title,
 
@@ -20,4 +20,4 @@ public record TaskCreateRequestDTO(
 
     Integer assignedAptekaId,
     UUID assignedClientId
-) {}
+) implements TaskRequestDTO{}

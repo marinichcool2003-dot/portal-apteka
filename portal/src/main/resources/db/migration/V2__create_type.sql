@@ -12,10 +12,3 @@ CREATE TYPE task_priority AS ENUM (
     'MIDDLE',
     'HIGH'
 );
-
-DROP TYPE IF EXISTS client_role;
-CREATE TYPE client_role AS ENUM (
-    'USER',
-    'ADMIN',
-    'SENIOR'
-);

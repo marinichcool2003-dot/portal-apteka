@@ -2,6 +2,9 @@ package com.apteka.portal.dtos.request;
 
 import java.util.UUID;
 
+import lombok.Builder;
+
+@Builder
 public record TaskUpdateRequestDTO(
         String title,
 
@@ -15,5 +18,4 @@ public record TaskUpdateRequestDTO(
 
         Integer assignedAptekaId,
         UUID assignedClientId
-    ) {
-}
+    ) implements TaskRequestDTO {}

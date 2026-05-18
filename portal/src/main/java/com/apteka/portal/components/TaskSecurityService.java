@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
-import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
+import com.apteka.portal.dtos.request.TaskRequestDTO;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.WorkTypeNotFoundException;
@@ -33,7 +33,7 @@ public class TaskSecurityService {
     private final ClientRepository clientRepository;
     private final WorkTypeRepository workTypeRepository;
 
-    public void validateCanCreate(TaskCreateRequestDTO dto, AppUserDetails currentUser) {
+    public void validateCanCreate(TaskRequestDTO dto, AppUserDetails currentUser) {
 
         UserGroup taskGroup = getUserGroupFromWorkTypeId(dto.workTypeId());
         Integer taskGroupId = (taskGroup != null) ? taskGroup.getId() : null;
@@ -70,7 +70,7 @@ public class TaskSecurityService {
         }
     }
 
-    public void validateCanUpdate(Task task, TaskCreateRequestDTO dto, AppUserDetails currentUser) {
+    public void validateCanUpdate(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
 
         if (hasUpdateDescriptionTask(dto)) {
             if (currentUser.getType() == UserType.CLIENT) {
@@ -85,7 +85,7 @@ public class TaskSecurityService {
         }
     }
 
-    public boolean changeAssigner(Task task, TaskCreateRequestDTO dto, AppUserDetails currentUser) {
+    public boolean changeAssigner(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
         UserGroup targetTaskGroup = getUserGroupFromWorkTypeId(dto.workTypeId());
 
         if (!isAssignmentChanged(task, dto, targetTaskGroup)) {
@@ -107,7 +107,7 @@ public class TaskSecurityService {
         return true;
     }
 
-    public boolean changeWorkTypeToAnotherDepartament(Task task, TaskCreateRequestDTO dto, AppUserDetails currentUser) {
+    public boolean changeWorkTypeToAnotherDepartament(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
         if (!Objects.equals(task.getWorkType().getId(), dto.workTypeId())) {
             if (hasElevatedPrivileges(currentUser)) {
                 return true;
@@ -139,7 +139,7 @@ public class TaskSecurityService {
         }
     }
 
-    private boolean hasUpdateDescriptionTask(TaskCreateRequestDTO dto) {
+    private boolean hasUpdateDescriptionTask(TaskRequestDTO dto) {
         return dto.title() != null || dto.description() != null || dto.workTypeId() != null;
     }
 
@@ -165,7 +165,7 @@ public class TaskSecurityService {
                         && LocalDateTime.now().isAfter(task.getClosingDate().plusMonths(1)));
     }
 
-    private boolean isAssignmentChanged(Task task, TaskCreateRequestDTO dto, UserGroup targetTaskGroup) {
+    private boolean isAssignmentChanged(Task task, TaskRequestDTO dto, UserGroup targetTaskGroup) {
         Integer targetGroupId = (targetTaskGroup != null) ? targetTaskGroup.getId() : null;
 
         return !Objects.equals(getAssignedAptekaId(task), dto.assignedAptekaId()) ||
@@ -173,7 +173,7 @@ public class TaskSecurityService {
                 !Objects.equals(getAssignedGroupId(task), targetGroupId);
     }
 
-    private boolean isWithinSameGroup(TaskCreateRequestDTO dto, AppUserDetails currentUser, UserGroup targetTaskGroup) {
+    private boolean isWithinSameGroup(TaskRequestDTO dto, AppUserDetails currentUser, UserGroup targetTaskGroup) {
         Integer userGroupId = (currentUser.getUserGroup() != null) ? currentUser.getUserGroup().getId() : null;
         Integer targetGroupId = (targetTaskGroup != null) ? targetTaskGroup.getId() : null;
 

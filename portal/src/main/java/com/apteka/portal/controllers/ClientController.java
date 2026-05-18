@@ -64,7 +64,7 @@ public class ClientController {
 
     @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
     @PostMapping
-    public ResponseEntity<ClientResponseDTO> create(@Valid @ModelAttribute ClientRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
+    public ResponseEntity<ClientResponseDTO> create(@Valid @RequestBody ClientRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(clientService.create(dto, currentUser));
     }
