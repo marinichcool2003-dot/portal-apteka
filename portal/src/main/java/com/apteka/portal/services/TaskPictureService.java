@@ -25,7 +25,7 @@ public class TaskPictureService {
     private final TaskPictureRepository taskPictureRepository;
     private final TaskRepository taskRepository;
 
-    @Value("${app.upload.dir:/var/apteka-portal/pictures}")
+    @Value("${app.default.upload.task-picture.dir}")
     private String uploadDir;
 
     @Transactional

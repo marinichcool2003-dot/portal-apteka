@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
+import com.apteka.portal.components.TypeNameValidator;
 import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
 import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.exceptions.DublicateGroupTaskException;
@@ -34,6 +35,7 @@ public class GroupTaskService {
     private final UserGroupRepository userGroupRepository;
     private final GroupTaskSecurityService groupTaskSecurityService;
     private final CacheManager cacheManager;
+    private final TypeNameValidator typeNameValidator;
 
     @Cacheable(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#userGroupId", sync = true)
     @Transactional(readOnly = true)
@@ -58,9 +60,9 @@ public class GroupTaskService {
     public GroupTaskResponseDTO create(GroupTaskRequestDTO dto, AppUserDetails currentUser) {
         UserGroup userGroup = userGroupRepository.findById(dto.userGroupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.userGroupId()));
-        String cleanName = dto.name().strip();
+        String cleanName = typeNameValidator.getCleanName(dto.name());
 
-        validateGroupTaskName(cleanName, userGroup);
+        validateGroupTaskName(cleanName, dto.userGroupId());
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, userGroup);
 
         GroupTask saved = groupTaskRepository.save(GroupTask.builder()
@@ -82,14 +84,14 @@ public class GroupTaskService {
 
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, upGroup.getUserGroup());
 
-        String cleanName = dto.name().strip();
+        String cleanName = typeNameValidator.getCleanName(dto.name());
 
         if (Objects.equals(cleanName, upGroup.getName())) {
             return GroupTaskResponseDTO.from(upGroup);
         }
 
-        validateGroupTaskName(cleanName, upGroup.getUserGroup());
-        upGroup.setName(cleanName);
+        validateGroupTaskName(cleanName, upGroup.getUserGroup().getId());
+        upGroup.setName(validateGroupTaskName(cleanName, id));
 
         GroupTask saved = groupTaskRepository.save(upGroup);
 
@@ -108,11 +110,14 @@ public class GroupTaskService {
         cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(id);
     }
 
-    private void validateGroupTaskName(String name, UserGroup userGroup) {
-        if (name == null || name.isBlank()) {
-            throw new InvalidGroupTaskException(name);
+    private String validateGroupTaskName(String cleanName, Integer userGroupId) {
+        if (cleanName == null || cleanName.isBlank()) {
+            throw new InvalidGroupTaskException(cleanName);
         }
-        if (groupTaskRepository.findByNameAndUserGroupId(name, userGroup.getId()).isPresent())
-            throw new DublicateGroupTaskException(name);
+        if (groupTaskRepository.existsByNameAndUserGroupId(cleanName, userGroupId)) {
+            throw new DublicateGroupTaskException(cleanName);
+        }
+        
+        return cleanName;
     }
 }

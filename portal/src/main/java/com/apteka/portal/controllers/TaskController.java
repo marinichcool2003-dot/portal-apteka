@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,7 +40,8 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getOne(id));
     }
 
-    @PostMapping("/by-group")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/full-filter")
     public ResponseEntity<List<TaskResponseDTO>> getDepartamentTaskWithFilters(
             @RequestBody DepartamentTaskWithFiltersDTO dto) {
         return ResponseEntity.ok(taskService.getDepartamentTaskWithFilters(dto));

@@ -1,5 +1,7 @@
 package com.apteka.portal.models;
 
+import com.apteka.portal.exceptions.UnknowTaskPriorityException;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -18,6 +20,6 @@ public enum TaskPriority {
                 return priority;
             }
         }
-        throw new IllegalArgumentException("Неизвестный статус: " + description);
+        throw new UnknowTaskPriorityException("Неизвестный статус: " + description);
     }
 }

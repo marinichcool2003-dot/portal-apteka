@@ -1,5 +1,7 @@
 package com.apteka.portal.models;
 
+import com.apteka.portal.exceptions.UnknowRoleException;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -23,7 +25,7 @@ public enum UserRole {
             }
         }
 
-        throw new IllegalArgumentException("Неизвестный код роли: " + code);
+        throw new UnknowRoleException("Неизвестный код роли: " + code);
     }
 
     public int getLevel() {

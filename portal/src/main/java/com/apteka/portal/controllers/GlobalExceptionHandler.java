@@ -45,6 +45,9 @@ import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.exceptions.TaskPictureNotFoundException;
+import com.apteka.portal.exceptions.UnknowRoleException;
+import com.apteka.portal.exceptions.UnknowTaskPriorityException;
+import com.apteka.portal.exceptions.UnknowTaskStatusException;
 import com.apteka.portal.exceptions.WorkTypeNotFoundException;
 import com.apteka.portal.models.ErrorResponse;
 
@@ -80,6 +83,14 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
     }
 
+    @ExceptionHandler(UnknowRoleException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleUnknowRoleException(UnknowRoleException e) {
+        log.warn("Ошибка присвоения роли: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка присвоения роли: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
     @ExceptionHandler(AvtorCommentNotInputException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErrorResponse handleAvtorCommentNotInputException(AvtorCommentNotInputException e) {
@@ -93,6 +104,22 @@ public class GlobalExceptionHandler {
     public ErrorResponse handleBlockChangeIfNotActuallyTaskException(BlockChangeIfNotActuallyTaskException e) {
         log.error("Ошибка изменения задачи: {}", e.getMessage(), e);
         String errorMessage = "Ошибка! Ошибка изменения задачи: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(UnknowTaskStatusException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleUnknowTaskStatusException(UnknowTaskStatusException e) {
+        log.warn("Ошибка изменения задач: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка при изменении задачи: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(UnknowTaskPriorityException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleUnknowTaskPriorityException(UnknowTaskPriorityException e) {
+        log.warn("Ошибка изменения задач: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка при изменении задачи: " + e.getMessage();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 

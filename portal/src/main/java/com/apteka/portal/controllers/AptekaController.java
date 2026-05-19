@@ -45,7 +45,7 @@ public class AptekaController {
         return ResponseEntity.ok(aptekaService.getOne(currentUser.getAptekaId()));
     }
 
-    @GetMapping("/filter")
+    @PostMapping("/filter")
     public ResponseEntity<List<AptekaResponseDTO>> filter(@RequestBody AptekaFilterRequestDTO dto, Pageable pageable) {
         return ResponseEntity.ok().body(aptekaService.filter(dto, pageable));
     }

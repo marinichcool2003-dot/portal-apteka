@@ -1,5 +1,6 @@
 package com.apteka.portal.services;
 
+import com.apteka.portal.components.TypeNameValidator;
 import com.apteka.portal.components.UserGroupSecurityService;
 import com.apteka.portal.dtos.request.UserGroupRequestDTO;
 import com.apteka.portal.dtos.response.UserGroupResponseDTO;
@@ -29,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class UserGroupService {
     private final UserGroupSecurityService userGroupSecurityService;
     private final UserGroupRepository userGroupRepository;
+    private final TypeNameValidator typeNameValidator;
 
     @Cacheable(value = CacheNames.USER_GROUPS_LIST, sync = true)
     @Transactional(readOnly = true)
@@ -95,7 +97,7 @@ public class UserGroupService {
 
     private String validateNameGroup(String name, Integer currentId) {
 
-        String cleanName = name.strip();
+        String cleanName = typeNameValidator.getCleanName(name);
         userGroupRepository.findByName(cleanName).ifPresent(existingGroup -> {
             if (!Objects.equals(existingGroup.getId(), currentId)) {
                 throw new DublicateGroupUserException();

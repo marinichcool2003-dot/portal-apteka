@@ -7,13 +7,15 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
 public class AvatarClientService {
 
-    private final String uploadDir = "/uploads/clients/avatars";
+    @Value("${app.default.avatars.upload.dir}")
+    private String uploadDir;
 
     private final List<String> allowedContentTypes = List.of("image/png", "image/jpeg");
 

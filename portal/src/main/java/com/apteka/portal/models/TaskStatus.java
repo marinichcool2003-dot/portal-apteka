@@ -1,5 +1,7 @@
 package com.apteka.portal.models;
 
+import com.apteka.portal.exceptions.UnknowTaskStatusException;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -16,7 +18,7 @@ public enum TaskStatus {
     public static TaskStatus fromDescription(String description) {
 
         if (description == null || description.isBlank()) {
-            throw new IllegalArgumentException("Статус не может быть пустым");
+            throw new UnknowTaskStatusException("Статус не может быть пустым");
         }
 
         for (TaskStatus status : values()) {
@@ -24,6 +26,6 @@ public enum TaskStatus {
                 return status;
             }
         }
-        throw new IllegalArgumentException("Неизвестный статус: " + description);
+        throw new UnknowTaskStatusException("Неизвестный статус: " + description);
     }
 }

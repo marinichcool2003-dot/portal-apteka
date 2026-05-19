@@ -5,6 +5,9 @@ import java.util.UUID;
 import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
 
+import lombok.Builder;
+
+@Builder
 public record DepartamentTaskWithFiltersDTO(
         Integer groupId,
         UUID creatorClientId,

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
+import com.apteka.portal.components.TypeNameValidator;
 import com.apteka.portal.dtos.request.WorkTypeRequestDTO;
 import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
 import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
@@ -30,6 +31,7 @@ public class WorkTypeService {
     private final GroupTaskSecurityService groupTaskSecurityService;
     private final CacheManager cacheManager;
     private final GroupTaskRepository groupTaskRepository;
+    private final TypeNameValidator typeNameValidator;
 
     @Cacheable(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#groupTaskId", sync = true)
     @Transactional(readOnly = true)
@@ -56,10 +58,9 @@ public class WorkTypeService {
                 .orElseThrow(() -> new GroupTaskNotFoundException(dto.groupTaskId()));
 
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
-        validateWorkTypeName(dto);
 
         WorkType newWorkType = workTypeRepository.save(WorkType.builder()
-                .name(dto.name().strip())
+                .name(validateWorkTypeName(dto.name(), dto.groupTaskId()))
                 .groupTask(groupTask)
                 .build());
 
@@ -77,11 +78,10 @@ public class WorkTypeService {
                 .orElseThrow(() -> new GroupTaskNotFoundException(dto.groupTaskId()));
 
         groupTaskSecurityService.validateBossOrAdminInGroup(currentUser, newGroupTask.getUserGroup());
-        validateWorkTypeName(dto);
 
         Integer oldGroupTaskId = upWorkType.getGroupTask().getId();
 
-        upWorkType.setName(dto.name().strip());
+        upWorkType.setName(validateWorkTypeName(dto.name(), dto.groupTaskId()));
         upWorkType.setGroupTask(newGroupTask);
 
         WorkType saved = workTypeRepository.save(upWorkType);
@@ -126,13 +126,17 @@ public class WorkTypeService {
             cache.evict(groupTaskId);
     }
 
-    private void validateWorkTypeName(WorkTypeRequestDTO dto) {
-        if (dto.name() == null || dto.name().isBlank()) {
+    private String validateWorkTypeName(String name, Integer groupTaskId) {
+
+        String cleanName = typeNameValidator.getCleanName(name);
+
+        if (name == null || name.isBlank()) {
             throw new InvalidWorkTypeNameException();
         }
-        boolean exists = workTypeRepository.existsByNameAndGroupTaskId(dto.name(), dto.groupTaskId());
+        boolean exists = workTypeRepository.existsByNameAndGroupTaskId(cleanName, groupTaskId);
         if (exists) {
-            throw new DublicateWorkTypeNameException(dto.name());
+            throw new DublicateWorkTypeNameException(name);
         }
+        return cleanName;
     }
 }
