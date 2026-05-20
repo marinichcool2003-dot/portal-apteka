@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,7 +17,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
@@ -24,6 +28,8 @@ import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.ClientService;
 
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
 import jakarta.validation.Valid;
 
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
@@ -43,7 +49,8 @@ public class ClientController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ClientResponseDTO> getOne(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<ClientResponseDTO> getOne(@PathVariable UUID id,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(clientService.getOne(id, currentUser));
     }
 
@@ -53,18 +60,21 @@ public class ClientController {
     }
 
     @GetMapping("/by-user-group/{userGroupId}")
-    public ResponseEntity<List<ClientResponseDTO>> getByGroup(@PathVariable Integer userGroupId, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<List<ClientResponseDTO>> getByGroup(@PathVariable Integer userGroupId,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(clientService.getByGroup(userGroupId, currentUser));
     }
 
     @GetMapping("/by-user-group/task-number/{userGroupId}")
-    public ResponseEntity<List<ClientWithStatsDTO>> getWithNumberOfTask(@PathVariable Integer userGroupId, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<List<ClientWithStatsDTO>> getWithNumberOfTask(@PathVariable Integer userGroupId,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(clientService.getWithNumberOfTask(userGroupId, currentUser));
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
     @PostMapping
-    public ResponseEntity<ClientResponseDTO> create(@Valid @RequestBody ClientRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
+    public ResponseEntity<ClientResponseDTO> create(@Valid @RequestBody ClientRequestDTO dto,
+            @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(clientService.create(dto, currentUser));
     }
@@ -77,9 +87,16 @@ public class ClientController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/full-update/{id}")
-    public ResponseEntity<ClientResponseDTO> fullUpdate(@PathVariable UUID id,
-            @Valid @ModelAttribute FullClientUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
+    @PutMapping(value = "/full-update/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ClientResponseDTO> fullUpdate(
+            @PathVariable UUID id,
+
+            @Parameter(description = "JSON данные клиента", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)) @Valid @RequestPart("dto") FullClientUpdateRequestDTO dto,
+
+            @RequestPart(value = "avatar", required = false) MultipartFile avatar,
+
+            @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
+
         return ResponseEntity.ok(clientService.fullUpdate(id, dto, currentUser));
     }
 

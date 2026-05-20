@@ -110,6 +110,9 @@ public class ClientService {
                 : "";
 
         validateLogin(dto.login());
+        if (normalizedName == null || normalizedName.isBlank()) {
+            throw new InvalidClientFullNameException("ФИО не может быть пустым");
+        }
         validateFullName(dto.fullName());
         passwordValidator.validatePassword(dto.password(), true);
 
@@ -177,10 +180,12 @@ public class ClientService {
 
         Client savedClient = updateBasicClientForm(id, dto.login(), dto.password(), dto.avatar());
 
-        validateFullName(dto.fullName());
-        savedClient.setFullName(dto.fullName());
+        if (dto.fullName() != null && !dto.fullName().isBlank()) {
+            validateFullName(dto.fullName());
+            savedClient.setFullName(dto.fullName());
+        }
 
-        if (!Objects.equals(savedClient.getUserGroup().getId(), dto.groupClientId())) {
+        if (dto.groupClientId() != null && !Objects.equals(savedClient.getUserGroup().getId(), dto.groupClientId())) {
             List<TaskStatsDTO> stats = taskRepository.getClientTaskStatsBatch(List.of(savedClient.getId()));
             TaskStatsDTO thisClientStats = stats.get(0);
             if (thisClientStats.openCount() + thisClientStats.processedCount() > 0) {
@@ -237,13 +242,11 @@ public class ClientService {
             needsLogout = true;
         }
 
-        Client savedClient = clientRepository.save(upClient);
-
         if (needsLogout) {
             authService.invalidateAllSession(oldUserName);
         }
 
-        return savedClient;
+        return upClient;
     }
 
     private void updateAvatar(Client client, MultipartFile avatar) throws IOException {
@@ -264,10 +267,6 @@ public class ClientService {
     }
 
     private void validateFullName(String normalizedName) {
-        if (normalizedName == null || normalizedName.isBlank()) {
-            throw new InvalidClientFullNameException("ФИО не может быть пустым");
-        }
-
         if (normalizedName.length() > 100) {
             throw new InvalidClientFullNameException("ФИО не может быть длиннее 100 символов");
         }
