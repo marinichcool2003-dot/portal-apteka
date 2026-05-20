@@ -7,7 +7,7 @@ import com.apteka.portal.models.TaskStatus;
 
 import lombok.Builder;
 
-@Builder
+@Builder(toBuilder = true)
 public record DepartamentTaskWithFiltersDTO(
         Integer groupId,
         UUID creatorClientId,
@@ -16,5 +16,6 @@ public record DepartamentTaskWithFiltersDTO(
         Integer specificAptekaId,
         TaskStatus status,
         TaskPriority priority,
+        Integer workTypeId,
         Integer groupTaskId
 ) {}

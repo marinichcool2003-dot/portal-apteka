@@ -21,7 +21,7 @@ import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.TaskSecurityService;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
-import com.apteka.portal.dtos.response.TaskResponseDTO;
+import com.apteka.portal.dtos.response.TaskShortResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
@@ -108,7 +108,7 @@ public class TaskServiceTest {
 		when(taskRepository.save(any(Task.class)))
 				.thenReturn(savedTask);
 
-		TaskResponseDTO result = taskService.create(dto, currentUser);
+		TaskShortResponseDTO result = taskService.create(dto, currentUser);
 
 		assertNotNull(result);
 
@@ -202,7 +202,7 @@ public class TaskServiceTest {
 		when(taskRepository.save(any(Task.class)))
 				.thenReturn(updatedTask);
 
-		TaskResponseDTO result = taskService.update(taskForUpdate.getId(), dto, currentUser);
+		TaskShortResponseDTO result = taskService.update(taskForUpdate.getId(), dto, currentUser);
 
 		assertNotNull(result);
 

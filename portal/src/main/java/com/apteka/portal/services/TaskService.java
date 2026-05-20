@@ -1,10 +1,13 @@
 package com.apteka.portal.services;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +19,7 @@ import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.request.TaskRequestDTO;
 import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
+import com.apteka.portal.dtos.response.TaskShortResponseDTO;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
@@ -26,6 +30,7 @@ import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.UserRole;
+import com.apteka.portal.models.UserType;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
@@ -34,6 +39,7 @@ import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.TaskRepository;
 import com.apteka.portal.repository.WorkTypeRepository;
+import com.apteka.portal.repository.specification.TaskSpecifications;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,17 +57,14 @@ public class TaskService {
     private final TaskAuditService taskAuditService;
 
     @Transactional(readOnly = true)
-    public List<TaskResponseDTO> getAll() {
-        log.info("Получение всех задач синхронно | поток {}", Thread.currentThread().getName());
+    public List<TaskShortResponseDTO> getAll() {
         return taskRepository.findAll().stream()
-                .map(TaskResponseDTO::from)
+                .map(TaskShortResponseDTO::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public TaskResponseDTO getOne(Long id) {
-        log.info("Получение полной карточки задачи id={}", id);
-
         Task task = taskRepository.findByIdWithDetailsAndPictures(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
@@ -71,24 +74,65 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<TaskResponseDTO> getDepartamentTaskWithFilters(DepartamentTaskWithFiltersDTO dto) {
-        List<Long> taskIds = taskRepository.findDepartmentTaskIdsWithFilters(
-                dto.groupId(), dto.creatorClientId(), dto.creatorAptekaId(),
-                dto.specificClientId(), dto.specificAptekaId(), dto.status(),
-                dto.priority(), dto.groupTaskId());
+    public List<TaskShortResponseDTO> getDepartmentTaskWithFilters(DepartamentTaskWithFiltersDTO dto) {
+        return fetchAndMapTasks(dto);
+    }
 
-        if (taskIds.isEmpty()) {
-            return List.of();
+    @Transactional(readOnly = true)
+    public List<TaskShortResponseDTO> getMyDepartmentTasks(DepartamentTaskWithFiltersDTO dto,
+            AppUserDetails currentUser) {
+        var dtoBuilder = dto.toBuilder();
+
+        if (currentUser.getType() == UserType.CLIENT) {
+            dtoBuilder.specificClientId((UUID) currentUser.getClientId());
+            dtoBuilder.specificAptekaId(null);
+        } else if (currentUser.getType() == UserType.APTEKA) {
+            dtoBuilder.specificAptekaId((Integer) currentUser.getAptekaId());
+            dtoBuilder.specificClientId(null);
         }
 
-        return taskRepository.findTasksWithDetailsByIds(taskIds)
-                .stream()
-                .map(TaskResponseDTO::from)
+        dtoBuilder.creatorAptekaId(null);
+        dtoBuilder.creatorClientId(null);
+
+        return fetchAndMapTasks(dtoBuilder.build());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskShortResponseDTO> getCreatedMeTasks(DepartamentTaskWithFiltersDTO dto, AppUserDetails currentUser) {
+        var dtoBuilder = dto.toBuilder();
+
+        if (currentUser.getType() == UserType.CLIENT) {
+            dtoBuilder.creatorClientId((UUID) currentUser.getClientId());
+            dtoBuilder.creatorAptekaId(null);
+        } else if (currentUser.getType() == UserType.APTEKA) {
+            dtoBuilder.creatorAptekaId((Integer) currentUser.getAptekaId());
+            dtoBuilder.creatorClientId(null);
+        }
+
+        dtoBuilder.specificAptekaId(null);
+        dtoBuilder.specificClientId(null);
+
+        return fetchAndMapTasks(dtoBuilder.build());
+    }
+
+    private List<TaskShortResponseDTO> fetchAndMapTasks(DepartamentTaskWithFiltersDTO dto) {
+        Specification<Task> specification = TaskSpecifications.getTaskWithFilters(dto);
+
+        List<Long> taskIds = taskRepository.findAll(specification).stream()
+                .map(Task::getId)
+                .toList();
+
+        if (taskIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return taskRepository.findShortTasksByIds(taskIds).stream()
+                .map(TaskShortResponseDTO::from)
                 .toList();
     }
 
     @Transactional
-    public TaskResponseDTO create(TaskCreateRequestDTO dto, AppUserDetails currentUser) {
+    public TaskShortResponseDTO create(TaskCreateRequestDTO dto, AppUserDetails currentUser) {
         taskSecurityService.validateCanCreate(dto, currentUser);
         validateTitle(dto.title());
         validateDescription(dto.description());
@@ -115,11 +159,11 @@ public class TaskService {
         setAssignee(task, dto, currentUser);
 
         Task saved = taskRepository.save(task);
-        return TaskResponseDTO.from(saved);
+        return TaskShortResponseDTO.from(saved);
     }
 
     @Transactional
-    public TaskResponseDTO update(Long id, TaskUpdateRequestDTO dto, AppUserDetails currentUser) {
+    public TaskShortResponseDTO update(Long id, TaskUpdateRequestDTO dto, AppUserDetails currentUser) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
@@ -155,7 +199,7 @@ public class TaskService {
         task.setUpdatedDate(LocalDateTime.now());
         Task saved = taskRepository.save(task);
 
-        return TaskResponseDTO.from(saved);
+        return TaskShortResponseDTO.from(saved);
     }
 
     @Transactional

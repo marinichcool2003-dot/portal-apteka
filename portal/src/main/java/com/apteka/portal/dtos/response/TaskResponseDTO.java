@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 
 import com.apteka.portal.models.Task;
-import com.apteka.portal.models.UserType;
 
 public record TaskResponseDTO(
         Long id,
@@ -29,9 +28,6 @@ public record TaskResponseDTO(
         List<TaskCommentResponseDTO> comments,
         List<TaskPictureResponseDTO> pictures) {
         
-    public record UserShortInfo(Object id, UserType type, String displayName) {
-    }
-
     public static TaskResponseDTO from(Task task) {
         return new TaskResponseDTO(
             task.getId(),
@@ -50,8 +46,8 @@ public record TaskResponseDTO(
                 .map(gt -> gt.getUserGroup())
                 .map(ug -> ug.getName())
                 .orElse(null),
-            resolveCreator(task),
-            resolveAssignee(task),
+            UserShortInfo.resolveCreator(task),
+            UserShortInfo.resolveAssignee(task),
             Optional.ofNullable(task.getEmployeeComments()).orElse(Collections.emptySet()).stream()
                 .map(TaskCommentResponseDTO::from)
                 .toList(),
@@ -61,29 +57,4 @@ public record TaskResponseDTO(
         );
     }
 
-    private static UserShortInfo resolveCreator(Task task) {
-        if (task.getCreatedByClient() != null) {
-            return new UserShortInfo(task.getCreatedByClient().getId(), UserType.CLIENT,
-                    task.getCreatedByClient().getFullName());
-        } else if (task.getCreatedByApteka() != null) {
-            String aptekaName = Optional.ofNullable(task.getCreatedByApteka().getUserGroup())
-                    .map(ug -> ug.getName() + " " + task.getCreatedByApteka().getNumber())
-                    .orElse(task.getCreatedByApteka().getLogin());
-            return new UserShortInfo(task.getCreatedByApteka().getId(), UserType.APTEKA, aptekaName);
-        }
-        return null;
-    }
-
-    private static UserShortInfo resolveAssignee(Task task) {
-        if (task.getAssignedClient() != null) {
-            return new UserShortInfo(task.getAssignedClient().getId(), UserType.CLIENT,
-                    task.getAssignedClient().getFullName());
-        } else if (task.getAssignedApteka() != null) {
-            String aptekaName = Optional.ofNullable(task.getAssignedApteka().getUserGroup())
-                    .map(ug -> ug.getName() + " " + task.getAssignedApteka().getNumber())
-                    .orElse(task.getAssignedApteka().getLogin());
-            return new UserShortInfo(task.getAssignedApteka().getId(), UserType.APTEKA, aptekaName);
-        }
-        return null;
-    }
 }
