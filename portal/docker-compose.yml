@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  portal-api:
+    build: .
+    container_name: portal-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+      - DB_NAME=${PROD_DB_NAME}
+      - DB_USERNAME=${PROD_DB_USER}
+      - DB_PASSWORD=${PROD_DB_PASSWORD}
+      - REDIS_HOST=redis-cache
+      - REDIS_PORT=6379
+      - JWT_SECRET=${PROD_JWT_SECRET}
+      - DEFAULT_UPLOAD_DIR=${PROD_UPLOAD_DIR}
+      - DEFAULT_AVATARS_DIR=${PROD_AVATARS_DIR}
+    volumes:
+      - portal-uploads:/app/uploads
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_started
+    restart: always
+
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: portal-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${PROD_DB_NAME}
+      - POSTGRES_USER=${PROD_DB_USER}
+      - POSTGRES_PASSWORD=${PROD_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PROD_DB_USER} -d ${PROD_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: portal-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    restart: always
+
+volumes:
+  pgdata:
+  redisdata:
+  portal-uploads:
