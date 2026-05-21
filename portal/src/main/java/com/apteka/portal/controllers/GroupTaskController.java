@@ -15,45 +15,87 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.apteka.portal.docs.BadRequestApiResponse;
+import com.apteka.portal.docs.ConflictApiResponse;
+import com.apteka.portal.docs.ForbiddenApiResponse;
+import com.apteka.portal.docs.InternalServerErrorApiResponse;
+import com.apteka.portal.docs.NotFoundApiResponse;
+import com.apteka.portal.docs.UnauthorizedApiResponse;
 import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
 import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.GroupTaskService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("api/v1/group-tasks")
 @RequiredArgsConstructor
+@Tag(name = "Группы задач")
 public class GroupTaskController {
     private final GroupTaskService groupTaskService;
 
+    @Operation(summary = "Получить список групп задач по группе пользователей")
+    @ApiResponse(responseCode = "200", description = "Список групп задач успешно получен")
+    @NotFoundApiResponse
+    @InternalServerErrorApiResponse
     @GetMapping("/by-user-group/{userGroupId}")
     public ResponseEntity<List<GroupTaskResponseDTO>> getByUserGroup(@PathVariable Integer userGroupId) {
         return ResponseEntity.ok(groupTaskService.getByUserGroup(userGroupId));
     }
 
+    @Operation(summary = "Получить группу задач по ID")
+    @ApiResponse(responseCode = "200", description = "Группа задач успешно получена")
+    @NotFoundApiResponse
+    @InternalServerErrorApiResponse
     @GetMapping("/{id}")
-    public ResponseEntity<GroupTaskResponseDTO> getOne(Integer id) {
+    public ResponseEntity<GroupTaskResponseDTO> getOne(@PathVariable Integer id) {
         return ResponseEntity.ok(groupTaskService.getOne(id));
     }
 
+    @Operation(summary = "Создать группу задач")
+    @ApiResponse(responseCode = "201", description = "Группа задач успешно создана")
+    @BadRequestApiResponse
+    @UnauthorizedApiResponse
+    @ForbiddenApiResponse
+    @NotFoundApiResponse
+    @ConflictApiResponse
+    @InternalServerErrorApiResponse
     @PreAuthorize("@appSecurity.isClient() and hasAnyRole('ADMIN', 'BOSS')")
     @PostMapping
-    public ResponseEntity<GroupTaskResponseDTO> create(@Valid @RequestBody GroupTaskRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<GroupTaskResponseDTO> create(@Valid @RequestBody GroupTaskRequestDTO dto,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(groupTaskService.create(dto, currentUser));
+                .body(groupTaskService.create(dto, currentUser));
     }
 
+    @Operation(summary = "Обновить группу задач")
+    @ApiResponse(responseCode = "200", description = "Группа задач успешно обновлена")
+    @BadRequestApiResponse
+    @UnauthorizedApiResponse
+    @ForbiddenApiResponse
+    @NotFoundApiResponse
+    @ConflictApiResponse
+    @InternalServerErrorApiResponse
     @PreAuthorize("@appSecurity.isClient() and hasAnyRole('ADMIN', 'BOSS')")
-    @PutMapping
-    public ResponseEntity<GroupTaskResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody GroupTaskRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+    @PutMapping("/{id}")
+    public ResponseEntity<GroupTaskResponseDTO> update(@PathVariable Integer id,
+            @Valid @RequestBody GroupTaskRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(groupTaskService.update(id, dto, currentUser));
     }
 
+    @Operation(summary = "Удалить группу задач")
+    @ApiResponse(responseCode = "204", description = "Группа задач успешно удалена")
+    @UnauthorizedApiResponse
+    @ForbiddenApiResponse
+    @NotFoundApiResponse
+    @InternalServerErrorApiResponse
     @PreAuthorize("@appSecurity.isClient() and hasAnyRole('ADMIN', 'BOSS')")
-    @DeleteMapping("/{id}") 
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         groupTaskService.delete(id, currentUser);
         return ResponseEntity.noContent().build();

@@ -187,7 +187,9 @@ public class ClientService {
 
         if (dto.groupClientId() != null && !Objects.equals(savedClient.getUserGroup().getId(), dto.groupClientId())) {
             List<TaskStatsDTO> stats = taskRepository.getClientTaskStatsBatch(List.of(savedClient.getId()));
-            TaskStatsDTO thisClientStats = stats.get(0);
+            TaskStatsDTO thisClientStats = stats.stream()
+                    .findFirst()
+                    .orElse(new TaskStatsDTO(savedClient.getId(), 0L, 0L, 0L, 0L, 0L));
             if (thisClientStats.openCount() + thisClientStats.processedCount() > 0) {
                 throw new AccessDeniedException("У пользователя еще имеются открытые задачи");
             }
@@ -204,7 +206,7 @@ public class ClientService {
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор может удалять сотрудников");
         }
-        if (currentUser.getClientId() == id) {
+        if (Objects.equals(currentUser.getClientId(), id)) {
             throw new SelfDeleteException("Вы не можете удалить самого себя!");
         }
         if (clientRepository.existsById(id)) {

@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.apteka.portal.docs.taskpicture.TaskPictureCreateOperation;
+import com.apteka.portal.docs.taskpicture.TaskPictureGetOperation;
+import com.apteka.portal.docs.taskpicture.TaskPictureNotFoundResponse;
+import com.apteka.portal.docs.taskpicture.TaskPictureValidationErrorResponse;
 import com.apteka.portal.dtos.response.TaskPictureResponseDTO;
 import com.apteka.portal.services.TaskPictureService;
 
@@ -25,24 +29,32 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/task-pictures")
 @RequiredArgsConstructor
 public class TaskPictureController {
+
     private final TaskPictureService taskPictureService;
 
-    @PostMapping("/upload-to-task/{taskId}")
+    @PostMapping(value = "/upload-to-task/{taskId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @TaskPictureCreateOperation
+    @TaskPictureValidationErrorResponse
+    @TaskPictureNotFoundResponse
     public ResponseEntity<TaskPictureResponseDTO> uploadPicture(
-            @PathVariable Long taskId, 
-            @RequestParam("file") MultipartFile file) throws IOException{
+            @PathVariable Long taskId,
+            @RequestParam("file") MultipartFile file) throws IOException {
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(taskPictureService.uploadPicture(taskId, file));
     }
 
     @GetMapping("/{pictureId}")
+    @TaskPictureGetOperation
+    @TaskPictureNotFoundResponse
     public ResponseEntity<Resource> getPicture(@PathVariable Long pictureId) {
+
         File file = taskPictureService.getFileById(pictureId);
+
         Resource resource = new FileSystemResource(file);
 
         return ResponseEntity.ok()
-            .contentType(MediaType.IMAGE_JPEG)
-            .body(resource);
+                .contentType(MediaType.IMAGE_JPEG)
+                .body(resource);
     }
-
 }
