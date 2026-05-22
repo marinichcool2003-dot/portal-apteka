@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
@@ -30,7 +29,6 @@ import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.UserRole;
-import com.apteka.portal.models.UserType;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
@@ -83,11 +81,11 @@ public class TaskService {
             AppUserDetails currentUser) {
         var dtoBuilder = dto.toBuilder();
 
-        if (currentUser.getType() == UserType.CLIENT) {
-            dtoBuilder.specificClientId((UUID) currentUser.getClientId());
+        if (currentUser.isClient()) {
+            dtoBuilder.specificClientId(currentUser.getClientId());
             dtoBuilder.specificAptekaId(null);
-        } else if (currentUser.getType() == UserType.APTEKA) {
-            dtoBuilder.specificAptekaId((Integer) currentUser.getAptekaId());
+        } else if (currentUser.isApteka()) {
+            dtoBuilder.specificAptekaId(currentUser.getAptekaId());
             dtoBuilder.specificClientId(null);
         }
 
@@ -101,11 +99,11 @@ public class TaskService {
     public List<TaskShortResponseDTO> getCreatedMeTasks(DepartamentTaskWithFiltersDTO dto, AppUserDetails currentUser) {
         var dtoBuilder = dto.toBuilder();
 
-        if (currentUser.getType() == UserType.CLIENT) {
-            dtoBuilder.creatorClientId((UUID) currentUser.getClientId());
+        if (currentUser.isClient()) {
+            dtoBuilder.creatorClientId(currentUser.getClientId());
             dtoBuilder.creatorAptekaId(null);
-        } else if (currentUser.getType() == UserType.APTEKA) {
-            dtoBuilder.creatorAptekaId((Integer) currentUser.getAptekaId());
+        } else if (currentUser.isApteka()) {
+            dtoBuilder.creatorAptekaId(currentUser.getAptekaId());
             dtoBuilder.creatorClientId(null);
         }
 
@@ -125,6 +123,8 @@ public class TaskService {
         if (taskIds.isEmpty()) {
             return Collections.emptyList();
         }
+
+        System.out.println(dto);
 
         return taskRepository.findShortTasksByIds(taskIds).stream()
                 .map(TaskShortResponseDTO::from)

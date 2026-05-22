@@ -19,25 +19,31 @@ import com.apteka.portal.dtos.response.TaskCommentResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.TaskCommentService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("api/v1/task-comments")
 @RequiredArgsConstructor
+@Tag(name = "Комментарии к задачам")
 public class TaskCommentController {
     private final TaskCommentService taskCommentService;
 
+    @Operation(summary = "Получение всех комментариев к задаче")
     @GetMapping("/by-task/{taskId}")
     public ResponseEntity<List<TaskCommentResponseDTO>> getByTask(@PathVariable Long taskId) {
         return ResponseEntity.ok(taskCommentService.getByTask(taskId));
     }
 
+    @Operation(summary = "Получение комментария по ID")
     @GetMapping("/{id}")
     public ResponseEntity<TaskCommentResponseDTO> getOne(@PathVariable Long id) {
         return ResponseEntity.ok(taskCommentService.getOne(id));
     }
 
+    @Operation(summary = "Создание комментария")
     @PostMapping
     public ResponseEntity<TaskCommentResponseDTO> create(@Valid @RequestBody TaskCommentRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -45,6 +51,7 @@ public class TaskCommentController {
                 .body(taskCommentService.create(dto, currentUser));
     }
 
+    @Operation(summary = "Удаление комментария (Только ADMIN)")
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails currentUser) {

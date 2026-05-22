@@ -2,19 +2,21 @@ package com.apteka.portal.dtos.request;
 
 import java.util.UUID;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import lombok.Builder;
 
 @Builder
 public record TaskUpdateRequestDTO(
-        String title,
+        @NotBlank(message = "Заголовок задачи не может быть пустым") String title,
 
-        String description,
+        @NotBlank(message = "Описание задачи не может быть пустым") String description,
 
-        Integer workTypeId,
+        @Positive(message = "Идентификатор вида работ должен быть положительным числом") Integer workTypeId,
 
-        String statusDescription,
+        @NotBlank(message = "Статус задачи не может быть пустым") String statusDescription,
 
-        String priorityDescription,
+        @NotBlank(message = "Статус задачи не может быть пустым") String priorityDescription,
 
         Integer assignedAptekaId,
         UUID assignedClientId

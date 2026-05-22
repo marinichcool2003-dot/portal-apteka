@@ -4,18 +4,17 @@ import java.util.UUID;
 
 import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
-
 import lombok.Builder;
 
 @Builder(toBuilder = true)
 public record DepartamentTaskWithFiltersDTO(
-        Integer groupId,
-        UUID creatorClientId,
-        Integer creatorAptekaId,
-        UUID specificClientId,
-        Integer specificAptekaId,
-        TaskStatus status,
-        TaskPriority priority,
-        Integer workTypeId,
-        Integer groupTaskId
-) {}
+                Integer groupId,
+                UUID creatorClientId,
+                Integer creatorAptekaId,
+                UUID specificClientId,
+                Integer specificAptekaId,
+                TaskStatus status,
+                TaskPriority priority,
+                Integer workTypeId,
+                Integer groupTaskId) {
+}

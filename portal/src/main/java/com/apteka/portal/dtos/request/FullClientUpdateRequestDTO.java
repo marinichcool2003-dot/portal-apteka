@@ -2,18 +2,14 @@ package com.apteka.portal.dtos.request;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 
-public record FullClientUpdateRequestDTO(
-    @NotBlank    
+public record FullClientUpdateRequestDTO(    
     String login,
-    @NotBlank 
     String password,
-    @NotBlank 
     MultipartFile avatar,
-    @NotBlank 
     String fullName,
-    @NotBlank 
+    @Positive
     Integer groupClientId
 ) 
 {}

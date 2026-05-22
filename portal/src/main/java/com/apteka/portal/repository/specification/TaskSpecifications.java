@@ -28,7 +28,7 @@ public class TaskSpecifications {
                 predicates.add(cb.equal(root.get("createdByClient").get("id"), filters.creatorClientId()));
             }
             if (filters.creatorAptekaId() != null) {
-                predicates.add(cb.equal(root.get("creatorAptekaId").get("id"), filters.creatorAptekaId()));
+                predicates.add(cb.equal(root.get("createdByApteka").get("id"), filters.creatorAptekaId()));
             }
             if (filters.specificClientId() != null) {
                 predicates.add(cb.equal(root.get("assignedClient").get("id"), filters.specificClientId()));

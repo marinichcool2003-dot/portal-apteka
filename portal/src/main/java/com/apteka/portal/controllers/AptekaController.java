@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -28,6 +29,7 @@ import com.apteka.portal.dtos.request.AptekaRequestDTO;
 import com.apteka.portal.services.AptekaService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -71,8 +73,8 @@ public class AptekaController {
     @ApiResponse(responseCode = "200", description = "Фильтрация успешно выполнена")
     @BadRequestApiResponse
     @InternalServerErrorApiResponse
-    @PostMapping("/filter")
-    public ResponseEntity<List<AptekaResponseDTO>> filter(@RequestBody AptekaFilterRequestDTO dto, Pageable pageable) {
+    @GetMapping("/filter")
+    public ResponseEntity<List<AptekaResponseDTO>> filter(@Parameter @ModelAttribute AptekaFilterRequestDTO dto, Pageable pageable) {
         return ResponseEntity.ok().body(aptekaService.filter(dto, pageable));
     }
 

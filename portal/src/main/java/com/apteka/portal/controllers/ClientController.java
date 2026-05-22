@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +34,6 @@ import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.ClientService;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -132,7 +132,7 @@ public class ClientController {
     @InternalServerErrorApiResponse
     @PutMapping("/update-yourself")
     public ResponseEntity<ClientResponseDTO> updateYourself(@AuthenticationPrincipal AppUserDetails currentUser,
-            @Valid @ModelAttribute ClientUpdateRequestDTO dto) throws IOException {
+            @Valid @ParameterObject @ModelAttribute ClientUpdateRequestDTO dto) throws IOException {
         UUID clientId = currentUser.getClientId();
         return ResponseEntity.ok(clientService.updateYourself(clientId, dto, currentUser));
     }
@@ -150,7 +150,7 @@ public class ClientController {
     public ResponseEntity<ClientResponseDTO> fullUpdate(
             @PathVariable UUID id,
 
-            @Parameter(description = "Данные клиента и аватар") @Valid @ModelAttribute FullClientUpdateRequestDTO dto,
+            @Valid @ParameterObject @ModelAttribute FullClientUpdateRequestDTO dto,
 
             @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
 
