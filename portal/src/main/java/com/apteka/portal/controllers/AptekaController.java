@@ -2,7 +2,6 @@ package com.apteka.portal.controllers;
 
 import java.util.List;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -75,8 +74,8 @@ public class AptekaController {
     @BadRequestApiResponse
     @InternalServerErrorApiResponse
     @GetMapping("/filter")
-    public ResponseEntity<List<AptekaResponseDTO>> filter(@Parameter @Valid @ModelAttribute AptekaFilterRequestDTO dto, Pageable pageable) {
-        return ResponseEntity.ok().body(aptekaService.filter(dto, pageable));
+    public ResponseEntity<List<AptekaResponseDTO>> filter(@Parameter @Valid @ModelAttribute AptekaFilterRequestDTO dto) {
+        return ResponseEntity.ok().body(aptekaService.filter(dto));
     }
 
 

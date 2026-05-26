@@ -22,6 +22,7 @@ import com.apteka.portal.dtos.request.DepartmentFilterRequestDTO;
 import com.apteka.portal.dtos.request.DepartmentFullFilterRequestDTO;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
+import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.dtos.response.TaskShortResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
@@ -66,6 +67,12 @@ public class TaskController {
                 .build();
 
         return ResponseEntity.ok(taskService.getMyDepartmentTasks(filter, currentUser));
+    }
+
+    @Operation(summary = "Получить статистику всех групп по задачам")
+    @GetMapping("/group-user-stats")
+    public ResponseEntity<List<DepartmentTaskStatsDTO>> getGroupUserStats() {
+        return ResponseEntity.ok(taskService.getGroupUserStats());
     }
 
     @Operation(summary = "Получить задачи назначенные на группу данного пользователя")

@@ -17,6 +17,7 @@ import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.request.TaskRequestDTO;
 import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
+import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.dtos.response.TaskShortResponseDTO;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
@@ -74,6 +75,11 @@ public class TaskService {
     @Transactional(readOnly = true)
     public List<TaskShortResponseDTO> getDepartmentTaskWithFilters(DepartamentTaskWithFiltersDTO dto) {
         return fetchAndMapTasks(dto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DepartmentTaskStatsDTO> getGroupUserStats() {
+        return taskRepository.findGroupUserStats();
     }
 
     @Transactional(readOnly = true)

@@ -2,7 +2,6 @@ package com.apteka.portal.services;
 
 import java.util.List;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -54,8 +53,8 @@ public class AptekaService {
     }
 
     @Transactional(readOnly = true)
-    public List<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto, Pageable pageable) {
-        return aptekaRepository.filter(dto.login(), dto.groupId(), dto.number(), dto.phoneNumber(), pageable)
+    public List<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto) {
+        return aptekaRepository.filter(dto.login(), dto.groupId(), dto.number(), dto.phoneNumber())
             .stream().map(AptekaResponseDTO::from).toList();
     }
 

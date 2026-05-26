@@ -3,7 +3,6 @@ package com.apteka.portal.repository;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -34,5 +33,5 @@ public interface AptekaRepository extends JpaRepository<Apteka, Integer> {
                         AND (:phoneNumber IS NULL OR LOWER(a.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
                         """)
         List<Apteka> filter(@Param("login") String login, @Param("groupId") Integer groupId,
-                        @Param("number") Integer number, @Param("phoneNumber") String phoneNumber, Pageable pageable);
+                        @Param("number") Integer number, @Param("phoneNumber") String phoneNumber);
 }

@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.apteka.portal.dtos.response.GroupTaskStatsDTO;
+import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
 import com.apteka.portal.models.Task;
 
@@ -44,26 +44,27 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			""")
 	List<TaskStatsDTO> getClientTaskStatsBatch(@Param("clientIds") List<UUID> clientIds);
 
-	@Query("""
-			    SELECT t.assignedClient.id,
-			           COUNT(t),
-			           COUNT(CASE WHEN t.status IN :statuses THEN 1 END)
-			    FROM Task t
-			    JOIN t.workType w
-			    JOIN w.groupTask gt
-			    WHERE gt.userGroup.id = :groupId
-			    GROUP BY t.assignedClient.id
-			""")
-	List<Object[]> getDepartmentPerformance(
-			@Param("groupId") Integer groupId,
-			@Param("statuses") List<String> statuses);
+	// @Query("""
+	// 		    SELECT t.assignedClient.id,
+	// 		           COUNT(t),
+	// 		           COUNT(CASE WHEN t.status IN :statuses THEN 1 END)
+	// 		    FROM Task t
+	// 		    JOIN t.workType w
+	// 		    JOIN w.groupTask gt
+	// 		    WHERE gt.userGroup.id = :groupId
+	// 		    GROUP BY t.assignedClient.id
+	// 		""")
+	// List<Object[]> getDepartmentPerformance(
+	// 		@Param("groupId") Integer groupId,
+	// 		@Param("statuses") List<String> statuses);
 
 	@Query("""
-			    SELECT new com.apteka.portal.dtos.response.GroupTaskStatsDTO(
+			    SELECT new com.apteka.portal.dtos.response.DepartmentTaskStatsDTO(
 			        ug.id,
 			        ug.name,
 			        COUNT(CASE WHEN CAST(t.status as string) IN ('OPEN', 'PROCESSED') THEN 1 END),
 			        COUNT(CASE WHEN CAST(t.status as string) = 'CLOSED' THEN 1 END),
+					COUNT(CASE WHEN CAST(t.status as string) = 'DENIED' THEN 1 END),
 			        COUNT(t)
 			    )
 			    FROM Task t
@@ -72,7 +73,7 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			    JOIN gt.userGroup ug
 			    GROUP BY ug.id, ug.name
 			""")
-	List<GroupTaskStatsDTO> getGroupUserStats();
+	List<DepartmentTaskStatsDTO> findGroupUserStats();
 
 	@Query("""
 			    SELECT DISTINCT t FROM Task t
