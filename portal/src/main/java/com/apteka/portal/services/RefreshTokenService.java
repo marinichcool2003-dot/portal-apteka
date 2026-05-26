@@ -20,11 +20,16 @@ public class RefreshTokenService {
     @Value("${jwt.refresh.expiration}")
     private long jwtRefreshExpiration;
 
-    public RefreshToken create(String userName) {
+    @Value("${jwt.refresh.expiration-with-remember}")
+    private long jwtRefreshExpirationWithRemember;
+
+    public RefreshToken create(String userName, boolean rememberMe) {
         RefreshToken token = new RefreshToken();
         token.setToken(UUID.randomUUID().toString());
         token.setUsername(userName);
-        token.setExpiryDate(Instant.now().plusMillis(jwtRefreshExpiration));
+        token.setRememberMe(rememberMe);
+        token.setExpiryDate(
+                Instant.now().plusMillis(rememberMe ? jwtRefreshExpirationWithRemember : jwtRefreshExpiration));
         return repository.save(token);
     }
 
@@ -40,5 +45,9 @@ public class RefreshTokenService {
 
     public void deleteByUser(String username) {
         repository.deleteByUsername(username);
+    }
+
+    public void deleteByRefreshToken(String refreshtoken) {
+        repository.deleteByToken(refreshtoken);
     }
 }

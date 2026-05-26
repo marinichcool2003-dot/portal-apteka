@@ -21,6 +21,7 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
+import com.apteka.portal.components.TypeNameValidator;
 import com.apteka.portal.dtos.request.WorkTypeRequestDTO;
 import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
 import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
@@ -38,6 +39,8 @@ public class WorkTypeServiceTest {
     private GroupTaskRepository groupTaskRepository;
     @Mock
     private GroupTaskSecurityService groupTaskSecurityService;
+    @Mock
+    private TypeNameValidator typeNameValidator;
     @Mock
     private CacheManager cacheManager;
     @Mock
@@ -57,6 +60,7 @@ public class WorkTypeServiceTest {
         WorkType savedWorkType = TestData.defaultWorkType();
 
         when(groupTaskRepository.findById(dto.groupTaskId())).thenReturn(Optional.of(groupTask));
+        when(typeNameValidator.getCleanName(dto.name())).thenReturn("Удаление накладной");
         when(workTypeRepository.existsByNameAndGroupTaskId(dto.name(), dto.groupTaskId())).thenReturn(false);
         when(workTypeRepository.save(any(WorkType.class))).thenReturn(savedWorkType);
 
@@ -77,6 +81,7 @@ public class WorkTypeServiceTest {
         WorkTypeRequestDTO dto = createDto("Удаление накладной", 1);
 
         when(groupTaskRepository.findById(dto.groupTaskId())).thenReturn(Optional.of(groupTask));
+        when(typeNameValidator.getCleanName(dto.name())).thenReturn("Удаление накладной");
         when(workTypeRepository.existsByNameAndGroupTaskId(dto.name(), dto.groupTaskId())).thenReturn(true);
 
         assertThrows(DublicateWorkTypeNameException.class, () -> {

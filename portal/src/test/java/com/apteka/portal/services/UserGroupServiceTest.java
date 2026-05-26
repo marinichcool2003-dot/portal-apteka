@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.apteka.portal.components.TypeNameValidator;
 import com.apteka.portal.components.UserGroupSecurityService;
 import com.apteka.portal.dtos.request.UserGroupRequestDTO;
 import com.apteka.portal.dtos.response.UserGroupResponseDTO;
@@ -30,6 +31,8 @@ class UserGroupServiceTest {
     private UserGroupRepository userGroupRepository;
     @Mock
     private UserGroupSecurityService userGroupSecurityService;
+    @Mock
+    private TypeNameValidator typeNameValidator;
     @InjectMocks
     private UserGroupService userGroupService;
 
@@ -43,6 +46,7 @@ class UserGroupServiceTest {
         UserGroup savedGroup = TestData.defaulUserGroup();
         AppUserDetails currentUser = TestData.mockJustAdmin();
 
+        when(typeNameValidator.getCleanName(dto.name())).thenReturn("Розница");
         when(userGroupRepository.findByName("Розница")).thenReturn(Optional.empty());
         when(userGroupRepository.save(any(UserGroup.class))).thenReturn(savedGroup);
 
@@ -67,6 +71,7 @@ class UserGroupServiceTest {
         AppUserDetails currentUser = TestData.mockJustAdmin();
 
         when(userGroupRepository.findById(existingId)).thenReturn(Optional.of(existingInDb));
+        when(typeNameValidator.getCleanName(dto.name())).thenReturn("АХО");
         when(userGroupRepository.findByName(dto.name())).thenReturn(Optional.of(anotherGroup));
 
         assertThrows(DublicateGroupUserException.class, () -> userGroupService.update(existingId, dto, currentUser));

@@ -23,15 +23,19 @@ import com.apteka.portal.docs.taskpicture.TaskPictureValidationErrorResponse;
 import com.apteka.portal.dtos.response.TaskPictureResponseDTO;
 import com.apteka.portal.services.TaskPictureService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/task-pictures")
 @RequiredArgsConstructor
+@Tag(name = "Картинки к задаче")
 public class TaskPictureController {
 
     private final TaskPictureService taskPictureService;
 
+    @Operation(summary = "Загрузка картинки")
     @PostMapping(value = "/upload-to-task/{taskId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @TaskPictureCreateOperation
     @TaskPictureValidationErrorResponse
@@ -44,6 +48,7 @@ public class TaskPictureController {
                 .body(taskPictureService.uploadPicture(taskId, file));
     }
 
+    @Operation(summary = "Получение картинки")
     @GetMapping("/{pictureId}")
     @TaskPictureGetOperation
     @TaskPictureNotFoundResponse

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.apteka.portal.components.PasswordValidator;
 import com.apteka.portal.dtos.request.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
+import com.apteka.portal.dtos.request.AptekaUpdateRequestDTO;
 import com.apteka.portal.dtos.response.AptekaResponseDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
@@ -87,7 +88,7 @@ public class AptekaService {
     }
 
     @Transactional
-    public AptekaResponseDTO update(Integer id, AptekaRequestDTO dto, AppUserDetails currentUser) {
+    public AptekaResponseDTO update(Integer id, AptekaUpdateRequestDTO dto, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
 
         Apteka apteka = aptekaRepository.findById(id)

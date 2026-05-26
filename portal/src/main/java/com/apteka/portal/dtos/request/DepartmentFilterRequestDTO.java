@@ -8,8 +8,8 @@ import jakarta.validation.constraints.Positive;
 public record DepartmentFilterRequestDTO(
         TaskStatus status,
         TaskPriority priority,
-        @Positive
+        @Positive(message = "Вид работ должен быть больше нуля")
         Integer workTypeId,
-        @Positive
+        @Positive(message = "Тип задач должен быть больше нуля")
         Integer groupTaskId) {
 }

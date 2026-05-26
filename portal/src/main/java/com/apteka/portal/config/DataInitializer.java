@@ -25,10 +25,10 @@ public class DataInitializer implements CommandLineRunner {
     private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${add.default.admin.login}")
+    @Value("${app.default.admin.login}")
     private String adminLogin;
 
-    @Value("${add.default.admin.password}")
+    @Value("${app.default.admin.password}")
     private String adminPassword;
 
     @Override

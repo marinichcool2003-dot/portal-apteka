@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.apteka.portal.components.PasswordValidator;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
+import com.apteka.portal.dtos.request.AptekaUpdateRequestDTO;
 import com.apteka.portal.dtos.response.AptekaResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
@@ -86,7 +87,7 @@ public class AptekaServiceTest {
         AppUserDetails currentUser = TestData.mockJustAdmin();
         UserGroup group = UserGroup.builder().id(4).name("САК").build();
 
-        AptekaRequestDTO dto = new AptekaRequestDTO(
+        AptekaUpdateRequestDTO dto = new AptekaUpdateRequestDTO(
                 "  new_sakapteka123@farmp.ru",
                 "new_password_123!",
                 123,

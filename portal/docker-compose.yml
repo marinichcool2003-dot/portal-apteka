@@ -17,6 +17,12 @@ services:
       - JWT_SECRET=${PROD_JWT_SECRET}
       - DEFAULT_UPLOAD_DIR=${PROD_UPLOAD_DIR}
       - DEFAULT_AVATARS_DIR=${PROD_AVATARS_DIR}
+      - REACT_HOST=${REACT_HOST}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION}
+      - JWT_REFRESH_EXPIRATION_WITH_REMEMBER=${JWT_REFRESH_EXPIRATION_WITH_REMEMBER}
+      - ADMIN_LOGIN=${ADMIN_LOGIN}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     volumes:
       - portal-uploads:/app/uploads
     depends_on:
@@ -53,6 +59,7 @@ services:
       - redisdata:/data
     restart: always
 
+# ИСПРАВЛЕНО: Все три volume теперь объявлены строго в одном месте в конце файла
 volumes:
   pgdata:
   redisdata:

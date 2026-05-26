@@ -21,6 +21,7 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 
 import com.apteka.portal.components.GroupTaskSecurityService;
+import com.apteka.portal.components.TypeNameValidator;
 import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
 import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
@@ -35,6 +36,8 @@ public class GroupTaskServiceTest {
     private GroupTaskRepository groupTaskRepository;
     @Mock
     private UserGroupRepository userGroupRepository;
+    @Mock
+    private TypeNameValidator typeNameValidator;
     @Mock
     private GroupTaskSecurityService groupTaskSecurityService;
     @Mock
@@ -58,8 +61,9 @@ public class GroupTaskServiceTest {
         GroupTask savedGroupTask = TestData.defaultGroupTask();
 
         when(userGroupRepository.findById(dto.userGroupId())).thenReturn(Optional.of(userGroup));
-        when(groupTaskRepository.findByNameAndUserGroupId("Накладные", dto.userGroupId()))
-                .thenReturn(Optional.empty());
+        when(typeNameValidator.getCleanName(dto.name())).thenReturn("Накладные");
+        when(groupTaskRepository.existsByNameAndUserGroupId("Накладные", dto.userGroupId()))
+                .thenReturn(false);
         when(groupTaskRepository.save(any(GroupTask.class))).thenReturn(savedGroupTask);
 
         GroupTaskResponseDTO result = groupTaskService.create(dto, currentUser);
@@ -83,8 +87,8 @@ public class GroupTaskServiceTest {
         savedGroupTask.setId(groupTaskId);
 
         when(groupTaskRepository.findById(groupTaskId)).thenReturn(Optional.of(oldGroupTask));
-        when(groupTaskRepository.findByNameAndUserGroupId("Алгоритм", groupTaskId)).thenReturn(Optional.empty());
-        when(groupTaskRepository.save(any(GroupTask.class))).thenReturn(savedGroupTask);
+        when(typeNameValidator.getCleanName(dto.name())).thenReturn("Алгоритм");
+        when(groupTaskRepository.existsByNameAndUserGroupId("Алгоритм", groupTaskId)).thenReturn(false);
 
         GroupTaskResponseDTO result = groupTaskService.update(groupTaskId, dto, currentUser);
 
@@ -93,7 +97,6 @@ public class GroupTaskServiceTest {
 
         verify(groupTaskRepository).findById(groupTaskId);
         verify(groupTaskSecurityService).validateBossOrAdminInGroup(eq(currentUser), any(UserGroup.class));
-        verify(groupTaskRepository).save(any(GroupTask.class));
 
     }
 

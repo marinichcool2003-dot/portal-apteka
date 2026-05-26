@@ -41,15 +41,34 @@ public class ClientSecurityService {
         throw new AccessDeniedException("У вас нет права создавать сотрудников");
     }
 
+    public void canRemoveRoles(Set<UserRole> newRoles, AppUserDetails currentUser, UserGroup targetGroup) {
+        if (newRoles == null || newRoles.isEmpty()) {
+            throw new IllegalArgumentException("Роль обязательна");
+        }
+
+        UserRole maxRole = getMaxRole(currentUser);
+
+        if (maxRole == UserRole.USER) {
+            throw new AccessDeniedException("USER не может удалять роли");
+        }
+
+        for (UserRole role : newRoles) {
+            if (role.getLevel() >= maxRole.getLevel()) {
+                throw new AccessDeniedException("Нельзя удалять роль выше или равную своей");
+            }
+            if (maxRole != UserRole.ADMIN && !sameGroup(currentUser, targetGroup)) {
+                throw new AccessDeniedException("Можно работать только в своей группе");
+            }
+        }
+    }
+
     public void canGiveRoleToClient(Set<UserRole> newRoles, AppUserDetails currentUser, UserGroup targetGroup) {
 
         if (newRoles == null || newRoles.isEmpty()) {
             throw new IllegalArgumentException("Роль обязательна");
         }
 
-        UserRole maxRole = currentUser.getRoles().stream()
-                .max(Comparator.comparingInt(UserRole::getLevel))
-                .orElse(UserRole.USER);
+        UserRole maxRole = getMaxRole(currentUser);
 
         if (maxRole == UserRole.USER) {
             throw new AccessDeniedException("USER не может назначать роли");
@@ -59,15 +78,23 @@ public class ClientSecurityService {
             throw new AccessDeniedException("Пользователю нельзя присвоить роль аптеки");
         }
 
-        boolean sameGroup = Objects.equals(currentUser.getUserGroup().getId(), targetGroup.getId());
-
         for (UserRole role : newRoles) {
             if (role.getLevel() >= maxRole.getLevel()) {
                 throw new AccessDeniedException("Нельзя назначать роль выше или равную своей");
             }
-            if (maxRole != UserRole.ADMIN && !sameGroup) {
+            if (maxRole != UserRole.ADMIN && !sameGroup(currentUser, targetGroup)) {
                 throw new AccessDeniedException("Можно работать только в своей группе");
             }
         }
+    }
+
+    private boolean sameGroup(AppUserDetails currentUser, UserGroup targetGroup) {
+        return Objects.equals(currentUser.getUserGroup().getId(), targetGroup.getId());
+    }
+
+    private UserRole getMaxRole(AppUserDetails currentUser) {
+        return currentUser.getRoles().stream()
+                .max(Comparator.comparingInt(UserRole::getLevel))
+                .orElse(UserRole.USER);
     }
 }

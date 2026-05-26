@@ -7,10 +7,10 @@ import lombok.Builder;
 
 @Builder
 public record TaskCommentRequestDTO(
-    @NotBlank
+    @NotBlank(message = "Комментарий не может быть пустым")
     String commentText,
 
     @NotNull
-    @Positive
+    @Positive(message = "Идентификатор задачи должен быть больше нуля")
     Long taskId
 ) {}

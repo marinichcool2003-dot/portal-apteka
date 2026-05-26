@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
@@ -120,6 +121,30 @@ public class ClientController {
             @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(clientService.create(dto, currentUser));
+    }
+
+    @Operation(summary = "Добавить роль (Только для ADMIN или BOSS)")
+    @ApiResponse(responseCode = "200", description = "Роль успешно добавлена")
+    @NotFoundApiResponse
+    @BadRequestApiResponse
+    @UnauthorizedApiResponse
+    @InternalServerErrorApiResponse
+    @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
+    @PutMapping("/add-role/{id}")
+    public ResponseEntity<ClientResponseDTO> addRole(@PathVariable UUID id, @RequestParam String role, @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(clientService.addRole(id, role, currentUser));
+    }
+
+    @Operation(summary = "Добавить роль (Только для ADMIN или BOSS)")
+    @ApiResponse(responseCode = "200", description = "Роль успешно удалена")
+    @NotFoundApiResponse
+    @BadRequestApiResponse
+    @UnauthorizedApiResponse
+    @InternalServerErrorApiResponse
+    @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
+    @PutMapping("/remove-role/{id}")
+    public ResponseEntity<ClientResponseDTO> removeRole(@PathVariable UUID id, @RequestParam String role, @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(clientService.removeRole(id, role, currentUser));
     }
 
     @Operation(summary = "Обновить собственный профиль")

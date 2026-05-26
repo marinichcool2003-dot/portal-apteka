@@ -196,8 +196,8 @@ public class TaskServiceTest {
 		when(workTypeRepository.getReferenceById(newWorkType.getId()))
 				.thenReturn(newWorkType);
 
-		when(clientRepository.findById(newAssigner.getId()))
-				.thenReturn(Optional.of(newAssigner));
+		when(clientRepository.existsById(newAssigner.getId()))
+				.thenReturn(true);
 
 		when(taskRepository.save(any(Task.class)))
 				.thenReturn(updatedTask);
@@ -239,7 +239,7 @@ public class TaskServiceTest {
 				.getReferenceById(newWorkType.getId());
 
 		verify(clientRepository, times(1))
-				.findById(newAssigner.getId());
+				.existsById(newAssigner.getId());
 
 		verify(taskAuditService, times(3))
 				.logChange(

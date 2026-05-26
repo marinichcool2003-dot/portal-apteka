@@ -26,6 +26,7 @@ import com.apteka.portal.docs.NotFoundApiResponse;
 import com.apteka.portal.docs.UnauthorizedApiResponse;
 import com.apteka.portal.dtos.request.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
+import com.apteka.portal.dtos.request.AptekaUpdateRequestDTO;
 import com.apteka.portal.services.AptekaService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,7 +75,7 @@ public class AptekaController {
     @BadRequestApiResponse
     @InternalServerErrorApiResponse
     @GetMapping("/filter")
-    public ResponseEntity<List<AptekaResponseDTO>> filter(@Parameter @ModelAttribute AptekaFilterRequestDTO dto, Pageable pageable) {
+    public ResponseEntity<List<AptekaResponseDTO>> filter(@Parameter @Valid @ModelAttribute AptekaFilterRequestDTO dto, Pageable pageable) {
         return ResponseEntity.ok().body(aptekaService.filter(dto, pageable));
     }
 
@@ -104,7 +105,7 @@ public class AptekaController {
     @ConflictApiResponse
     @InternalServerErrorApiResponse
     @PutMapping("/{id}")
-    public ResponseEntity<AptekaResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody AptekaRequestDTO dto,
+    public ResponseEntity<AptekaResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody AptekaUpdateRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(aptekaService.update(id, dto, currentUser));
     }

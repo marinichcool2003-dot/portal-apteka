@@ -24,11 +24,11 @@ CHECK (
     created_by_apteka_id IS NOT NULL OR created_by_client_id IS NOT NULL
 );
 
-ALTER TABLE task
-ADD CONSTRAINT chk_creator_not_self 
-CHECK (
-    created_by_client_id IS NULL OR created_by_client_id <> assigned_client_id
-);
+-- ALTER TABLE task
+-- ADD CONSTRAINT chk_creator_not_self 
+-- CHECK (
+--     created_by_client_id IS NULL OR created_by_client_id <> assigned_client_id
+-- );
 
 ALTER TABLE work_type 
 ADD CONSTRAINT fk_work_type_group

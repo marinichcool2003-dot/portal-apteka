@@ -2,11 +2,14 @@ package com.apteka.portal.controllers;
 
 import java.util.stream.Collectors;
 
+import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -81,6 +84,14 @@ public class GlobalExceptionHandler {
         log.error("Аптека не найдена: {}", e.getMessage(), e);
         String errorMessage = "Ошибка! Аптека не найдена: " + e.getMessage();
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorResponse handleBadCredentialsException(BadCredentialsException e) {
+        log.error("Ошибка! Неверный логин или пароль: {}", e.getMessage());
+        String errorMessage = "Неверный логин или пароль: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), errorMessage, System.currentTimeMillis());
     }
 
     @ExceptionHandler(UnknowRoleException.class)
@@ -411,6 +422,29 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 "Ошибка синтаксиса JSON. Проверьте структуру отправляемых данных.",
+                System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleDataIntegrityViolationException(DataIntegrityViolationException e) {
+        log.error("Нарушение целостности данных в БД: {}", e.getMessage(), e);
+
+        String errorMessage = "Ошибка базы данных: неверный запрос.";
+
+        if (e.getRootCause() instanceof PSQLException psqlException) {
+            String sqlState = psqlException.getSQLState();
+
+            switch (sqlState) {
+                case "23503" -> errorMessage = "Ошибка внешнего ключа: связанная запись отсутствует или используется.";
+                case "23514" -> errorMessage = "Ошибка CHECK ограничения: данные не прошли проверку правил БД.";
+                case "23505" -> errorMessage = "Ошибка уникальности: такая запись уже существует.";
+            }
+        }
+
+        return new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                errorMessage,
                 System.currentTimeMillis());
     }
 

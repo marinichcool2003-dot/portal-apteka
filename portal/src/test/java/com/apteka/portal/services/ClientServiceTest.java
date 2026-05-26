@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -94,9 +93,9 @@ public class ClientServiceTest {
     void create_Success() throws IOException {
 
         ClientRequestDTO dto = new ClientRequestDTO(
-                "  user_login  ",
+                "  user_login@farmp.ru  ",
                 "StrongPass123!",
-                "  Ivanov   Ivan  ",
+                "Гетманцев Даниил",
                 Set.of("USER", "SENIOR"),
                 1);
 
@@ -106,7 +105,7 @@ public class ClientServiceTest {
                 .id(UUID.randomUUID())
                 .login("user_login")
                 .password("hashed_password")
-                .fullName("Ivanov Ivan")
+                .fullName("Гетманцев Даниил")
                 .roles(Set.of(UserRole.USER, UserRole.SENIOR))
                 .avatarURL("/uploads/avatars/clients/default.png")
                 .userGroup(userGroup)
@@ -133,25 +132,24 @@ public class ClientServiceTest {
     void shouldUpdateYourselfSuccessfully() throws Exception {
         UUID clientId = UUID.randomUUID();
         ClientUpdateRequestDTO dto = new ClientUpdateRequestDTO(
-                "newLogin",
+                "newLogin@farmp.ru",
                 "newPassword123!",
                 new MockMultipartFile("avatar", "img.png", "image/png", new byte[] { 1, 2, 3 }));
 
         Client existingClient = new Client();
         existingClient.setId(clientId);
-        existingClient.setLogin("oldLogin");
+        existingClient.setLogin("oldLogin@farmp.ru");
 
         AppUserDetails mockUser = mock(AppUserDetails.class);
         when(mockUser.getClientId()).thenReturn(clientId);
 
         when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
-        when(clientRepository.save(any(Client.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(clientRepository.existsByLogin(dto.login())).thenReturn(false);
 
         ClientResponseDTO result = clientService.updateYourself(clientId, dto, mockUser);
 
-        assertEquals("newLogin", result.login());
-        verify(clientRepository).save(any(Client.class));
-        verify(authService).invalidateAllSession("oldLogin");
+        assertEquals("newLogin@farmp.ru", result.login());
+        verify(authService).invalidateAllSession("oldLogin@farmp.ru");
     }
 
     @Test
@@ -163,7 +161,7 @@ public class ClientServiceTest {
         MockMultipartFile avatar = new MockMultipartFile(
                 "avatar", "face.jpg", "image/jpeg", new byte[] { 0, 1, 2 });
         FullClientUpdateRequestDTO dto = new FullClientUpdateRequestDTO(
-                "admin_new_login",
+                "admin_new_login@farmp.ru",
                 "new_Pass_123!",
                 avatar,
                 "Иванов Иван Иванович",
@@ -171,22 +169,21 @@ public class ClientServiceTest {
 
         Client existingClient = new Client();
         existingClient.setId(clientId);
-        existingClient.setLogin("old_login");
+        existingClient.setLogin("old_login@farmp.ru");
         existingClient.setUserGroup(oldGroup);
 
         when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
         TaskStatsDTO stats = new TaskStatsDTO(clientId, 0L, 0L, 344L, 14L, 0L);
         when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(stats));
         when(userGroupRepository.findById(newGroup.getId())).thenReturn(Optional.of(newGroup));
-        when(clientRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         ClientResponseDTO result = clientService.fullUpdate(clientId, dto, currentUser);
 
         assertEquals("Иванов Иван Иванович", result.fullName());
-        assertEquals("admin_new_login", result.login());
+        assertEquals("admin_new_login@farmp.ru", result.login());
         assertEquals(newGroup.getId(), result.userGroup().id());
 
-        verify(authService).invalidateAllSession("old_login");
+        verify(authService).invalidateAllSession("old_login@farmp.ru");
         verify(userGroupRepository, times(1)).findById(newGroup.getId());
 
     }
@@ -199,19 +196,17 @@ public class ClientServiceTest {
         AppUserDetails currentUser = TestData.mockJustAdmin();
 
         FullClientUpdateRequestDTO dto = new FullClientUpdateRequestDTO(
-                "login", "pass!123ffD", null, "Full Name", newGroup.getId());
+                "login@farmp.ru", "pass!123ffD", null, "Full Name", newGroup.getId());
 
         Client existingClient = new Client();
         existingClient.setId(clientId);
-        existingClient.setLogin("old_login");
+        existingClient.setLogin("old_login@farmp.ru");
         existingClient.setPassword("encoded_pass");
         existingClient.setUserGroup(oldGroup);
 
         when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
 
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
-
-        when(clientRepository.save(any(Client.class))).thenAnswer(i -> i.getArgument(0));
 
         TaskStatsDTO statsWithOpenTasks = new TaskStatsDTO(clientId, 20L, 5L, 10L, 5L, 0L);
         when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(statsWithOpenTasks));
@@ -221,8 +216,5 @@ public class ClientServiceTest {
         });
 
         assertEquals("У пользователя еще имеются открытые задачи", exception.getMessage());
-
-        verify(clientRepository, atLeastOnce()).save(any());
-
     }
 }

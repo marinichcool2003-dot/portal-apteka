@@ -90,12 +90,9 @@ public class GroupTaskService {
             return GroupTaskResponseDTO.from(upGroup);
         }
 
-        validateGroupTaskName(cleanName, upGroup.getUserGroup().getId());
-        upGroup.setName(validateGroupTaskName(cleanName, id));
+        upGroup.setName(validateGroupTaskName(cleanName, upGroup.getUserGroup().getId()));
 
-        GroupTask saved = groupTaskRepository.save(upGroup);
-
-        return GroupTaskResponseDTO.from(saved);
+        return GroupTaskResponseDTO.from(upGroup);
     }
 
     @Transactional

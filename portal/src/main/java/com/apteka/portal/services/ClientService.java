@@ -123,6 +123,8 @@ public class ClientService {
                 .stream()
                 .map(UserRole::fromCode)
                 .collect(Collectors.toSet());
+                
+        if (roles.size() == 0) roles.add(UserRole.USER);
 
         clientSecurityService.canGiveRoleToClient(roles, currentUser, group);
 
@@ -139,24 +141,27 @@ public class ClientService {
         return ClientResponseDTO.from(client);
     }
 
-    public Client addRole(UUID id, String code, AppUserDetails currentUser) {
+    @Transactional
+    public ClientResponseDTO addRole(UUID id, String code, AppUserDetails currentUser) {
         UserRole role = UserRole.fromCode(code);
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.canGiveRoleToClient(Set.of(role), currentUser, client.getUserGroup());
         client.getRoles().add(role);
-        return clientRepository.save(client);
+        return ClientResponseDTO.from(client);
     }
 
-    public Client removeRole(UUID id, String code) {
+    @Transactional
+    public ClientResponseDTO removeRole(UUID id, String code, AppUserDetails currentUser) {
         UserRole role = UserRole.fromCode(code);
-        if (role == UserRole.USER) {
-            throw new AccessDeniedException("Вы не можете удалить стандартную роль пользователя");
-        }
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
+        if (client.getRoles().size() <= 1) {
+            throw new AccessDeniedException("Вы не можете удалить последнюю роль пользователя");
+        }
+        clientSecurityService.canRemoveRoles(Set.of(role), currentUser, client.getUserGroup());
         client.getRoles().remove(role);
-        return clientRepository.save(client);
+        return ClientResponseDTO.from(client);
     }
 
     @Transactional
