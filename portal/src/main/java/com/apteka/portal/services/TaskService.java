@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.dtos.response.TaskShortResponseDTO;
+import com.apteka.portal.dtos.response.TaskStatsDTO;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
@@ -27,6 +29,7 @@ import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
+import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.UserRole;
@@ -77,10 +80,23 @@ public class TaskService {
         return fetchAndMapTasks(dto);
     }
 
+    @Cacheable(value = CacheNames.GROUPS_USER_STATS, sync = true)
     @Transactional(readOnly = true)
-    public List<DepartmentTaskStatsDTO> getGroupUserStats() {
+    public List<DepartmentTaskStatsDTO> getGroupsUserStats() {
         return taskRepository.findGroupUserStats();
     }
+
+    @Cacheable(value = CacheNames.GROUP_USER_STATS, sync = true) //Кэш добавить
+    @Transactional(readOnly = true)
+    public DepartmentTaskStatsDTO getGroupUserStats(Integer userGroupId) {
+        return taskRepository.findGroupUserStatsByGroup(userGroupId);
+    }
+
+    // @Cacheable(value = CacheNames.USER_STATS, sync = true)
+    // @Transactional(readOnly = true)
+    // public TaskStatsDTO getUserStats() {
+    //     return;
+    // }
 
     @Transactional(readOnly = true)
     public List<TaskShortResponseDTO> getMyDepartmentTasks(DepartamentTaskWithFiltersDTO dto,

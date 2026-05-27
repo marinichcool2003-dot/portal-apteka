@@ -70,6 +70,21 @@ public class ClientService {
         return ClientResponseDTO.from(client);
     }
 
+    //Переписать одним запросом
+    @Transactional(readOnly = true)
+    public ClientWithStatsDTO getOneWithStats(UUID id, AppUserDetails currentUser) {
+        clientSecurityService.validateWhoCanSelectClients(currentUser);
+        Client client = clientRepository.findById(id)
+            .orElseThrow(() -> new ClientNotFoundException(id));
+        List<TaskStatsDTO> statsBatch = taskRepository.getClientTaskStatsBatch(List.of(client.getId()));
+        TaskStatsDTO stats = statsBatch.isEmpty() ? new TaskStatsDTO(id, 0L, 0L, 0L, 0L, 0L) : statsBatch.get(0);
+
+        return new ClientWithStatsDTO(
+            ClientResponseDTO.from(client),
+            stats
+        );
+    }
+
     @Transactional(readOnly = true)
     public List<ClientResponseDTO> getByGroup(Integer userGroupId, AppUserDetails currentUser) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);

@@ -71,8 +71,8 @@ public class TaskController {
 
     @Operation(summary = "Получить статистику всех групп по задачам")
     @GetMapping("/group-user-stats")
-    public ResponseEntity<List<DepartmentTaskStatsDTO>> getGroupUserStats() {
-        return ResponseEntity.ok(taskService.getGroupUserStats());
+    public ResponseEntity<List<DepartmentTaskStatsDTO>> getGroupsUserStats() {
+        return ResponseEntity.ok(taskService.getGroupsUserStats());
     }
 
     @Operation(summary = "Получить задачи назначенные на группу данного пользователя")

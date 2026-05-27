@@ -12,4 +12,9 @@ public final class CacheNames {
 
     public static final String WORK_TYPE = "workType";
     public static final String WORK_TYPES_BY_GROUP = "workTypesByGroup";
+
+    public static final String GROUPS_USER_STATS = "groups_user_stats";
+    public static final String GROUP_USER_STATS = "group_user_stats";
+
+    public static final String USER_STATS = "user_stats";
 }
