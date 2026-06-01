@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,8 +21,10 @@ import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
 import com.apteka.portal.components.PasswordValidator;
+import com.apteka.portal.dtos.response.AssignedStatsDTO;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
+import com.apteka.portal.dtos.response.CreatedStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
@@ -53,6 +56,9 @@ public class ClientService {
     private final ClientSecurityService clientSecurityService;
     private final PasswordValidator passwordValidator;
 
+    @Value("${app.default.avatars.upload.dir}")
+    private String uploadAvatarDir;
+
     @Transactional(readOnly = true)
     public List<ClientResponseDTO> getAll(AppUserDetails currentUser) {
         if (!currentUser.hasRole(UserRole.ADMIN)) {
@@ -70,19 +76,21 @@ public class ClientService {
         return ClientResponseDTO.from(client);
     }
 
-    //Переписать одним запросом
     @Transactional(readOnly = true)
-    public ClientWithStatsDTO getOneWithStats(UUID id, AppUserDetails currentUser) {
+    public TaskStatsDTO getMyStats(UUID id, AppUserDetails currentUser) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
-        Client client = clientRepository.findById(id)
-            .orElseThrow(() -> new ClientNotFoundException(id));
-        List<TaskStatsDTO> statsBatch = taskRepository.getClientTaskStatsBatch(List.of(client.getId()));
-        TaskStatsDTO stats = statsBatch.isEmpty() ? new TaskStatsDTO(id, 0L, 0L, 0L, 0L, 0L) : statsBatch.get(0);
+        List<AssignedStatsDTO> assignedStatsList = taskRepository.getClientAssignedStatsBatch(List.of(id));
+        List<CreatedStatsDTO> createdStatsList = taskRepository.getClientCreatedStatsBatch(List.of(id));
 
-        return new ClientWithStatsDTO(
-            ClientResponseDTO.from(client),
-            stats
-        );
+        AssignedStatsDTO assignedStats = assignedStatsList.isEmpty() 
+            ? new AssignedStatsDTO(id, 0L, 0L, 0L, 0L, 0L)
+            : assignedStatsList.getFirst();
+        
+        CreatedStatsDTO createdStats = createdStatsList.isEmpty()
+            ? new CreatedStatsDTO(id, 0L)
+            : createdStatsList.getFirst();
+
+        return new TaskStatsDTO(assignedStats, createdStats);
     }
 
     @Transactional(readOnly = true)
@@ -103,15 +111,15 @@ public class ClientService {
 
         List<UUID> clientIds = clients.stream().map(ClientResponseDTO::id).toList();
 
-        Map<UUID, TaskStatsDTO> statsMap = taskRepository.getClientTaskStatsBatch(clientIds)
+        Map<UUID, AssignedStatsDTO> statsMap = taskRepository.getClientAssignedStatsBatch(clientIds)
                 .stream()
-                .collect(Collectors.toMap(TaskStatsDTO::clientId, dto -> dto));
+                .collect(Collectors.toMap(AssignedStatsDTO::clientId, dto -> dto));
 
         return clients.stream()
                 .map(clientDto -> new ClientWithStatsDTO(
                         clientDto,
                         statsMap.getOrDefault(clientDto.id(),
-                                new TaskStatsDTO(clientDto.id(), 0L, 0L, 0L, 0L, 0L))))
+                                new AssignedStatsDTO(clientDto.id(), 0L, 0L, 0L, 0L, 0L))))
                 .toList();
     }
 
@@ -149,7 +157,7 @@ public class ClientService {
                 .fullName(normalizedName)
                 .roles(roles)
                 .userGroup(group)
-                .avatarURL("/uploads/avatars/clients/default.png")
+                .avatarURL(uploadAvatarDir + "/default.png")
                 .build();
 
         Client client = clientRepository.save(newClient);
@@ -206,10 +214,10 @@ public class ClientService {
         }
 
         if (dto.groupClientId() != null && !Objects.equals(savedClient.getUserGroup().getId(), dto.groupClientId())) {
-            List<TaskStatsDTO> stats = taskRepository.getClientTaskStatsBatch(List.of(savedClient.getId()));
-            TaskStatsDTO thisClientStats = stats.stream()
+            List<AssignedStatsDTO> stats = taskRepository.getClientAssignedStatsBatch(List.of(savedClient.getId()));
+            AssignedStatsDTO thisClientStats = stats.stream()
                     .findFirst()
-                    .orElse(new TaskStatsDTO(savedClient.getId(), 0L, 0L, 0L, 0L, 0L));
+                    .orElse(new AssignedStatsDTO(savedClient.getId(), 0L, 0L, 0L, 0L, 0L));
             if (thisClientStats.openCount() + thisClientStats.processedCount() > 0) {
                 throw new AccessDeniedException("У пользователя еще имеются открытые задачи");
             }

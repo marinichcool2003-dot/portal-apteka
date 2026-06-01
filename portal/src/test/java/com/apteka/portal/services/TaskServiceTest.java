@@ -193,9 +193,6 @@ public class TaskServiceTest {
 				currentUser))
 				.thenReturn(true);
 
-		when(workTypeRepository.getReferenceById(newWorkType.getId()))
-				.thenReturn(newWorkType);
-
 		when(clientRepository.existsById(newAssigner.getId()))
 				.thenReturn(true);
 
@@ -234,9 +231,6 @@ public class TaskServiceTest {
 						taskForUpdate,
 						dto,
 						currentUser);
-
-		verify(workTypeRepository, times(1))
-				.getReferenceById(newWorkType.getId());
 
 		verify(clientRepository, times(1))
 				.existsById(newAssigner.getId());

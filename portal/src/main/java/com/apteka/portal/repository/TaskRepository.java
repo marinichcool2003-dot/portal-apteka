@@ -11,7 +11,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
-import com.apteka.portal.dtos.response.TaskStatsDTO;
+import com.apteka.portal.dtos.response.AssignedStatsDTO;
+import com.apteka.portal.dtos.response.CreatedStatsDTO;
 import com.apteka.portal.models.Task;
 
 @Repository
@@ -30,7 +31,7 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 	List<Task> findShortTasksByIds(@Param("ids") List<Long> ids);
 
 	@Query("""
-			    SELECT new com.apteka.portal.dtos.response.TaskStatsDTO(
+			    SELECT new com.apteka.portal.dtos.response.AssignedStatsDTO(
 			        t.assignedClient.id,
 			        COUNT(t),
 			        COUNT(CASE WHEN CAST(t.status as string) = 'OPEN' THEN 1 END),
@@ -42,7 +43,18 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			    WHERE t.assignedClient.id IN :clientIds
 			    GROUP BY t.assignedClient.id
 			""")
-	List<TaskStatsDTO> getClientTaskStatsBatch(@Param("clientIds") List<UUID> clientIds);
+	List<AssignedStatsDTO> getClientAssignedStatsBatch(@Param("clientIds") List<UUID> clientIds);
+
+	@Query("""
+				SELECT new com.apteka.portal.dtos.response.CreatedStatsDTO(
+					t.createdByClient.id,
+				COUNT(t)
+				)
+				FROM Task t
+				WHERE t.createdByClient.id IN :clientIds AND t.status = 'OPEN'
+				GROUP BY t.createdByClient.id
+			""")
+	List<CreatedStatsDTO> getClientCreatedStatsBatch(@Param("clientIds") List<UUID> clientIds);
 
 	// @Query("""
 	// SELECT t.assignedClient.id,

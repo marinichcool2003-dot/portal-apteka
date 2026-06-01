@@ -37,6 +37,10 @@ public class TaskPictureService {
 
         File destFolder = new File(uploadDir);
 
+        if(!destFolder.exists()) {
+            destFolder.mkdirs();
+        }
+
         File targetFile = new File(destFolder, uniqueFileName);
         file.transferTo(targetFile);
 

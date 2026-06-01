@@ -2,6 +2,6 @@ package com.apteka.portal.dtos.response;
 
 public record ClientWithStatsDTO(
     ClientResponseDTO client,
-    TaskStatsDTO stats
+    AssignedStatsDTO stats
 ) 
 {} 

@@ -21,7 +21,6 @@ import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.dtos.response.TaskShortResponseDTO;
-import com.apteka.portal.dtos.response.TaskStatsDTO;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
@@ -35,6 +34,7 @@ import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.models.Task;
+import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.AptekaRepository;
@@ -86,7 +86,7 @@ public class TaskService {
         return taskRepository.findGroupUserStats();
     }
 
-    @Cacheable(value = CacheNames.GROUP_USER_STATS, sync = true) //Кэш добавить
+    @Cacheable(value = CacheNames.GROUP_USER_STATS, sync = true) // Кэш добавить
     @Transactional(readOnly = true)
     public DepartmentTaskStatsDTO getGroupUserStats(Integer userGroupId) {
         return taskRepository.findGroupUserStatsByGroup(userGroupId);
@@ -95,7 +95,7 @@ public class TaskService {
     // @Cacheable(value = CacheNames.USER_STATS, sync = true)
     // @Transactional(readOnly = true)
     // public TaskStatsDTO getUserStats() {
-    //     return;
+    // return;
     // }
 
     @Transactional(readOnly = true)
@@ -193,17 +193,18 @@ public class TaskService {
 
         if (dto.title() != null && !Objects.equals(task.getTitle(), dto.title())) {
             validateTitle(dto.title());
-            taskAuditService.logChange(task, currentUser, "заголовок", task.getTitle(), dto.title());
+            taskAuditService.logChange(task.getId(), currentUser, "заголовок", task.getTitle(), dto.title());
             task.setTitle(dto.title().strip());
         }
 
         if (dto.description() != null && !Objects.equals(task.getDescription(), dto.description())) {
             validateDescription(dto.description());
-            taskAuditService.logChange(task, currentUser, "описание", task.getDescription(), dto.description());
+            taskAuditService.logChange(task.getId(), currentUser, "описание", task.getDescription(), dto.description());
             task.setDescription(dto.description().strip());
         }
 
-        if (taskSecurityService.changeWorkTypeToAnotherDepartament(task, dto, currentUser)) {
+        if (dto.workTypeId() != null && taskSecurityService.changeWorkTypeToAnotherDepartament(task, dto, currentUser)
+                && !Objects.equals(task.getWorkType().getId(), dto.workTypeId())) {
             task.setWorkType(workTypeRepository.getReferenceById(dto.workTypeId()));
         }
 
@@ -211,11 +212,19 @@ public class TaskService {
             String oldAssigneeName = getAssigneeName(task);
             setAssignee(task, dto, currentUser);
             String newAssigneeName = getAssigneeName(task);
-            taskAuditService.logChange(task, currentUser, "исполнителя", oldAssigneeName, newAssigneeName);
+            taskAuditService.logChange(task.getId(), currentUser, "исполнителя", oldAssigneeName, newAssigneeName);
         }
 
-        if (dto.statusDescription() != null && !dto.statusDescription().isBlank()) {
+        if (dto.statusDescription() != null && !dto.statusDescription().isBlank()
+                && !Objects.equals(task.getStatus().getDescription(), dto.statusDescription())) {
             task = changeStatus(task, dto.statusDescription(), currentUser);
+        }
+
+        if (dto.priorityDescription() != null && !dto.priorityDescription().isBlank()
+                && !Objects.equals(task.getPriority().getDescription(), dto.priorityDescription())) {
+            String oldPriority = task.getPriority().getDescription();
+            task.setPriority(TaskPriority.fromDescription(dto.priorityDescription()));
+            taskAuditService.logChange(id, currentUser, "приоритет", oldPriority, dto.priorityDescription());
         }
 
         task.setUpdatedDate(LocalDateTime.now());
@@ -243,13 +252,14 @@ public class TaskService {
             return task;
         }
 
-        TaskStatus oldStatus = task.getStatus();
+        String oldStatus = task.getStatus().getDescription();
         task.changeStatus(newStatus);
 
         String commentText = "Пользователь %s изменил статус задачи #%d c '%s' на '%s'"
-                .formatted(taskAuditService.getAuthor(currentUser), task.getId(), oldStatus.name(), newStatus.name());
+                .formatted(taskAuditService.getAuthor(currentUser), task.getId(), oldStatus,
+                        newStatus.getDescription());
 
-        taskAuditService.addComment(commentText, currentUser, task);
+        taskAuditService.addComment(commentText, currentUser, task.getId());
         return task;
     }
 

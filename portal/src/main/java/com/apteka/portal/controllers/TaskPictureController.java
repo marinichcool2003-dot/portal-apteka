@@ -2,6 +2,7 @@ package com.apteka.portal.controllers;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.FileSystemResource;
@@ -52,11 +53,16 @@ public class TaskPictureController {
     @GetMapping("/{pictureId}")
     @TaskPictureGetOperation
     @TaskPictureNotFoundResponse
-    public ResponseEntity<Resource> getPicture(@PathVariable Long pictureId) {
+    public ResponseEntity<Resource> getPicture(@PathVariable Long pictureId) throws IOException{
 
         File file = taskPictureService.getFileById(pictureId);
-
         Resource resource = new FileSystemResource(file);
+
+        String contentType = Files.probeContentType(file.toPath());
+
+        if (contentType == null) {
+            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
 
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_JPEG)

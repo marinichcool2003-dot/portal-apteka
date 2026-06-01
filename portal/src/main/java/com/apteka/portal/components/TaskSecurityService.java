@@ -42,8 +42,13 @@ public class TaskSecurityService {
 
             if (dto.assignedClientId() != null) {
                 Client targetClient = clientRepository.findById(dto.assignedClientId())
-                    .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
-                if (!Objects.equals(targetClient.getUserGroup().getId(), taskGroupId)) {
+                        .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
+
+                Integer targetClientGroupId = targetClient.getUserGroup() != null
+                        ? targetClient.getUserGroup().getId()
+                        : null;
+
+                if (!Objects.equals(targetClientGroupId, taskGroupId)) {
                     throw new AccessDeniedException(
                             "Вы можете ставить задачи сотруднику в рамке вида работ его группы");
                 }
@@ -108,7 +113,13 @@ public class TaskSecurityService {
     }
 
     public boolean changeWorkTypeToAnotherDepartament(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
-        if (!Objects.equals(task.getWorkType().getId(), dto.workTypeId())) {
+        if (dto.workTypeId() == null) {
+            return false;
+        }
+
+        Integer currentWorkTypeId = task.getWorkType() != null ? task.getWorkType().getId() : null;
+
+        if (!Objects.equals(currentWorkTypeId, dto.workTypeId())) {
             if (hasElevatedPrivileges(currentUser)) {
                 return true;
             }
@@ -160,17 +171,30 @@ public class TaskSecurityService {
     }
 
     private boolean isTaskLockedForChanges(Task task) {
-        return (task.getStatus() == TaskStatus.DENIED) ||
-                (task.getStatus() == TaskStatus.CLOSED
-                        && LocalDateTime.now().isAfter(task.getClosingDate().plusMonths(1)));
+        if (task.getStatus() == TaskStatus.DENIED) {
+            return true;
+        }
+
+        if (task.getStatus() == TaskStatus.CLOSED && task.getClosingDate() != null) {
+            return LocalDateTime.now().isAfter(task.getClosingDate().plusMonths(1));
+        }
+
+        return false;
     }
 
     private boolean isAssignmentChanged(Task task, TaskRequestDTO dto, UserGroup targetTaskGroup) {
         Integer targetGroupId = (targetTaskGroup != null) ? targetTaskGroup.getId() : null;
 
+        Integer currentGroupId = null;
+        if (task.getWorkType() != null
+                && task.getWorkType().getGroupTask() != null
+                && task.getWorkType().getGroupTask().getUserGroup() != null) {
+            currentGroupId = task.getWorkType().getGroupTask().getUserGroup().getId();
+        }
+
         return !Objects.equals(getAssignedAptekaId(task), dto.assignedAptekaId()) ||
                 !Objects.equals(getAssignedClientId(task), dto.assignedClientId()) ||
-                !Objects.equals(getAssignedGroupId(task), targetGroupId);
+                !Objects.equals(currentGroupId, targetGroupId);
     }
 
     private boolean isWithinSameGroup(TaskRequestDTO dto, AppUserDetails currentUser, UserGroup targetTaskGroup) {
@@ -183,7 +207,7 @@ public class TaskSecurityService {
 
         if (dto.assignedClientId() != null) {
             Client newClient = clientRepository.findById(dto.assignedClientId())
-                .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
+                    .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
             Integer newClientGroupId = (newClient != null && newClient.getUserGroup() != null)
                     ? newClient.getUserGroup().getId()
                     : null;
@@ -203,8 +227,12 @@ public class TaskSecurityService {
     }
 
     private UserGroup getUserGroupFromWorkTypeId(Integer workTypeId) {
+
+        if (workTypeId == null)
+            throw new WorkTypeNotFoundException(workTypeId);
+
         WorkType workType = workTypeRepository.findById(workTypeId)
-            .orElseThrow(() -> new WorkTypeNotFoundException(workTypeId));
+                .orElseThrow(() -> new WorkTypeNotFoundException(workTypeId));
         return Optional.ofNullable(workType)
                 .map(WorkType::getGroupTask)
                 .map(GroupTask::getUserGroup)

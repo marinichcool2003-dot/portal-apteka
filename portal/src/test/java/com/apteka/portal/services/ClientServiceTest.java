@@ -35,7 +35,7 @@ import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
-import com.apteka.portal.dtos.response.TaskStatsDTO;
+import com.apteka.portal.dtos.response.AssignedStatsDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserGroup;
@@ -73,11 +73,11 @@ public class ClientServiceTest {
         client.setId(clientId);
         UserGroup userGroup = TestData.defaulUserGroup();
         AppUserDetails currentUser = TestData.mockJustSenior();
-        TaskStatsDTO stats = new TaskStatsDTO(clientId, 10L, 5L, 2L, 1L, 2L);
+        AssignedStatsDTO stats = new AssignedStatsDTO(clientId, 10L, 5L, 2L, 1L, 2L);
 
         when(userGroupRepository.existsById(userGroup.getId())).thenReturn(true);
         when(clientRepository.findByUserGroupId(userGroup.getId())).thenReturn(List.of(client));
-        when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(stats));
+        when(taskRepository.getClientAssignedStatsBatch(anyList())).thenReturn(List.of(stats));
 
         List<ClientWithStatsDTO> result = clientService.getWithNumberOfTask(userGroup.getId(), currentUser);
 
@@ -173,8 +173,8 @@ public class ClientServiceTest {
         existingClient.setUserGroup(oldGroup);
 
         when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
-        TaskStatsDTO stats = new TaskStatsDTO(clientId, 0L, 0L, 344L, 14L, 0L);
-        when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(stats));
+        AssignedStatsDTO stats = new AssignedStatsDTO(clientId, 0L, 0L, 344L, 14L, 0L);
+        when(taskRepository.getClientAssignedStatsBatch(anyList())).thenReturn(List.of(stats));
         when(userGroupRepository.findById(newGroup.getId())).thenReturn(Optional.of(newGroup));
 
         ClientResponseDTO result = clientService.fullUpdate(clientId, dto, currentUser);
@@ -208,8 +208,8 @@ public class ClientServiceTest {
 
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
 
-        TaskStatsDTO statsWithOpenTasks = new TaskStatsDTO(clientId, 20L, 5L, 10L, 5L, 0L);
-        when(taskRepository.getClientTaskStatsBatch(anyList())).thenReturn(List.of(statsWithOpenTasks));
+        AssignedStatsDTO statsWithOpenTasks = new AssignedStatsDTO(clientId, 20L, 5L, 10L, 5L, 0L);
+        when(taskRepository.getClientAssignedStatsBatch(anyList())).thenReturn(List.of(statsWithOpenTasks));
 
         AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> {
             clientService.fullUpdate(clientId, dto, currentUser);

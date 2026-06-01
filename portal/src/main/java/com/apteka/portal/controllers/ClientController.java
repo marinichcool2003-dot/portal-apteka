@@ -31,6 +31,7 @@ import com.apteka.portal.docs.UnauthorizedApiResponse;
 import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
+import com.apteka.portal.dtos.response.TaskStatsDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.ClientService;
 
@@ -81,6 +82,16 @@ public class ClientController {
     @GetMapping("/me")
     public ResponseEntity<ClientResponseDTO> getMe(@AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(clientService.getOne(currentUser.getClientId(), currentUser));
+    }
+
+    @Operation(summary = "Получить статистику задач текущего сотрудника")
+    @GetMapping("/my-stats")
+    @ApiResponse(responseCode = "200", description = "Cтатистика успешно получена")
+    @UnauthorizedApiResponse
+    @NotFoundApiResponse
+    @InternalServerErrorApiResponse
+    public ResponseEntity<TaskStatsDTO> getMyStats(@AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(clientService.getMyStats(currentUser.getClientId(), currentUser));
     }
 
     @Operation(summary = "Получить сотрудников по группе")
@@ -155,9 +166,9 @@ public class ClientController {
     @NotFoundApiResponse
     @ConflictApiResponse
     @InternalServerErrorApiResponse
-    @PutMapping("/update-yourself")
+    @PutMapping(value = "/update-yourself", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ClientResponseDTO> updateYourself(@AuthenticationPrincipal AppUserDetails currentUser,
-            @Valid @ParameterObject @ModelAttribute ClientUpdateRequestDTO dto) throws IOException {
+            @Valid @ModelAttribute ClientUpdateRequestDTO dto) throws IOException {
         UUID clientId = currentUser.getClientId();
         return ResponseEntity.ok(clientService.updateYourself(clientId, dto, currentUser));
     }
