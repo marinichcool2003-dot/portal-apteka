@@ -77,17 +77,17 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public TaskStatsDTO getMyStats(UUID id, AppUserDetails currentUser) {
+    public TaskStatsDTO getMyStats(AppUserDetails currentUser) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
-        List<AssignedStatsDTO> assignedStatsList = taskRepository.getClientAssignedStatsBatch(List.of(id));
-        List<CreatedStatsDTO> createdStatsList = taskRepository.getClientCreatedStatsBatch(List.of(id));
+        List<AssignedStatsDTO> assignedStatsList = taskRepository.getClientAssignedStatsBatch(List.of(currentUser.getClientId()));
+        List<CreatedStatsDTO> createdStatsList = taskRepository.getClientCreatedStatsBatch(List.of(currentUser.getClientId()));
 
         AssignedStatsDTO assignedStats = assignedStatsList.isEmpty() 
-            ? new AssignedStatsDTO(id, 0L, 0L, 0L, 0L, 0L)
+            ? new AssignedStatsDTO(currentUser.getClientId(), 0L, 0L, 0L, 0L, 0L)
             : assignedStatsList.getFirst();
         
         CreatedStatsDTO createdStats = createdStatsList.isEmpty()
-            ? new CreatedStatsDTO(id, 0L)
+            ? new CreatedStatsDTO(currentUser.getClientId(), 0L)
             : createdStatsList.getFirst();
 
         return new TaskStatsDTO(assignedStats, createdStats);
@@ -188,13 +188,10 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponseDTO updateYourself(UUID id, ClientUpdateRequestDTO dto, AppUserDetails currentUser)
+    public ClientResponseDTO updateYourself(ClientUpdateRequestDTO dto, AppUserDetails currentUser)
             throws IOException {
-        if (!Objects.equals(currentUser.getClientId(), id)) {
-            throw new AccessDeniedException("Вы не можете изменять не свой профиль");
-        }
 
-        Client savedClient = updateBasicClientForm(id, dto.login(), dto.password(), dto.avatar());
+        Client savedClient = updateBasicClientForm(currentUser.getClientId(), dto.login(), dto.password(), dto.avatar());
 
         return ClientResponseDTO.from(savedClient);
     }

@@ -146,7 +146,7 @@ public class ClientServiceTest {
         when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
         when(clientRepository.existsByLogin(dto.login())).thenReturn(false);
 
-        ClientResponseDTO result = clientService.updateYourself(clientId, dto, mockUser);
+        ClientResponseDTO result = clientService.updateYourself(dto, mockUser);
 
         assertEquals("newLogin@farmp.ru", result.login());
         verify(authService).invalidateAllSession("oldLogin@farmp.ru");

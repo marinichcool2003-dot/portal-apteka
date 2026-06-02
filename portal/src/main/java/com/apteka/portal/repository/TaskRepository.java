@@ -56,20 +56,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			""")
 	List<CreatedStatsDTO> getClientCreatedStatsBatch(@Param("clientIds") List<UUID> clientIds);
 
-	// @Query("""
-	// SELECT t.assignedClient.id,
-	// COUNT(t),
-	// COUNT(CASE WHEN t.status IN :statuses THEN 1 END)
-	// FROM Task t
-	// JOIN t.workType w
-	// JOIN w.groupTask gt
-	// WHERE gt.userGroup.id = :groupId
-	// GROUP BY t.assignedClient.id
-	// """)
-	// List<Object[]> getDepartmentPerformance(
-	// @Param("groupId") Integer groupId,
-	// @Param("statuses") List<String> statuses);
-
 	@Query("""
 			    SELECT new com.apteka.portal.dtos.response.DepartmentTaskStatsDTO(
 			        ug.id,

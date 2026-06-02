@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.AptekaCreateException;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
+import com.apteka.portal.exceptions.AsyncCommentException;
 import com.apteka.portal.exceptions.AvtorCommentNotInputException;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.exceptions.ClientBelongsToAnotherGroupException;
@@ -44,6 +45,7 @@ import com.apteka.portal.exceptions.InvalidRefreshTokenException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
 import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.InvalidWorkTypeNameException;
+import com.apteka.portal.exceptions.NewsNotFoundException;
 import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
@@ -92,6 +94,22 @@ public class GlobalExceptionHandler {
         log.error("Ошибка! Неверный логин или пароль: {}", e.getMessage());
         String errorMessage = "Неверный логин или пароль: " + e.getMessage();
         return new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(AsyncCommentException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErrorResponse handleAsyncCommentException(AsyncCommentException e) {
+        log.error("Ошибка! Не удалось сохранить комментарий асинхронно: {}", e.getMessage());
+        String errorMessage = "Не удалось сохранить комментарий асинхронно: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(NewsNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleNewsNotFoundException(NewsNotFoundException e) {
+        log.error("Новость не найдена: {}", e.getMessage(), e);
+        String errorMessage = "Новость не найдена: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
     }
 
     @ExceptionHandler(UnknowRoleException.class)

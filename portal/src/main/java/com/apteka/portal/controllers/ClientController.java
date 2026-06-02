@@ -91,7 +91,7 @@ public class ClientController {
     @NotFoundApiResponse
     @InternalServerErrorApiResponse
     public ResponseEntity<TaskStatsDTO> getMyStats(@AuthenticationPrincipal AppUserDetails currentUser) {
-        return ResponseEntity.ok(clientService.getMyStats(currentUser.getClientId(), currentUser));
+        return ResponseEntity.ok(clientService.getMyStats(currentUser));
     }
 
     @Operation(summary = "Получить сотрудников по группе")
@@ -169,8 +169,7 @@ public class ClientController {
     @PutMapping(value = "/update-yourself", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ClientResponseDTO> updateYourself(@AuthenticationPrincipal AppUserDetails currentUser,
             @Valid @ModelAttribute ClientUpdateRequestDTO dto) throws IOException {
-        UUID clientId = currentUser.getClientId();
-        return ResponseEntity.ok(clientService.updateYourself(clientId, dto, currentUser));
+        return ResponseEntity.ok(clientService.updateYourself(dto, currentUser));
     }
 
     @Operation(summary = "Полное обновление сотрудника")

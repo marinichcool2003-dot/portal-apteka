@@ -239,14 +239,6 @@ public class TaskSecurityService {
                 .orElse(null);
     }
 
-    private Integer getAssignedGroupId(Task task) {
-        return Optional.ofNullable(task.getWorkType())
-                .map(WorkType::getGroupTask)
-                .map(GroupTask::getUserGroup)
-                .map(UserGroup::getId)
-                .orElse(null);
-    }
-
     private Integer getCreatedByAptekaId(Task task) {
         return task.getCreatedByApteka() != null ? task.getCreatedByApteka().getId() : null;
     }

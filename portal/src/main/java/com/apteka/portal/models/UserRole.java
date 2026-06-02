@@ -13,6 +13,7 @@ public enum UserRole {
     BOSS("BOSS", "Босс"),
     SENIOR("SENIOR", "Старший сотрудник"),
     USER("USER", "Сотрудник"),
+    AMBASSADOR("AMBASSADOR", "Вестник"),
     APTEKA("APTEKA", "Аптека");
 
     private final String code;

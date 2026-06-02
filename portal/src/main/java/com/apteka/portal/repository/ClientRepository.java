@@ -12,9 +12,16 @@ import com.apteka.portal.models.Client;
 public interface ClientRepository extends JpaRepository<Client, UUID>{
 
     @EntityGraph(attributePaths = { "userGroup", "roles"})
+    List<Client> findAll();
+
+    @EntityGraph(attributePaths = { "userGroup", "roles"})
     Optional<Client> findByLogin(String login);
 
+    @EntityGraph(attributePaths = { "userGroup", "roles"})
     List<Client> findByUserGroupId(Integer groupId);
+
+    @EntityGraph(attributePaths = { "userGroup", "roles"})
+    Optional<Client> findById(UUID id);
 
     boolean existsByLogin(String login);
 }
