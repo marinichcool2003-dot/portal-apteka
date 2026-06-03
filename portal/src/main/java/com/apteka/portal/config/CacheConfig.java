@@ -63,6 +63,9 @@ public class CacheConfig implements CachingConfigurer {
 
         RedisCacheConfiguration groupsStatsConfig = defaultConfiguration.entryTtl(Duration.ofSeconds(30));
         cacheConfigurations.put(CacheNames.GROUPS_USER_STATS, groupsStatsConfig);
+
+        RedisCacheConfiguration userStatsConfig = defaultConfiguration.entryTtl(Duration.ofSeconds(10));
+        cacheConfigurations.put(CacheNames.USER_STATS, userStatsConfig);
         
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfiguration)
