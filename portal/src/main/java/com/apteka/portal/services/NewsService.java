@@ -1,6 +1,7 @@
 package com.apteka.portal.services;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +55,28 @@ public class NewsService {
         News news = News.builder().title(dto.title()).newsText(dto.newsText()).author(client).userGroup(userGroup).build();
         News savedNews = newsRepository.save(news);
         return NewsResponseDTO.from(savedNews);
+    }
+
+    ////////////
+    //ДОРАБОТАТЬ
+    ///////////
+    @Transactional
+    public NewsResponseDTO update(Integer id, NewsRequestDTO dto, AppUserDetails currentUser) {
+        News news = newsRepository.findById(id)
+            .orElseThrow((() -> new NewsNotFoundException("Новость не найдена")));
+
+        newsSecurityService.validateCanUpdate(currentUser, news);
+
+        if (dto.title() != null && !Objects.equals(news.getTitle(), dto.title())) {
+            validateTitle(dto.title());
+            news.setTitle(dto.title());
+        }
+        if (dto.newsText() != null && !Objects.equals(news.getNewsText(), dto.newsText())) {
+            validateNewsText(dto.newsText());
+            news.setNewsText(dto.newsText());
+        }
+
+        return NewsResponseDTO.from(news);
     }
 
     private void validateTitle(String title) {
