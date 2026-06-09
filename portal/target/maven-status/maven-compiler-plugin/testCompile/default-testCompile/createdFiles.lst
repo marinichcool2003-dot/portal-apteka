@@ -1,0 +1,13 @@
+com\apteka\portal\services\WorkTypeServiceTest.class
+com\apteka\portal\services\TestData.class
+com\apteka\portal\services\UserGroupServiceTest.class
+com\apteka\portal\components\TaskSecurityServiceTest.class
+com\apteka\portal\services\TaskServiceTest.class
+com\apteka\portal\PortalApplicationTests.class
+com\apteka\portal\services\ClientServiceTest.class
+com\apteka\portal\components\UserGroupSecurityServiceTest.class
+com\apteka\portal\components\ClientSecurityServiceTest.class
+com\apteka\portal\services\AptekaServiceTest.class
+com\apteka\portal\services\TaskCommentsServiceTest.class
+com\apteka\portal\components\GroupTaskSecurityServiceTest.class
+com\apteka\portal\services\GroupTaskServiceTest.class
