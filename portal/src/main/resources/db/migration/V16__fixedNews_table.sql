@@ -1,0 +1,1 @@
+ALTER TABLE news ADD COLUMN last_modified_by VARCHAR(50);

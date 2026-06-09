@@ -78,6 +78,18 @@ public class ClientSecurityService {
             throw new AccessDeniedException("Пользователю нельзя присвоить роль аптеки");
         }
 
+        if (newRoles.contains(UserRole.AMBASSADOR)) {
+            Set<UserRole> currentRoles = currentUser.getRoles(); 
+
+            boolean isAdmin = currentRoles.contains(UserRole.ADMIN);
+
+            boolean isBossFromSameGroup = currentRoles.contains(UserRole.BOSS) && sameGroup(currentUser, targetGroup);
+
+            if (!isAdmin && !isBossFromSameGroup) {
+                throw new AccessDeniedException("Вы не можете присвоить роль AMBASSADOR данному пользователю");
+            }
+        }
+
         for (UserRole role : newRoles) {
             if (role.getLevel() >= maxRole.getLevel()) {
                 throw new AccessDeniedException("Нельзя назначать роль выше или равную своей");

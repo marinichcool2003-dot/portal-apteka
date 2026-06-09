@@ -6,6 +6,8 @@ import java.util.Set;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -19,7 +21,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -48,14 +49,16 @@ public class Task {
     @Column(name = "description", nullable = false)
     private String description;
 
+    @CreatedDate
     @Setter(AccessLevel.NONE)
-    @Column(name = "creation_date")
+    @Column(name = "creation_date", nullable = false, updatable = false)
     private LocalDateTime creationDate;
 
     @Setter
     @Column(name = "closing_date")
     private LocalDateTime closingDate;
 
+    @LastModifiedDate
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
 
@@ -179,31 +182,22 @@ public class Task {
         }
     }
 
-    @PrePersist
-    public void prePersist() {
-        this.creationDate = LocalDateTime.now();
-    }
-
     private void reOpen() {
         this.status = TaskStatus.OPEN;
-        this.updatedDate = LocalDateTime.now();
         this.closingDate = null;
     }
 
     private void denied() {
         this.status = TaskStatus.DENIED;
-        this.updatedDate = LocalDateTime.now();
     }
 
     private void processed() {
         this.status = TaskStatus.PROCESSED;
-        this.updatedDate = LocalDateTime.now();
     }
 
     private void close() {
         this.status = TaskStatus.CLOSED;
-        this.closingDate = LocalDateTime.now();
-        this.updatedDate = LocalDateTime.now();
+        this.closingDate = LocalDateTime.now();;
     }
 
     public void changeStatus(TaskStatus newStatus) {

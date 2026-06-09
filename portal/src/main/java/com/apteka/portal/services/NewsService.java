@@ -1,5 +1,6 @@
 package com.apteka.portal.services;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -8,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.NewsSecurityService;
 import com.apteka.portal.dtos.request.NewsRequestDTO;
+import com.apteka.portal.dtos.request.NewsUpdateRequestDTO;
 import com.apteka.portal.dtos.response.NewsResponseDTO;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
@@ -40,7 +42,7 @@ public class NewsService {
     @Transactional(readOnly = true)
     public NewsResponseDTO getOne(Integer id) {
         return newsRepository.findById(id).map(NewsResponseDTO::from)
-            .orElseThrow(() -> new NewsNotFoundException("Новость не найдена"));
+                .orElseThrow(() -> new NewsNotFoundException("Новость не найдена"));
     }
 
     @Transactional
@@ -49,34 +51,54 @@ public class NewsService {
         validateNewsText(dto.newsText());
         newsSecurityService.validateCanCreateNews(currentUser, dto);
         Client client = clientRepository.findById(currentUser.getClientId())
-            .orElseThrow(() -> new ClientNotFoundException(currentUser.getClientId()));
+                .orElseThrow(() -> new ClientNotFoundException(currentUser.getClientId()));
         UserGroup userGroup = userGroupRepository.findById(dto.userGroupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.userGroupId()));
-        News news = News.builder().title(dto.title()).newsText(dto.newsText()).author(client).userGroup(userGroup).build();
+        News news = News.builder()
+                .title(dto.title())
+                .newsText(dto.newsText())
+                .author(client)
+                .userGroup(userGroup)
+                .creationDate(LocalDateTime.now())
+                .build();
         News savedNews = newsRepository.save(news);
         return NewsResponseDTO.from(savedNews);
     }
 
-    ////////////
-    //ДОРАБОТАТЬ
-    ///////////
     @Transactional
-    public NewsResponseDTO update(Integer id, NewsRequestDTO dto, AppUserDetails currentUser) {
+    public NewsResponseDTO update(Integer id, NewsUpdateRequestDTO dto, AppUserDetails currentUser) {
         News news = newsRepository.findById(id)
-            .orElseThrow((() -> new NewsNotFoundException("Новость не найдена")));
+                .orElseThrow((() -> new NewsNotFoundException("Новость не найдена")));
+
+        boolean hasChange = false;
 
         newsSecurityService.validateCanUpdate(currentUser, news);
 
         if (dto.title() != null && !Objects.equals(news.getTitle(), dto.title())) {
             validateTitle(dto.title());
             news.setTitle(dto.title());
+            hasChange = true;
         }
         if (dto.newsText() != null && !Objects.equals(news.getNewsText(), dto.newsText())) {
             validateNewsText(dto.newsText());
             news.setNewsText(dto.newsText());
+            hasChange = true;
+        }
+
+        if (hasChange) {
+            news.setUpdatedDate(LocalDateTime.now());
+            news.setLastModifiedBy(currentUser.getDisplayName());
         }
 
         return NewsResponseDTO.from(news);
+    }
+
+    @Transactional
+    public void delete(Integer id, AppUserDetails currentUser) {
+        News news = newsRepository.findById(id)
+                .orElseThrow((() -> new NewsNotFoundException("Новость не найдена")));
+        newsSecurityService.validateCanUpdate(currentUser, news);
+        newsRepository.delete(news);
     }
 
     private void validateTitle(String title) {
@@ -88,7 +110,7 @@ public class NewsService {
         }
     }
 
-    private void validateNewsText(String newsText){
+    private void validateNewsText(String newsText) {
         if (newsText.isBlank() || newsText == null) {
             throw new InvalidNewsTextException("Текст новости не может быть пустым");
         }

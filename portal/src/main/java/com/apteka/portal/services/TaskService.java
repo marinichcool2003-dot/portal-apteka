@@ -221,7 +221,6 @@ public class TaskService {
             taskAuditService.logChange(id, currentUser, "приоритет", oldPriority, dto.priorityDescription());
         }
 
-        task.setUpdatedDate(LocalDateTime.now());
         Task saved = taskRepository.save(task);
 
         return TaskShortResponseDTO.from(saved);

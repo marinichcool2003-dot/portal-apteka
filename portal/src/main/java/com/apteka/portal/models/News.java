@@ -2,6 +2,9 @@ package com.apteka.portal.models;
 
 import java.time.LocalDateTime;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,10 +32,10 @@ public class News {
     @Column(name = "id")
     private Integer id;
 
-    @Column(name = "title")
+    @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(name = "news_text")
+    @Column(name = "news_text", nullable = false)
     private String newsText;
 
     @ManyToOne
@@ -40,12 +43,16 @@ public class News {
     private Client author;
 
     @ManyToOne
-    @JoinColumn(name = "group_user_id")
+    @JoinColumn(name = "group_user_id", nullable = false)
     private UserGroup userGroup;
 
-    @Column(name = "creation_date")
+    @CreatedDate
+    @Column(name = "creation_date", nullable = false, updatable = false)
     private LocalDateTime creationDate;
 
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
+
+    @Column(name = "last_modified_by")
+    private String lastModifiedBy;
 }
