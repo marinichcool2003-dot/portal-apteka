@@ -5,11 +5,9 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
 import com.apteka.portal.models.GroupTask;
 
-@Repository
 public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
     @EntityGraph(attributePaths = {"userGroup"})
     Optional<GroupTask> findByNameAndUserGroupId(String name, Integer userGroupId);

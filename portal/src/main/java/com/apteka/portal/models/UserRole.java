@@ -14,6 +14,8 @@ public enum UserRole {
     SENIOR("SENIOR", "Старший сотрудник"),
     USER("USER", "Сотрудник"),
     AMBASSADOR("AMBASSADOR", "Вестник"),
+    SENIOR_AMBASSADOR("SENIOR_AMBASSADOR", "Старший вестник"),
+    LINK_CHANGER("LINK_CHANGER", "Корректировщик ссылок"),
     APTEKA("APTEKA", "Аптека");
 
     private final String code;

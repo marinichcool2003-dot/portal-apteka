@@ -78,7 +78,7 @@ public class ClientSecurityService {
             throw new AccessDeniedException("Пользователю нельзя присвоить роль аптеки");
         }
 
-        if (newRoles.contains(UserRole.AMBASSADOR)) {
+        if (newRoles.contains(UserRole.AMBASSADOR) || newRoles.contains(UserRole.SENIOR_AMBASSADOR)) {
             Set<UserRole> currentRoles = currentUser.getRoles(); 
 
             boolean isAdmin = currentRoles.contains(UserRole.ADMIN);

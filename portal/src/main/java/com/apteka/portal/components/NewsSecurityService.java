@@ -14,14 +14,13 @@ import com.apteka.portal.models.UserRole;
 public class NewsSecurityService {
 
     public void validateCanCreateNews(AppUserDetails currentUser, NewsRequestDTO dto) {
-        if (!currentUser.hasRole(UserRole.AMBASSADOR)) {
+        if (!currentUser.hasAnyRole(UserRole.AMBASSADOR, UserRole.SENIOR_AMBASSADOR)) {
             throw new AccessDeniedException("Только пользователи с ролью AMBASSADOR могут создавать новости");
         }
 
-        if (!Objects.equals(currentUser.getUserGroup().getId(), dto.userGroupId())
-                && !canManageNewsInAnotherGroup(currentUser)) {
+        if (!currentUser.hasRole(UserRole.SENIOR_AMBASSADOR) && !Objects.equals(currentUser.getUserGroup().getId(), dto.userGroupId())) {
             throw new AccessDeniedException(
-                    "Только пользователи с ролью (BOSS и AMBASSADOR) или (SENIOR и AMBASSADOR) могут создавать новости в другие отделы");
+                    "Только пользователи с ролью (SENIOR_AMBASSADOR) могут создавать новости в другие отделы");
         }
     }
 
@@ -34,23 +33,14 @@ public class NewsSecurityService {
                 throw new AccessDeniedException("Вы не можете изменить новость к которой не имеете отношения");
             }
         } else {
-            if (!newsCreator(currentUser, news) && !currentUser.hasAnyRole(UserRole.ADMIN) && !bossInGroup(currentUser, news)) {
+            if (!newsCreator(currentUser, news) && !currentUser.hasAnyRole(UserRole.ADMIN) && !currentUser.hasRole(UserRole.SENIOR_AMBASSADOR)) {
                 throw new AccessDeniedException("Вы не можете изменить новость к которой не имеете отношения");
             }
         }
 
     }
 
-    private boolean canManageNewsInAnotherGroup(AppUserDetails currentUser) {
-        return currentUser.hasAnyRole(UserRole.ADMIN, UserRole.BOSS, UserRole.SENIOR);
-    }
-
     private boolean newsCreator(AppUserDetails currentUser, News news) {
         return Objects.equals(news.getAuthor().getId(), currentUser.getClientId());
-    }
-
-    private boolean bossInGroup(AppUserDetails currentUser, News news) {
-        return currentUser.hasRole(UserRole.BOSS)
-                && Objects.equals(currentUser.getUserGroup().getId(), news.getUserGroup().getId());
     }
 }
