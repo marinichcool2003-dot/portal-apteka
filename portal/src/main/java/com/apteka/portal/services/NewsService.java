@@ -7,7 +7,8 @@ import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.apteka.portal.components.NewsSecurityService;
+import com.apteka.portal.components.servicesecurity.NewsSecurityService;
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.NewsRequestDTO;
 import com.apteka.portal.dtos.request.NewsUpdateRequestDTO;
 import com.apteka.portal.dtos.response.NewsResponseDTO;
@@ -19,6 +20,8 @@ import com.apteka.portal.exceptions.NewsNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.News;
+import com.apteka.portal.models.SseEventNames;
+import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.NewsRepository;
@@ -33,6 +36,8 @@ public class NewsService {
     private final ClientRepository clientRepository;
     private final NewsSecurityService newsSecurityService;
     private final UserGroupRepository userGroupRepository;
+
+    private final SseController sseController;
 
     @Transactional(readOnly = true)
     public List<NewsResponseDTO> getByUserGroup(Integer userGroupId) {
@@ -62,6 +67,9 @@ public class NewsService {
                 .creationDate(LocalDateTime.now())
                 .build();
         News savedNews = newsRepository.save(news);
+
+        var signal = new SseEventNames.NewsSignalDTO(savedNews.getUserGroup().getId(), SseSignalTypes.CREATED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
         return NewsResponseDTO.from(savedNews);
     }
 
@@ -88,6 +96,9 @@ public class NewsService {
         if (hasChange) {
             news.setUpdatedDate(LocalDateTime.now());
             news.setLastModifiedBy(currentUser.getDisplayName());
+
+            var signal = new SseEventNames.EntityUpdateSignalDTO(news.getId(), SseSignalTypes.UPDATED);
+            sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
         }
 
         return NewsResponseDTO.from(news);
@@ -99,6 +110,9 @@ public class NewsService {
                 .orElseThrow((() -> new NewsNotFoundException("Новость не найдена")));
         newsSecurityService.validateCanUpdate(currentUser, news);
         newsRepository.delete(news);
+
+        var signal = new SseEventNames.NewsSignalDTO(news.getUserGroup().getId(), SseSignalTypes.DELETED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
     }
 
     private void validateTitle(String title) {

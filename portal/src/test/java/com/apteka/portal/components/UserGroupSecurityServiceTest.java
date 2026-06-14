@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
+import com.apteka.portal.components.servicesecurity.UserGroupSecurityService;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserRole;

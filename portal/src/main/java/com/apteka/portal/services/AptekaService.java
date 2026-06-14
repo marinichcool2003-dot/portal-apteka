@@ -1,13 +1,19 @@
 package com.apteka.portal.services;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
-import com.apteka.portal.components.PasswordValidator;
+import com.apteka.portal.components.validators.AdressValidator;
+import com.apteka.portal.components.validators.LoginValidator;
+import com.apteka.portal.components.validators.PasswordValidator;
+import com.apteka.portal.components.validators.PhoneNumberValidator;
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.AptekaRequestDTO;
 import com.apteka.portal.dtos.request.AptekaUpdateRequestDTO;
@@ -17,12 +23,11 @@ import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.DublicateAptekaFullNameException;
 import com.apteka.portal.exceptions.DublicateAptekaLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
-import com.apteka.portal.exceptions.InvalidAptekaLoginException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
-import com.apteka.portal.exceptions.InvalidAptekaAdressException;
-import com.apteka.portal.exceptions.InvalidAptekaPhoneNumberException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
+import com.apteka.portal.models.SseEventNames;
+import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.AptekaRepository;
@@ -38,6 +43,11 @@ public class AptekaService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidator passwordValidator;
     private final AuthService authService;
+    private final LoginValidator loginValidator;
+    private final PhoneNumberValidator phoneNumberValidator;
+    private final AdressValidator adressValidator;
+
+    private final SseController sseController;
 
     @Transactional(readOnly = true)
     public List<AptekaResponseDTO> getAll() {
@@ -61,17 +71,13 @@ public class AptekaService {
     @Transactional
     public AptekaResponseDTO create(AptekaRequestDTO dto, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
-        validateLogin(dto.login());
+        String cleanLogin = loginValidator.getCleanLogin(dto.login());
         passwordValidator.validatePassword(dto.password(), false);
         UserGroup userGroup = userGroupRepository.findById(dto.groupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
         validateAptekaNumberInGroup(dto.number(), dto.groupId());
-        valdiateAptekaAdress(dto.adress());
-        String cleanAdress = dto.adress().replaceAll("(?<=\\S)\\s+(?=\\S)", " ").strip();
-        validatePhoneNumber(dto.phoneNumber());
-        String cleanPhoneNumber = dto.phoneNumber().replaceAll("\\D", "");
-
-        String cleanLogin = dto.login().strip();
+        String cleanAdress = adressValidator.getCleanAdress(dto.adress());
+        String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
 
         Apteka apteka = Apteka.builder()
                 .login(cleanLogin)
@@ -83,6 +89,10 @@ public class AptekaService {
                 .build();
 
         aptekaRepository.save(apteka);
+
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getUserGroup().getId(), SseSignalTypes.CREATED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_APTEKI, signal);
+
         return AptekaResponseDTO.from(apteka);
     }
 
@@ -95,27 +105,26 @@ public class AptekaService {
         String oldLogin = apteka.getLogin();
         boolean needsLogout = false;
 
-        if (dto.login() != null && !dto.login().isBlank()) {
-            String newLogin = dto.login().strip();
-            if (!newLogin.equals(oldLogin)) {
+        if (StringUtils.hasText(dto.login())) {
+            String newLogin = loginValidator.getCleanLogin(dto.login());
+            if (!Objects.equals(newLogin, oldLogin)) {
                 validateLogin(newLogin);
                 apteka.setLogin(newLogin);
                 needsLogout = true;
             }
         }
 
-        if (dto.password() != null && !dto.password().isBlank()) {
+        if (StringUtils.hasText(dto.password())) {
+            passwordValidator.validatePassword(dto.password(), false);
             if (passwordEncoder.matches(dto.password(), apteka.getPassword())) {
                 throw new AlreadyHaveThisPasswordException();
             }
-            passwordValidator.validatePassword(dto.password(), false);
             apteka.setPassword(passwordEncoder.encode(dto.password()));
             needsLogout = true;
         }
 
-        if (dto.adress() != null && !dto.adress().isBlank()) {
-            valdiateAptekaAdress(dto.adress());
-            String cleanAdress = dto.adress().replaceAll("(?<=\\S)\\s+(?=\\S)", " ").strip();
+        if (StringUtils.hasText(dto.adress())) {
+            String cleanAdress = adressValidator.getCleanAdress(dto.adress());
             apteka.setAdress(cleanAdress);
         }
 
@@ -133,9 +142,8 @@ public class AptekaService {
             apteka.setUserGroup(userGroup);
         }
 
-        if (dto.phoneNumber() != null && !dto.phoneNumber().isBlank()) {
-            validatePhoneNumber(dto.phoneNumber());
-            String cleanPhoneNumber = dto.phoneNumber().replaceAll("\\D", "");
+        if (StringUtils.hasText(dto.phoneNumber())) {
+            String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
             apteka.setPhoneNumber(cleanPhoneNumber);
         }
 
@@ -145,28 +153,21 @@ public class AptekaService {
             authService.invalidateAllSession(oldLogin);
         }
 
+        var signal = new SseEventNames.EntityUpdateSignalDTO(apteka.getId(), SseSignalTypes.UPDATED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_APTEKI, signal);
+
         return AptekaResponseDTO.from(savedApteka);
     }
 
     @Transactional
     public void delete(Integer id, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
-        if (!aptekaRepository.existsById(id)) {
-            throw new AptekaNotFoundException(id);
-        }
-        aptekaRepository.deleteById(id);
-    }
+        Apteka apteka = aptekaRepository.findById(id)
+            .orElseThrow(() -> new AptekaNotFoundException(id));
+        aptekaRepository.delete(apteka);
 
-    private void validateLogin(String login) {
-        if (login == null || login.isBlank()) {
-            throw new InvalidAptekaLoginException("Логин аптеки не может быть пустым");
-        }
-        if (!login.contains("@farmp.ru")) {
-            throw new InvalidAptekaLoginException("Логин аптеки должен содержать домен \"@farmp.ru\"");
-        }
-        if (aptekaRepository.existsByLogin(login)) {
-            throw new DublicateAptekaLoginException("Аптека с данным логином уже существует");
-        }
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getUserGroup().getId(), SseSignalTypes.DELETED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_APTEKI, signal);
     }
 
     private void validateAptekaNumberInGroup(Integer number, Integer groupId) {
@@ -178,22 +179,9 @@ public class AptekaService {
         }
     }
 
-    private void valdiateAptekaAdress(String adress) {
-        if (adress == null) {
-            throw new InvalidAptekaAdressException("Адрес аптеки не может быть пустым");
-        }
-        if (!adress.matches(".*[a-zA-Zа-яА-Я].*") || !adress.matches(".*[0-9].*")) {
-            throw new InvalidAptekaAdressException("Адрес должен содержать название улицы и номер дома");
-        }
-    }
-
-    private void validatePhoneNumber(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.isBlank()) {
-            throw new InvalidAptekaPhoneNumberException("Номер телефона не может быть пустым");
-        }
-        String cleanNumber = phoneNumber.replaceAll("\\D", "");
-        if (!cleanNumber.matches("^[78]\\d{10}$")) {
-            throw new InvalidAptekaPhoneNumberException("Некорректный формат номера. Ожидается 11 цифр.");
+    private void validateLogin(String login) {
+        if (aptekaRepository.existsByLogin(login)) {
+            throw new DublicateAptekaLoginException(login);
         }
     }
 

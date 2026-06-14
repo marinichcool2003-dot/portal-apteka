@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,6 +45,7 @@ public class NewsController {
     }
 
     @Operation(summary = "Создать новость")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AMBASSADOR', 'SENIOR_AMBASSADOR')")
     @PostMapping
     public ResponseEntity<NewsResponseDTO> create(@RequestBody NewsRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -51,12 +53,14 @@ public class NewsController {
     }
 
     @Operation(summary = "Обновить новость")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AMBASSADOR', 'SENIOR_AMBASSADOR')")
     @PutMapping("/{id}")
     public ResponseEntity<NewsResponseDTO> update(@PathVariable Integer id,  @RequestBody NewsUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(newsService.update(id, dto, currentUser));
     }
 
     @Operation(summary = "Удалить новость")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AMBASSADOR', 'SENIOR_AMBASSADOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         newsService.delete(id, currentUser);

@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -20,12 +22,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 
-import com.apteka.portal.components.GroupTaskSecurityService;
-import com.apteka.portal.components.TypeNameValidator;
+import com.apteka.portal.components.servicesecurity.WorkTypeSecurityService;
+import com.apteka.portal.components.validators.TypeNameValidator;
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.WorkTypeRequestDTO;
 import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
 import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
 import com.apteka.portal.models.AppUserDetails;
+import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.repository.GroupTaskRepository;
@@ -38,11 +42,13 @@ public class WorkTypeServiceTest {
     @Mock
     private GroupTaskRepository groupTaskRepository;
     @Mock
-    private GroupTaskSecurityService groupTaskSecurityService;
+    private WorkTypeSecurityService workTypeSecurityService;
     @Mock
     private TypeNameValidator typeNameValidator;
     @Mock
     private CacheManager cacheManager;
+    @Mock
+    private SseController sseController;
     @Mock
     Cache cache;
     @InjectMocks
@@ -69,7 +75,7 @@ public class WorkTypeServiceTest {
         assertNotNull(result);
         assertEquals(result.name(), savedWorkType.getName());
 
-        verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
+        verify(workTypeSecurityService).validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
         verify(workTypeRepository).save(any(WorkType.class));
 
     }
@@ -88,51 +94,61 @@ public class WorkTypeServiceTest {
             workTypeService.create(dto, currentUser);
         });
 
-        verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
+        verify(workTypeSecurityService).validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
         verify(workTypeRepository, never()).save(any());
 
     }
 
     @Test
-    void update_Succesful() {
-        AppUserDetails currentUser = TestData.mockJustBoss();
-        GroupTask groupTask = TestData.defaultGroupTask();
-        WorkTypeRequestDTO dto = createDto("Маркировка", 1);
+    void update_Successful() {
+        AppUserDetails currentUser = TestData.mockJustAdmin();
+        WorkTypeRequestDTO dto = createDto("Маркировка", null);
         WorkType oldWorkType = TestData.defaultWorkType();
-        WorkType newWorkType = TestData.newDefaultWorkType();
+
+        WorkType updatedWorkType = WorkType.builder()
+                .id(oldWorkType.getId())
+                .name("Маркировка")
+                .groupTask(oldWorkType.getGroupTask())
+                .build();
 
         Integer workTypeId = 1;
 
+        Cache mockWorkTypeCache = mock(Cache.class);
+        Cache mockWorkTypesByGroupCache = mock(Cache.class);
+        when(cacheManager.getCache(CacheNames.WORK_TYPE)).thenReturn(mockWorkTypeCache);
+        when(cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP)).thenReturn(mockWorkTypesByGroupCache);
+
         when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(oldWorkType));
-        when(groupTaskRepository.findById(dto.groupTaskId())).thenReturn(Optional.of(groupTask));
-        when(workTypeRepository.save(any(WorkType.class))).thenReturn(newWorkType);
+        when(typeNameValidator.getCleanName(dto.name())).thenReturn("Маркировка");
+        when(workTypeRepository.existsByNameAndGroupTaskId("Маркировка", oldWorkType.getGroupTask().getId()))
+                .thenReturn(false);
 
         WorkTypeResponseDTO result = workTypeService.update(workTypeId, dto, currentUser);
 
         assertNotNull(result);
-        assertEquals(newWorkType.getName(), result.name());
+        assertEquals("Маркировка", result.name());
 
-        verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
-        verify(workTypeRepository).save(any(WorkType.class));
-
+        verify(workTypeSecurityService).validateCanUpdateOrDelete(currentUser);
+        verify(mockWorkTypeCache).put(eq(workTypeId), any(WorkTypeResponseDTO.class));
+        verify(mockWorkTypesByGroupCache).evict(updatedWorkType.getGroupTask().getId());
     }
 
     @Test
-    void delete_Succesful() {
-        AppUserDetails currentUser = TestData.mockJustBoss();
+    void delete_Successful() {
+        AppUserDetails currentUser = TestData.mockJustAdmin();
         WorkType workTypeToDelete = TestData.defaultWorkType();
-        GroupTask groupTask = workTypeToDelete.getGroupTask();
 
         Integer workTypeId = 1;
 
+        Cache mockCache = mock(Cache.class);
+        when(cacheManager.getCache(anyString())).thenReturn(mockCache);
         when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(workTypeToDelete));
-        when(cacheManager.getCache(anyString())).thenReturn(cache);
 
         workTypeService.delete(workTypeId, currentUser);
 
-        verify(groupTaskSecurityService).validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
+        verify(workTypeSecurityService).validateCanUpdateOrDelete(currentUser);
         verify(workTypeRepository).delete(workTypeToDelete);
-        verify(cache, times(3)).evict(any());
+        verify(mockCache, times(2)).evict(any());
     }
 
 }

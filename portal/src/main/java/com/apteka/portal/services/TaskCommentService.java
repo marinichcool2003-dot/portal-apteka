@@ -1,5 +1,6 @@
 package com.apteka.portal.services;
 
+import com.apteka.portal.controllers.SseController;
 import java.util.List;
 
 import org.springframework.security.access.AccessDeniedException;
@@ -12,6 +13,8 @@ import com.apteka.portal.exceptions.AvtorCommentNotInputException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
+import com.apteka.portal.models.SseEventNames;
+import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.TaskComment;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.AptekaRepository;
@@ -24,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class TaskCommentService {
-
+    private final SseController sseController;
     private final AptekaRepository aptekaRepository;
     private final TaskCommentRepository taskCommentsRepository;
     private final TaskRepository taskRepository;
@@ -47,8 +50,6 @@ public class TaskCommentService {
         return TaskCommentResponseDTO.from(comment);
     }
 
-    //Добавить получение по автору
-
     @Transactional
     public TaskCommentResponseDTO create(TaskCommentRequestDTO dto, AppUserDetails currentUser) {
         if (!taskRepository.existsById(dto.taskId())) {
@@ -64,6 +65,8 @@ public class TaskCommentService {
         setCommentAuthor(builder, currentUser);
 
         TaskComment savedComment = taskCommentsRepository.save(builder.build());
+        var signal = new SseEventNames.EntityUpdateSignalDTO(dto.taskId(), SseSignalTypes.UPDATED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, signal);
         return TaskCommentResponseDTO.from(savedComment);
     }
 
@@ -72,10 +75,12 @@ public class TaskCommentService {
         if (!currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор может удалять комментарии");
         }
-        if (!taskCommentsRepository.existsById(id)) {
-            throw new TaskCommentNotFoundException(id);
-        }
-        taskCommentsRepository.deleteById(id);
+        TaskComment comment = taskCommentsRepository.findById(id)
+            .orElseThrow(() -> new TaskCommentNotFoundException(id));
+
+        taskCommentsRepository.delete(comment);
+        var signal = new SseEventNames.EntityUpdateSignalDTO(comment.getTask().getId(), SseSignalTypes.UPDATED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, signal);
     }
 
     private void setCommentAuthor(TaskComment.TaskCommentBuilder builder, AppUserDetails currentUser) {

@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.components.TaskAuditService;
-import com.apteka.portal.components.TaskSecurityService;
+import com.apteka.portal.components.servicesecurity.TaskSecurityService;
+import com.apteka.portal.components.validators.TypeNameValidator;
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.request.TaskRequestDTO;
@@ -25,6 +27,7 @@ import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
 import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
+import com.apteka.portal.exceptions.WorkTypeNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.CacheNames;
@@ -41,6 +44,8 @@ import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.TaskRepository;
 import com.apteka.portal.repository.WorkTypeRepository;
 import com.apteka.portal.repository.specification.TaskSpecifications;
+import com.apteka.portal.models.SseEventNames;
+import com.apteka.portal.models.SseSignalTypes;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,13 +54,14 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class TaskService {
-
     private final TaskRepository taskRepository;
     private final WorkTypeRepository workTypeRepository;
     private final AptekaRepository aptekaRepository;
     private final ClientRepository clientRepository;
     private final TaskSecurityService taskSecurityService;
     private final TaskAuditService taskAuditService;
+    private final TypeNameValidator typeNameValidator;
+    private final SseController sseController;
 
     @Transactional(readOnly = true)
     public List<TaskShortResponseDTO> getAll() {
@@ -149,13 +155,19 @@ public class TaskService {
     @Transactional
     public TaskShortResponseDTO create(TaskCreateRequestDTO dto, AppUserDetails currentUser) {
         taskSecurityService.validateCanCreate(dto, currentUser);
-        validateTitle(dto.title());
+
+        String cleanTitle = typeNameValidator.getCleanName(dto.title());
+
+        validateTitle(cleanTitle);
         validateDescription(dto.description());
 
+        WorkType workType = workTypeRepository.findById(dto.workTypeId())
+                .orElseThrow(() -> new WorkTypeNotFoundException(dto.workTypeId()));
+
         Task task = Task.builder()
-                .title(dto.title().strip())
+                .title(cleanTitle)
                 .description(dto.description().strip())
-                .workType(workTypeRepository.getReferenceById(dto.workTypeId()))
+                .workType(workType)
                 .build();
 
         switch (currentUser.getType()) {
@@ -174,6 +186,9 @@ public class TaskService {
         setAssignee(task, dto, currentUser);
 
         Task saved = taskRepository.save(task);
+
+        var event = new SseEventNames.TaskSignalsDTO(saved.getWorkType().getId(), SseSignalTypes.CREATED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
         return TaskShortResponseDTO.from(saved);
     }
 
@@ -184,21 +199,33 @@ public class TaskService {
 
         taskSecurityService.validateCanUpdate(task, dto, currentUser);
 
-        if (dto.title() != null && !Objects.equals(task.getTitle(), dto.title())) {
-            validateTitle(dto.title());
-            taskAuditService.logChange(task.getId(), currentUser, "заголовок", task.getTitle(), dto.title());
-            task.setTitle(dto.title().strip());
+        boolean hasChange = false;
+
+        if (dto.title() != null) {
+            String cleanTitle = typeNameValidator.getCleanName(dto.title());
+            if (!Objects.equals(task.getTitle(), cleanTitle)) {
+                validateTitle(cleanTitle);
+                taskAuditService.logChange(task.getId(), currentUser, "заголовок", task.getTitle(), cleanTitle);
+                task.setTitle(cleanTitle);
+                hasChange = true;
+            }
         }
 
         if (dto.description() != null && !Objects.equals(task.getDescription(), dto.description())) {
             validateDescription(dto.description());
             taskAuditService.logChange(task.getId(), currentUser, "описание", task.getDescription(), dto.description());
             task.setDescription(dto.description().strip());
+            hasChange = true;
         }
 
-        if (dto.workTypeId() != null && taskSecurityService.changeWorkTypeToAnotherDepartament(task, dto, currentUser)
-                && !Objects.equals(task.getWorkType().getId(), dto.workTypeId())) {
-            task.setWorkType(workTypeRepository.getReferenceById(dto.workTypeId()));
+        if (dto.workTypeId() != null && dto.workTypeId() > 0) {
+            WorkType workType = workTypeRepository.findById(dto.workTypeId())
+                    .orElseThrow(() -> new WorkTypeNotFoundException(dto.workTypeId()));
+            if (taskSecurityService.changeWorkTypeToAnotherDepartament(task, dto, currentUser)
+                    && !Objects.equals(task.getWorkType().getId(), dto.workTypeId())) {
+                task.setWorkType(workType);
+                hasChange = true;
+            }
         }
 
         if (taskSecurityService.changeAssigner(task, dto, currentUser)) {
@@ -206,11 +233,13 @@ public class TaskService {
             setAssignee(task, dto, currentUser);
             String newAssigneeName = getAssigneeName(task);
             taskAuditService.logChange(task.getId(), currentUser, "исполнителя", oldAssigneeName, newAssigneeName);
+            hasChange = true;
         }
 
         if (dto.statusDescription() != null && !dto.statusDescription().isBlank()
                 && !Objects.equals(task.getStatus().getDescription(), dto.statusDescription())) {
             task = changeStatus(task, dto.statusDescription(), currentUser);
+            hasChange = true;
         }
 
         if (dto.priorityDescription() != null && !dto.priorityDescription().isBlank()
@@ -218,11 +247,15 @@ public class TaskService {
             String oldPriority = task.getPriority().getDescription();
             task.setPriority(TaskPriority.fromDescription(dto.priorityDescription()));
             taskAuditService.logChange(id, currentUser, "приоритет", oldPriority, dto.priorityDescription());
+            hasChange = true;
         }
 
-        Task saved = taskRepository.save(task);
+        if (hasChange) {
+            var event = new SseEventNames.EntityUpdateSignalDTO(task.getId(), SseSignalTypes.UPDATED);
+            sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
+        }
 
-        return TaskShortResponseDTO.from(saved);
+        return TaskShortResponseDTO.from(task);
     }
 
     @Transactional
@@ -234,6 +267,8 @@ public class TaskService {
             throw new AccessDeniedException("Только пользователь с правами администратора может удалить задачу");
         }
         taskRepository.delete(task);
+        var event = new SseEventNames.EntityUpdateSignalDTO(task.getWorkType().getId(), SseSignalTypes.DELETED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
     }
 
     private Task changeStatus(Task task, String statusDescription, AppUserDetails currentUser) {

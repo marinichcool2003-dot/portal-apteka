@@ -38,7 +38,7 @@ public class MainPageLink {
     private String link;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_link_id")
+    @JoinColumn(name = "group_link_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private GroupMainPageLinks groupMainPageLinks;
 }

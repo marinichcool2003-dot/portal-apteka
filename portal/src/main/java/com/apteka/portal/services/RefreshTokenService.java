@@ -1,21 +1,22 @@
 package com.apteka.portal.services;
 
-import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.apteka.portal.exceptions.InvalidRefreshTokenException;
 import com.apteka.portal.models.RefreshToken;
-import com.apteka.portal.repository.RefreshTokenRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
-    private final RefreshTokenRepository repository;
+
+    private final StringRedisTemplate redisTemplate;
 
     @Value("${jwt.refresh.expiration}")
     private long jwtRefreshExpiration;
@@ -23,31 +24,53 @@ public class RefreshTokenService {
     @Value("${jwt.refresh.expiration-with-remember}")
     private long jwtRefreshExpirationWithRemember;
 
+    private static final String REDIS_PREFIX = "refresh_token:";
+
     public RefreshToken create(String userName, boolean rememberMe) {
-        RefreshToken token = new RefreshToken();
-        token.setToken(UUID.randomUUID().toString());
-        token.setUsername(userName);
-        token.setRememberMe(rememberMe);
-        token.setExpiryDate(
-                Instant.now().plusMillis(rememberMe ? jwtRefreshExpirationWithRemember : jwtRefreshExpiration));
-        return repository.save(token);
+        String tokenStr = UUID.randomUUID().toString();
+        String key = REDIS_PREFIX + tokenStr;
+
+        long expirationMillis = rememberMe ? jwtRefreshExpirationWithRemember : jwtRefreshExpiration;
+
+        redisTemplate.opsForValue().set(key, userName, expirationMillis, TimeUnit.MILLISECONDS);
+
+        RefreshToken token = RefreshToken.builder()
+                .token(tokenStr)
+                .username(userName)
+                .rememberMe(rememberMe)
+                .build();
+
+        return token;
     }
 
     public RefreshToken verify(String token) {
-        RefreshToken refreshToken = repository.findByToken(token)
-                .orElseThrow(() -> new InvalidRefreshTokenException("Некорректный REFRESH TOKEN"));
-        if (refreshToken.getExpiryDate().isBefore(Instant.now())) {
-            repository.delete(refreshToken);
-            throw new InvalidRefreshTokenException("Просроченный REFRESH TOKEN");
+        String key = REDIS_PREFIX + token;
+        String username = redisTemplate.opsForValue().get(key);
+
+        if (username == null) {
+            throw new InvalidRefreshTokenException("Некорректный или просроченный REFRESH TOKEN");
         }
+
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setToken(token);
+        refreshToken.setUsername(username);
         return refreshToken;
     }
 
-    public void deleteByUser(String username) {
-        repository.deleteByUsername(username);
+    public void deleteByRefreshToken(String refreshtoken) {
+        String key = REDIS_PREFIX + refreshtoken;
+        redisTemplate.delete(key);
     }
 
-    public void deleteByRefreshToken(String refreshtoken) {
-        repository.deleteByToken(refreshtoken);
+    public void deleteByUser(String username) {
+
+        var keys = redisTemplate.keys(REDIS_PREFIX + "*");
+        if (keys != null) {
+            for (String key : keys) {
+                if (username.equals(redisTemplate.opsForValue().get(key))) {
+                    redisTemplate.delete(key);
+                }
+            }
+        }
     }
 }

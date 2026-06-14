@@ -1,25 +1,30 @@
 package com.apteka.portal.services;
 
-import com.apteka.portal.components.TypeNameValidator;
-import com.apteka.portal.components.UserGroupSecurityService;
+import com.apteka.portal.components.servicesecurity.UserGroupSecurityService;
+import com.apteka.portal.components.validators.PhoneNumberValidator;
+import com.apteka.portal.components.validators.TypeNameValidator;
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.UserGroupRequestDTO;
 import com.apteka.portal.dtos.response.UserGroupResponseDTO;
 
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import com.apteka.portal.exceptions.DublicateGroupUserException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
+import com.apteka.portal.exceptions.InvalidGroupUserException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.CacheNames;
+import com.apteka.portal.models.SseEventNames;
+import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.UserGroupRepository;
 
@@ -31,6 +36,9 @@ public class UserGroupService {
     private final UserGroupSecurityService userGroupSecurityService;
     private final UserGroupRepository userGroupRepository;
     private final TypeNameValidator typeNameValidator;
+    private final PhoneNumberValidator phoneNumberValidator;
+    private final CacheManager cacheManager;
+    private final SseController sseController;
 
     @Cacheable(value = CacheNames.USER_GROUPS_LIST, sync = true)
     @Transactional(readOnly = true)
@@ -54,30 +62,61 @@ public class UserGroupService {
     @Transactional
     public UserGroupResponseDTO create(UserGroupRequestDTO dto, AppUserDetails currentUser) {
         userGroupSecurityService.checkCanCreateGroup(currentUser);
-        try {
-            UserGroup group = userGroupRepository.save(UserGroup.builder()
-                    .name(validateNameGroup(dto.name(), null))
-                    .phoneNumber(dto.phoneNumber())
-                    .build());
-            return UserGroupResponseDTO.from(group);
-        } catch (DataIntegrityViolationException e) {
-            throw new DublicateGroupUserException(dto.name());
+        if (!StringUtils.hasText(dto.name()))
+            throw new InvalidGroupUserException("Группа пользователя не может быть пустой!");
+        String cleanName = typeNameValidator.getCleanName(dto.name());
+        validateNameGroup(cleanName, null);
+        UserGroup.UserGroupBuilder savedGroupBuilder = UserGroup.builder().name(cleanName);
+
+        if (StringUtils.hasText(dto.phoneNumber())) {
+            String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
+            savedGroupBuilder.phoneNumber(cleanPhoneNumber);
         }
+
+        UserGroup saved = savedGroupBuilder.build();
+        userGroupRepository.save(saved);
+
+        sseController.broadcastNotification(SseEventNames.REFRESH_USER_GROUPS, SseSignalTypes.CREATED);
+
+        return UserGroupResponseDTO.from(saved);
     }
 
-    @Caching(evict = {
-            @CacheEvict(value = CacheNames.USER_GROUPS_LIST, allEntries = true)
-    }, put = {
-            @CachePut(value = CacheNames.USER_GROUP, key = "#id")
-    })
     @Transactional
     public UserGroupResponseDTO update(Integer id, UserGroupRequestDTO dto, AppUserDetails currentUser) {
         userGroupSecurityService.checkCanCreateGroup(currentUser);
+
         UserGroup upGroup = userGroupRepository.findById(id)
                 .orElseThrow(() -> new GroupUserNotFoundException(id));
-        upGroup.setName(validateNameGroup(dto.name(), id));
-        upGroup.setPhoneNumber(dto.phoneNumber());
-        return UserGroupResponseDTO.from(upGroup);
+
+        boolean hasChange = false;
+
+        if (StringUtils.hasText(dto.name())) {
+            String cleanName = typeNameValidator.getCleanName(dto.name());
+            if (!Objects.equals(cleanName, upGroup.getName())) {
+                validateNameGroup(cleanName, id);
+                upGroup.setName(cleanName);
+                hasChange = true;
+            }
+        }        
+        
+        if (StringUtils.hasText(dto.phoneNumber())) {
+            String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
+            upGroup.setPhoneNumber(cleanPhoneNumber);
+            hasChange = true;
+        }
+
+        UserGroupResponseDTO response = UserGroupResponseDTO.from(upGroup);
+
+        if (hasChange) {
+            var cache = cacheManager.getCache(CacheNames.USER_GROUP);
+            if (cache != null) {
+                cache.put(id, response);
+            }
+            var signal = new SseEventNames.EntityUpdateSignalDTO(id, SseSignalTypes.UPDATED);
+            sseController.broadcastNotification(SseEventNames.REFRESH_USER_GROUPS, signal);
+        }
+
+        return response;
     }
 
     @Caching(evict = {
@@ -93,17 +132,15 @@ public class UserGroupService {
         UserGroup deletedGroup = userGroupRepository.findById(id)
                 .orElseThrow(() -> new GroupUserNotFoundException(id));
         userGroupRepository.delete(deletedGroup);
+        sseController.broadcastNotification(SseEventNames.REFRESH_USER_GROUPS, SseSignalTypes.DELETED);
     }
 
-    private String validateNameGroup(String name, Integer currentId) {
+    private void validateNameGroup(String name, Integer currentId) {
 
-        String cleanName = typeNameValidator.getCleanName(name);
-        userGroupRepository.findByName(cleanName).ifPresent(existingGroup -> {
+        userGroupRepository.findByName(name).ifPresent(existingGroup -> {
             if (!Objects.equals(existingGroup.getId(), currentId)) {
                 throw new DublicateGroupUserException();
             }
         });
-        
-        return cleanName;
     }
 }

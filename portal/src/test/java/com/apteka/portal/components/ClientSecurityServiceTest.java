@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
+import com.apteka.portal.components.servicesecurity.ClientSecurityService;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;

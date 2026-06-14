@@ -30,21 +30,27 @@ import com.apteka.portal.exceptions.DublicateClientLoginException;
 import com.apteka.portal.exceptions.DublicateGroupTaskException;
 import com.apteka.portal.exceptions.DublicateGroupUserException;
 import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
+import com.apteka.portal.exceptions.GroupMainPageLinksAlreadyExistsException;
+import com.apteka.portal.exceptions.GroupMainPageLinksNotFoundException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
-import com.apteka.portal.exceptions.InvalidAptekaAdressException;
-import com.apteka.portal.exceptions.InvalidAptekaLoginException;
+import com.apteka.portal.exceptions.InvalidAdressException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
 import com.apteka.portal.exceptions.InvalidAptekaPasswordException;
-import com.apteka.portal.exceptions.InvalidAptekaPhoneNumberException;
-import com.apteka.portal.exceptions.InvalidClientFullNameException;
-import com.apteka.portal.exceptions.InvalidClientLoginException;
+import com.apteka.portal.exceptions.InvalidPhoneNumberException;
+import com.apteka.portal.exceptions.InvalidFullNameException;
 import com.apteka.portal.exceptions.InvalidClientPasswordException;
+import com.apteka.portal.exceptions.InvalidGroupMainPageLinksDescriptionException;
+import com.apteka.portal.exceptions.InvalidGroupMainPageLinksNameException;
 import com.apteka.portal.exceptions.InvalidGroupTaskException;
+import com.apteka.portal.exceptions.InvalidLoginException;
+import com.apteka.portal.exceptions.InvalidMainPageLinkNameException;
 import com.apteka.portal.exceptions.InvalidRefreshTokenException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
 import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.InvalidWorkTypeNameException;
+import com.apteka.portal.exceptions.MainPageLinkAlreadyExistsException;
+import com.apteka.portal.exceptions.MainPageLinkNotFoundException;
 import com.apteka.portal.exceptions.NewsNotFoundException;
 import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
@@ -144,12 +150,36 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
+    @ExceptionHandler(InvalidLoginException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidLoginException(InvalidLoginException e) {
+        log.warn("Ошибка изменения логина: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка при изменении логина: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
     @ExceptionHandler(UnknowTaskPriorityException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleUnknowTaskPriorityException(UnknowTaskPriorityException e) {
         log.warn("Ошибка изменения задач: {}", e.getMessage());
         String errorMessage = "Ошибка! Ошибка при изменении задачи: " + e.getMessage();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(InvalidMainPageLinkNameException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidMainPageLinkNameException(InvalidMainPageLinkNameException e) {
+        log.warn("Ошибка изменения ссылок на главной странице: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка изменения ссылок на главной странице: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(MainPageLinkNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleMainPageLinkNotFoundException(MainPageLinkNotFoundException e) {
+        log.error("Ссылка главной страницы на ресурс не найдена: {}", e.getMessage(), e);
+        String errorMessage = "Ссылка главной страницы на ресурс не найдена: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
     }
 
     @ExceptionHandler(ClientBelongsToAnotherGroupException.class)
@@ -165,6 +195,14 @@ public class GlobalExceptionHandler {
     public ErrorResponse handleDublicateAptekaFullNameException(DublicateAptekaFullNameException e) {
         log.warn("Ошибка изменения аптек: {}", e.getMessage(), e);
         String errorMessage = "Ошибка! Ошибка изменения аптек: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(MainPageLinkAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleMainPageLinkAlreadyExistsException(MainPageLinkAlreadyExistsException e) {
+        log.warn("Ошибка изменения ссылок на главной странице: {}", e.getMessage(), e);
+        String errorMessage = "Ошибка! Ошибка изменения ссылок на главной странице: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
     }
 
@@ -200,9 +238,9 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(InvalidAptekaAdressException.class)
+    @ExceptionHandler(InvalidAdressException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleInvalidAptekaAdressException(InvalidAptekaAdressException e) {
+    public ErrorResponse handleInvalidAptekaAdressException(InvalidAdressException e) {
         log.warn("Ошибка изменения аптек: {}", e.getMessage());
         String errorMessage = "Ошибка! Ошибка изменения аптек: " + e.getMessage();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
@@ -248,6 +286,38 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
     }
 
+    @ExceptionHandler(GroupMainPageLinksNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleGroupMainPageLinksNotFoundException(GroupMainPageLinksNotFoundException e) {
+        log.error("Группа ссылок не найдена: {}", e.getMessage(), e);
+        String errorMessage = "Ошибка! Группа ссылок не найдена: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis()); 
+    }
+
+    @ExceptionHandler(InvalidGroupMainPageLinksNameException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidGroupMainPageLinksNameException(InvalidGroupMainPageLinksNameException e) {
+        log.warn("Ошибка при изменении группы ссылок: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок" + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(GroupMainPageLinksAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleGroupMainPageLinksAlreadyExistsException(GroupMainPageLinksAlreadyExistsException e) {
+        log.warn("Ошибка при изменении группы ссылок: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок" + e.getMessage();
+        return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(InvalidGroupMainPageLinksDescriptionException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidGroupMainPageLinksDescriptionException(InvalidGroupMainPageLinksDescriptionException e) {
+        log.warn("Ошибка! Ошибка при изменении группы ссылок: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок" + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
     @ExceptionHandler(GroupTaskNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleGroupTaskNotFoundException(GroupTaskNotFoundException e) {
@@ -280,14 +350,6 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(InvalidAptekaLoginException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleInvalidAptekaLoginException(InvalidAptekaLoginException e) {
-        log.warn("Ошибка изменения аптек: {}", e.getMessage());
-        String errorMessage = "Ошибка! Ошибка изменения аптек: " + e.getMessage();
-        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
-    }
-
     @ExceptionHandler(InvalidAptekaPasswordException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleInvalidAptekaPasswordException(InvalidAptekaPasswordException e) {
@@ -304,9 +366,9 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(InvalidAptekaPhoneNumberException.class)
+    @ExceptionHandler(InvalidPhoneNumberException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleInvalidAptekaPhoneNumberException(InvalidAptekaPhoneNumberException e) {
+    public ErrorResponse handleInvalidAptekaPhoneNumberException(InvalidPhoneNumberException e) {
         log.warn("Ошибка изменения аптек: {}", e.getMessage());
         String errorMessage = "Ошибка! Ошибка изменения аптек: " + e.getMessage();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
@@ -352,17 +414,9 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(InvalidClientFullNameException.class)
+    @ExceptionHandler(InvalidFullNameException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleInvalidClientFullNameException(InvalidClientFullNameException e) {
-        log.warn("Ошибка изменения сотрудников: {}", e.getMessage());
-        String errorMessage = "Ошибка! Ошибка изменения сотрудников: " + e.getMessage();
-        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
-    }
-
-    @ExceptionHandler(InvalidClientLoginException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleInvalidClientLoginException(InvalidClientLoginException e) {
+    public ErrorResponse handleInvalidClientFullNameException(InvalidFullNameException e) {
         log.warn("Ошибка изменения сотрудников: {}", e.getMessage());
         String errorMessage = "Ошибка! Ошибка изменения сотрудников: " + e.getMessage();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
@@ -476,5 +530,4 @@ public class GlobalExceptionHandler {
                 "Внутренняя ошибка сервера. Пожалуйста, обратитесь к администратору.",
                 System.currentTimeMillis());
     }
-
 }

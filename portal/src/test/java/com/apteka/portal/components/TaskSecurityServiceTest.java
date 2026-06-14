@@ -22,6 +22,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
+import com.apteka.portal.components.servicesecurity.TaskSecurityService;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.models.AppUserDetails;
@@ -67,14 +68,23 @@ public class TaskSecurityServiceTest {
 	@Test
 	void validateCanCreate_UserToAnotherUserInGroup() {
 		Integer workTypeId = TestData.newDefaultWorkType().getId();
-		UUID assignedClientId = TestData.mockJustSenior().getClientId();
+
+		UUID assignedClientId = UUID.randomUUID();
+		Client assignedClient = Client.builder()
+				.id(assignedClientId)
+				.userGroup(TestData.newDefaulUserGroup())
+				.build();
+
 		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder()
 				.workTypeId(workTypeId)
 				.assignedClientId(assignedClientId)
 				.build();
+
 		AppUserDetails currentUser = TestData.mockJustUser();
 
-		when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(TestData.newDefaultWorkType()));
+		WorkType workType = TestData.newDefaultWorkType();
+		when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(workType));
+		when(clientRepository.findById(assignedClientId)).thenReturn(Optional.of(assignedClient));
 
 		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
 				() -> taskSecurityService.validateCanCreate(dto, currentUser));
@@ -83,6 +93,7 @@ public class TaskSecurityServiceTest {
 				exception.getMessage());
 
 		verify(workTypeRepository, times(1)).findById(workTypeId);
+		verify(clientRepository, times(1)).findById(assignedClientId);
 	}
 
 	@Test
@@ -219,7 +230,8 @@ public class TaskSecurityServiceTest {
 		when(workTypeRepository.findById(workTypeId)).thenReturn(Optional.of(workType));
 
 		Task task = Task.builder().assignedClient(null).workType(workType).build();
-		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder().assignedClientId(UUID.randomUUID()).workTypeId(workTypeId)
+		TaskCreateRequestDTO dto = TaskCreateRequestDTO.builder().assignedClientId(UUID.randomUUID())
+				.workTypeId(workTypeId)
 				.build();
 
 		boolean result = assertDoesNotThrow(() -> taskSecurityService.changeAssigner(task, dto, currentUser));

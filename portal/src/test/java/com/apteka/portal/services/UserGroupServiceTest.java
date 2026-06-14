@@ -15,8 +15,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.apteka.portal.components.TypeNameValidator;
-import com.apteka.portal.components.UserGroupSecurityService;
+import com.apteka.portal.components.servicesecurity.UserGroupSecurityService;
+import com.apteka.portal.components.validators.PhoneNumberValidator;
+import com.apteka.portal.components.validators.TypeNameValidator;
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.UserGroupRequestDTO;
 import com.apteka.portal.dtos.response.UserGroupResponseDTO;
 import com.apteka.portal.exceptions.DublicateGroupUserException;
@@ -33,6 +35,10 @@ class UserGroupServiceTest {
     private UserGroupSecurityService userGroupSecurityService;
     @Mock
     private TypeNameValidator typeNameValidator;
+    @Mock
+    private PhoneNumberValidator phoneNumberValidator;
+    @Mock
+    private SseController sseController;
     @InjectMocks
     private UserGroupService userGroupService;
 
@@ -47,6 +53,7 @@ class UserGroupServiceTest {
         AppUserDetails currentUser = TestData.mockJustAdmin();
 
         when(typeNameValidator.getCleanName(dto.name())).thenReturn("Розница");
+        when(phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber())).thenReturn("+79991112233");
         when(userGroupRepository.findByName("Розница")).thenReturn(Optional.empty());
         when(userGroupRepository.save(any(UserGroup.class))).thenReturn(savedGroup);
 

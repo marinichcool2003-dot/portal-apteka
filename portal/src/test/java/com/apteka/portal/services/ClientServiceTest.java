@@ -2,17 +2,19 @@ package com.apteka.portal.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -23,21 +25,32 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.apteka.portal.components.AvatarClientService;
-import com.apteka.portal.components.ClientSecurityService;
-import com.apteka.portal.components.PasswordValidator;
+import com.apteka.portal.components.servicesecurity.ClientSecurityService;
+import com.apteka.portal.components.validators.FullNameValidator;
+import com.apteka.portal.components.validators.LoginValidator;
+import com.apteka.portal.components.validators.PasswordValidator;
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
+import com.apteka.portal.dtos.response.AssignedStatsDTO;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
-import com.apteka.portal.dtos.response.AssignedStatsDTO;
+import com.apteka.portal.dtos.response.CreatedStatsDTO;
+import com.apteka.portal.dtos.response.TaskStatsDTO;
+import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
+import com.apteka.portal.exceptions.ClientNotFoundException;
+import com.apteka.portal.exceptions.DublicateClientLoginException;
+import com.apteka.portal.exceptions.GroupUserNotFoundException;
+import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
+import com.apteka.portal.models.SseEventNames;
+import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.ClientRepository;
@@ -46,175 +59,617 @@ import com.apteka.portal.repository.UserGroupRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class ClientServiceTest {
-    @Mock
-    private AuthService authService;
-    @Mock
-    private ClientRepository clientRepository;
-    @Mock
-    private AvatarClientService avatarClientService;
-    @Mock
-    private PasswordEncoder passwordEncoder;
-    @Mock
-    private UserGroupRepository userGroupRepository;
-    @Mock
-    private TaskRepository taskRepository;
-    @Mock
-    private ClientSecurityService clientSecurityService;
-    @Mock
-    private PasswordValidator passwordValidator;
 
-    @InjectMocks
-    private ClientService clientService;
+	@Mock
+	private AuthService authService;
+	@Mock
+	private ClientRepository clientRepository;
+	@Mock
+	private AvatarClientService avatarClientService;
+	@Mock
+	private PasswordEncoder passwordEncoder;
+	@Mock
+	private UserGroupRepository userGroupRepository;
+	@Mock
+	private TaskRepository taskRepository;
+	@Mock
+	private ClientSecurityService clientSecurityService;
+	@Mock
+	private PasswordValidator passwordValidator;
+	@Mock
+	private LoginValidator loginValidator;
+	@Mock
+	private FullNameValidator fullNameValidator;
+	@Mock
+	private SseController sseController;
 
-    @Test
-    void getWithNumberOfTask() {
-        UUID clientId = UUID.randomUUID();
-        Client client = new Client();
-        client.setId(clientId);
-        UserGroup userGroup = TestData.defaulUserGroup();
-        AppUserDetails currentUser = TestData.mockJustSenior();
-        AssignedStatsDTO stats = new AssignedStatsDTO(clientId, 10L, 5L, 2L, 1L, 2L);
+	@InjectMocks
+	private ClientService clientService;
 
-        when(userGroupRepository.existsById(userGroup.getId())).thenReturn(true);
-        when(clientRepository.findByUserGroupId(userGroup.getId())).thenReturn(List.of(client));
-        when(taskRepository.getClientAssignedStatsBatch(anyList())).thenReturn(List.of(stats));
+	// ==================== getWithNumberOfTask ====================
+	@Test
+	void getWithNumberOfTask_Success() {
+		UUID clientId = UUID.randomUUID();
+		Client client = Client.builder()
+				.id(clientId)
+				.userGroup(TestData.defaulUserGroup())
+				.build();
 
-        List<ClientWithStatsDTO> result = clientService.getWithNumberOfTask(userGroup.getId(), currentUser);
+		UserGroup userGroup = TestData.defaulUserGroup();
+		AppUserDetails currentUser = TestData.mockJustSenior();
+		AssignedStatsDTO stats = new AssignedStatsDTO(clientId, 10L, 5L, 2L, 1L, 2L);
 
-        assertEquals(1, result.size());
-        assertEquals(clientId, result.get(0).client().id());
-        assertEquals(10L, result.get(0).stats().totalCount());
+		when(userGroupRepository.existsById(userGroup.getId())).thenReturn(true);
+		when(clientRepository.findByUserGroupId(userGroup.getId())).thenReturn(List.of(client));
+		when(taskRepository.getClientAssignedStatsBatch(anyList())).thenReturn(List.of(stats));
 
-        verify(clientSecurityService).validateHasElevatedPrivelegesInGroup(any(), eq(userGroup.getId()));
-        verify(userGroupRepository, times(1)).existsById(userGroup.getId());
-    }
+		List<ClientWithStatsDTO> result = clientService.getWithNumberOfTask(userGroup.getId(), currentUser);
 
-    @Test
-    void create_Success() throws IOException {
+		assertEquals(1, result.size());
+		assertEquals(clientId, result.get(0).client().id());
+		assertEquals(10L, result.get(0).stats().totalCount());
 
-        ClientRequestDTO dto = new ClientRequestDTO(
-                "  user_login@farmp.ru  ",
-                "StrongPass123!",
-                "Гетманцев Даниил",
-                Set.of("USER", "SENIOR"),
-                1);
+		verify(clientSecurityService).validateHasElevatedPrivelegesInGroup(eq(currentUser),
+				eq(userGroup.getId()));
+	}
 
-        UserGroup userGroup = TestData.defaulUserGroup();
-        AppUserDetails currentUser = TestData.mockJustAdmin();
-        Client savedClient = Client.builder()
-                .id(UUID.randomUUID())
-                .login("user_login")
-                .password("hashed_password")
-                .fullName("Гетманцев Даниил")
-                .roles(Set.of(UserRole.USER, UserRole.SENIOR))
-                .avatarURL("/uploads/avatars/clients/default.png")
-                .userGroup(userGroup)
-                .build();
+	@Test
+	void getWithNumberOfTask_ReturnsEmptyList_WhenNoClients() {
+		UserGroup userGroup = TestData.defaulUserGroup();
+		AppUserDetails currentUser = TestData.mockJustSenior();
 
-        when(userGroupRepository.findById(userGroup.getId())).thenReturn(Optional.of(userGroup));
-        when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
-        when(clientRepository.save(any(Client.class))).thenReturn(savedClient);
+		when(userGroupRepository.existsById(userGroup.getId())).thenReturn(true);
+		when(clientRepository.findByUserGroupId(userGroup.getId())).thenReturn(List.of());
 
-        ClientResponseDTO result = clientService.create(dto, currentUser);
+		List<ClientWithStatsDTO> result = clientService.getWithNumberOfTask(userGroup.getId(), currentUser);
 
-        assertEquals(savedClient.getLogin(), result.login());
-        assertEquals(savedClient.getFullName(), result.fullName());
-        assertEquals(savedClient.getAvatarURL(), result.avatarURL());
+		assertTrue(result.isEmpty());
+		verify(taskRepository, never()).getClientAssignedStatsBatch(anyList());
+	}
 
-        verify(clientSecurityService).validateCanCreateClient(currentUser, userGroup.getId());
-        verify(clientSecurityService).canGiveRoleToClient(anySet(), eq(currentUser), eq(userGroup));
-        verify(clientRepository).save(any(Client.class));
-        verify(userGroupRepository, times(1)).findById(userGroup.getId());
-        verify(passwordEncoder, times(1)).encode(eq(dto.password()));
-    }
+	// ==================== create ====================
+	@Test
+	void create_Success() throws IOException {
+		ClientRequestDTO dto = new ClientRequestDTO(
+				"  user_login@farmp.ru  ",
+				"StrongPass123!",
+				"  Гетманцев   Даниил  ",
+				Set.of("USER", "SENIOR"),
+				1);
 
-    @Test
-    void shouldUpdateYourselfSuccessfully() throws Exception {
-        UUID clientId = UUID.randomUUID();
-        ClientUpdateRequestDTO dto = new ClientUpdateRequestDTO(
-                "newLogin@farmp.ru",
-                "newPassword123!",
-                new MockMultipartFile("avatar", "img.png", "image/png", new byte[] { 1, 2, 3 }));
+		UserGroup userGroup = TestData.defaulUserGroup();
+		AppUserDetails currentUser = TestData.mockJustAdmin();
 
-        Client existingClient = new Client();
-        existingClient.setId(clientId);
-        existingClient.setLogin("oldLogin@farmp.ru");
+		when(userGroupRepository.findById(userGroup.getId())).thenReturn(Optional.of(userGroup));
+		when(loginValidator.getCleanLogin(dto.login())).thenReturn("user_login@farmp.ru");
+		when(fullNameValidator.getCleanFullName(dto.fullName())).thenReturn("Гетманцев Даниил");
+		when(passwordEncoder.encode(dto.password())).thenReturn("hashed_password");
+		when(clientRepository.existsByLogin("  user_login@farmp.ru  ")).thenReturn(false);
+		when(clientRepository.save(any(Client.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        AppUserDetails mockUser = mock(AppUserDetails.class);
-        when(mockUser.getClientId()).thenReturn(clientId);
+		ClientResponseDTO result = clientService.create(dto, currentUser);
 
-        when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
-        when(clientRepository.existsByLogin(dto.login())).thenReturn(false);
+		assertEquals("user_login@farmp.ru", result.login());
+		assertEquals("Гетманцев Даниил", result.fullName());
 
-        ClientResponseDTO result = clientService.updateYourself(dto, mockUser);
+		verify(clientSecurityService).validateCanCreateClient(currentUser, userGroup.getId());
+		verify(clientSecurityService).canGiveRoleToClient(anySet(), eq(currentUser), eq(userGroup));
+		verify(passwordValidator).validatePassword(dto.password(), true);
+	}
 
-        assertEquals("newLogin@farmp.ru", result.login());
-        verify(authService).invalidateAllSession("oldLogin@farmp.ru");
-    }
+	@Test
+	void create_ThrowsException_WhenLoginDuplicate() throws IOException {
+		ClientRequestDTO dto = new ClientRequestDTO(
+				"existing@farmp.ru", "Pass123!", "Name", Set.of("USER"), 1);
 
-    @Test
-    void shouldFullUpdateAsAdmin() throws Exception {
-        UUID clientId = UUID.randomUUID();
-        UserGroup oldGroup = TestData.defaulUserGroup();
-        UserGroup newGroup = TestData.newDefaulUserGroup();
-        AppUserDetails currentUser = TestData.mockJustAdmin();
-        MockMultipartFile avatar = new MockMultipartFile(
-                "avatar", "face.jpg", "image/jpeg", new byte[] { 0, 1, 2 });
-        FullClientUpdateRequestDTO dto = new FullClientUpdateRequestDTO(
-                "admin_new_login@farmp.ru",
-                "new_Pass_123!",
-                avatar,
-                "Иванов Иван Иванович",
-                newGroup.getId());
+		AppUserDetails currentUser = TestData.mockJustAdmin();
 
-        Client existingClient = new Client();
-        existingClient.setId(clientId);
-        existingClient.setLogin("old_login@farmp.ru");
-        existingClient.setUserGroup(oldGroup);
+		when(clientRepository.existsByLogin("existing@farmp.ru")).thenReturn(true);
 
-        when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
-        AssignedStatsDTO stats = new AssignedStatsDTO(clientId, 0L, 0L, 344L, 14L, 0L);
-        when(taskRepository.getClientAssignedStatsBatch(anyList())).thenReturn(List.of(stats));
-        when(userGroupRepository.findById(newGroup.getId())).thenReturn(Optional.of(newGroup));
+		assertThrows(DublicateClientLoginException.class,
+				() -> clientService.create(dto, currentUser));
 
-        ClientResponseDTO result = clientService.fullUpdate(clientId, dto, currentUser);
+		verify(clientRepository, never()).save(any());
+	}
 
-        assertEquals("Иванов Иван Иванович", result.fullName());
-        assertEquals("admin_new_login@farmp.ru", result.login());
-        assertEquals(newGroup.getId(), result.userGroup().id());
+	@Test
+	void create_ThrowsException_WhenGroupNotFound() throws IOException {
+		ClientRequestDTO dto = new ClientRequestDTO(
+				"user@farmp.ru", "Pass123!", "Name", Set.of("USER"), 999);
 
-        verify(authService).invalidateAllSession("old_login@farmp.ru");
-        verify(userGroupRepository, times(1)).findById(newGroup.getId());
+		AppUserDetails currentUser = TestData.mockJustAdmin();
 
-    }
+		when(userGroupRepository.findById(999)).thenReturn(Optional.empty());
 
-    @Test
-    void shouldThrowExceptionWhenTasksAreOpenDuringGroupChange() throws Exception {
-        UUID clientId = UUID.randomUUID();
-        UserGroup oldGroup = TestData.defaulUserGroup();
-        UserGroup newGroup = TestData.newDefaulUserGroup();
-        AppUserDetails currentUser = TestData.mockJustAdmin();
+		assertThrows(GroupUserNotFoundException.class,
+				() -> clientService.create(dto, currentUser));
+	}
 
-        FullClientUpdateRequestDTO dto = new FullClientUpdateRequestDTO(
-                "login@farmp.ru", "pass!123ffD", null, "Full Name", newGroup.getId());
+	// ==================== updateYourself ====================
+	@Test
+	void updateYourself_Success() throws Exception {
+		UUID clientId = UUID.randomUUID();
+		ClientUpdateRequestDTO dto = new ClientUpdateRequestDTO(
+				"newLogin@farmp.ru",
+				"newPassword123!",
+				null);
 
-        Client existingClient = new Client();
-        existingClient.setId(clientId);
-        existingClient.setLogin("old_login@farmp.ru");
-        existingClient.setPassword("encoded_pass");
-        existingClient.setUserGroup(oldGroup);
+		Client existingClient = Client.builder()
+				.id(clientId)
+				.login("old@farmp.ru")
+				.password("encoded_old")
+				.fullName("Old Name")
+				.userGroup(TestData.defaulUserGroup())
+				.roles(Set.of(UserRole.USER))
+				.avatarURL("/avatars/default.png")
+				.build();
 
-        when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+		// Создаём клиента для currentUser с ТЕМ ЖЕ clientId
+		Client currentClient = Client.builder()
+				.id(clientId) // Тот же ID что и у existingClient
+				.login("user@farmp.ru")
+				.fullName("Current User")
+				.password("encoded")
+				.roles(Set.of(UserRole.USER))
+				.userGroup(TestData.defaulUserGroup())
+				.avatarURL("/avatars/default.png")
+				.build();
 
-        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+		AppUserDetails mockUser = new AppUserDetails(currentClient); // Убираем when(), используем реальный
+																		// объект
 
-        AssignedStatsDTO statsWithOpenTasks = new AssignedStatsDTO(clientId, 20L, 5L, 10L, 5L, 0L);
-        when(taskRepository.getClientAssignedStatsBatch(anyList())).thenReturn(List.of(statsWithOpenTasks));
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+		when(loginValidator.getCleanLogin(dto.login())).thenReturn("newLogin@farmp.ru");
+		when(clientRepository.existsByLogin("newLogin@farmp.ru")).thenReturn(false);
+		when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+		when(passwordEncoder.encode(dto.password())).thenReturn("encoded_new");
 
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> {
-            clientService.fullUpdate(clientId, dto, currentUser);
-        });
+		ClientResponseDTO result = clientService.updateYourself(dto, mockUser);
 
-        assertEquals("У пользователя еще имеются открытые задачи", exception.getMessage());
-    }
+		assertEquals("newLogin@farmp.ru", result.login());
+		verify(authService).invalidateAllSession("old@farmp.ru");
+	}
+
+	@Test
+	void updateYourself_ThrowsException_WhenLoginDuplicate() throws Exception {
+		UUID clientId = UUID.randomUUID();
+		ClientUpdateRequestDTO dto = new ClientUpdateRequestDTO("existing@farmp.ru", null, null);
+
+		Client existingClient = Client.builder()
+				.id(clientId)
+				.login("old@farmp.ru")
+				.build();
+
+		Client currentClient = Client.builder()
+				.id(clientId)
+				.login("user@farmp.ru")
+				.fullName("Current User")
+				.password("encoded")
+				.roles(Set.of(UserRole.USER))
+				.userGroup(TestData.defaulUserGroup())
+				.avatarURL("/avatars/default.png")
+				.build();
+
+		AppUserDetails mockUser = new AppUserDetails(currentClient);
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+		when(loginValidator.getCleanLogin(dto.login())).thenReturn("existing@farmp.ru");
+		when(clientRepository.existsByLogin("existing@farmp.ru")).thenReturn(true);
+
+		assertThrows(DublicateClientLoginException.class,
+				() -> clientService.updateYourself(dto, mockUser));
+	}
+
+	@Test
+	void updateYourself_ThrowsException_WhenSamePassword() throws Exception {
+		UUID clientId = UUID.randomUUID();
+		ClientUpdateRequestDTO dto = new ClientUpdateRequestDTO(null, "samePassword123!", null);
+
+		Client existingClient = Client.builder()
+				.id(clientId)
+				.login("old@farmp.ru")
+				.password("encoded_same")
+				.fullName("Old Name")
+				.userGroup(TestData.defaulUserGroup())
+				.roles(Set.of(UserRole.USER))
+				.avatarURL("/avatars/default.png")
+				.build();
+
+		Client currentClient = Client.builder()
+				.id(clientId)
+				.login("user@farmp.ru")
+				.fullName("Current User")
+				.password("encoded")
+				.roles(Set.of(UserRole.USER))
+				.userGroup(TestData.defaulUserGroup())
+				.avatarURL("/avatars/default.png")
+				.build();
+
+		AppUserDetails mockUser = new AppUserDetails(currentClient); // Убираем when()
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+		when(passwordEncoder.matches(dto.password(), existingClient.getPassword())).thenReturn(true);
+
+		assertThrows(AlreadyHaveThisPasswordException.class,
+				() -> clientService.updateYourself(dto, mockUser));
+	}
+
+	// ==================== fullUpdate ====================
+	@Test
+	void fullUpdate_Success_WithGroupChange() throws Exception {
+		UUID clientId = UUID.randomUUID();
+		UserGroup oldGroup = TestData.defaulUserGroup();
+		UserGroup newGroup = TestData.newDefaulUserGroup();
+
+		FullClientUpdateRequestDTO dto = new FullClientUpdateRequestDTO(
+				"admin_new@farmp.ru", "newPass123!", null, "New Full Name", newGroup.getId());
+
+		AppUserDetails admin = TestData.mockJustAdmin();
+
+		Client existingClient = Client.builder()
+				.id(clientId)
+				.login("old@farmp.ru")
+				.fullName("Old Name")
+				.password("encoded_old")
+				.userGroup(oldGroup)
+				.roles(Set.of(UserRole.USER))
+				.avatarURL("/avatars/default.png")
+				.build();
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+		when(loginValidator.getCleanLogin(dto.login())).thenReturn("admin_new@farmp.ru");
+		when(fullNameValidator.getCleanFullName(dto.fullName())).thenReturn("New Full Name");
+		when(clientRepository.existsByLogin("admin_new@farmp.ru")).thenReturn(false);
+		when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+		when(passwordEncoder.encode(dto.password())).thenReturn("encoded_new");
+
+		AssignedStatsDTO stats = new AssignedStatsDTO(clientId, 0L, 0L, 0L, 0L, 0L);
+		when(taskRepository.getClientAssignedStatsBatch(anyList())).thenReturn(List.of(stats));
+		when(userGroupRepository.findById(newGroup.getId())).thenReturn(Optional.of(newGroup));
+
+		ClientResponseDTO result = clientService.fullUpdate(clientId, dto, admin);
+
+		assertEquals("New Full Name", result.fullName());
+		assertEquals(newGroup.getId(), result.userGroup().id());
+		verify(authService).invalidateAllSession("old@farmp.ru");
+	}
+
+	@Test
+	void fullUpdate_Success_WithoutGroupChange() throws Exception {
+		UUID clientId = UUID.randomUUID();
+		UserGroup oldGroup = TestData.defaulUserGroup();
+
+		FullClientUpdateRequestDTO dto = new FullClientUpdateRequestDTO(
+				"new@farmp.ru", "newPass123!", null, "New Name", null);
+
+		AppUserDetails admin = TestData.mockJustAdmin();
+
+		Client existingClient = Client.builder()
+				.id(clientId)
+				.login("old@farmp.ru")
+				.fullName("Old Name")
+				.password("encoded_old")
+				.userGroup(oldGroup)
+				.roles(Set.of(UserRole.USER))
+				.avatarURL("/avatars/default.png")
+				.build();
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+		when(loginValidator.getCleanLogin(dto.login())).thenReturn("new@farmp.ru");
+		when(fullNameValidator.getCleanFullName(dto.fullName())).thenReturn("New Name");
+		when(clientRepository.existsByLogin("new@farmp.ru")).thenReturn(false);
+		when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+		when(passwordEncoder.encode(dto.password())).thenReturn("encoded_new");
+
+		ClientResponseDTO result = clientService.fullUpdate(clientId, dto, admin);
+
+		assertEquals(oldGroup.getId(), result.userGroup().id());
+		verify(taskRepository, never()).getClientAssignedStatsBatch(anyList());
+	}
+
+	@Test
+	void fullUpdate_ThrowsException_WhenTasksAreOpen() throws Exception {
+		UUID clientId = UUID.randomUUID();
+		UserGroup oldGroup = TestData.defaulUserGroup();
+		UserGroup newGroup = TestData.newDefaulUserGroup();
+
+		FullClientUpdateRequestDTO dto = new FullClientUpdateRequestDTO(
+				null, null, null, null, newGroup.getId());
+
+		AppUserDetails admin = TestData.mockJustAdmin();
+
+		Client existingClient = Client.builder()
+				.id(clientId)
+				.userGroup(oldGroup)
+				.build();
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(existingClient));
+
+		AssignedStatsDTO statsWithOpenTasks = new AssignedStatsDTO(clientId, 10L, 5L, 0L, 0L, 5L);
+		when(taskRepository.getClientAssignedStatsBatch(anyList())).thenReturn(List.of(statsWithOpenTasks));
+
+		AccessDeniedException exception = assertThrows(AccessDeniedException.class,
+				() -> clientService.fullUpdate(clientId, dto, admin));
+
+		assertEquals("У пользователя еще имеются открытые задачи", exception.getMessage());
+	}
+
+	@Test
+	void fullUpdate_ThrowsException_WhenNotAdmin() {
+		UUID clientId = UUID.randomUUID();
+		FullClientUpdateRequestDTO dto = new FullClientUpdateRequestDTO(null, null, null, null, null);
+		AppUserDetails senior = TestData.mockJustSenior();
+
+		assertThrows(AccessDeniedException.class,
+				() -> clientService.fullUpdate(clientId, dto, senior));
+	}
+
+	// ==================== delete ====================
+	@Test
+	void delete_Success() {
+		UUID clientId = UUID.randomUUID();
+		UUID adminId = UUID.randomUUID();
+
+		Client adminClient = Client.builder()
+				.id(adminId)
+				.login("admin@farmp.ru")
+				.fullName("Admin User")
+				.roles(Set.of(UserRole.ADMIN))
+				.build();
+		AppUserDetails admin = new AppUserDetails(adminClient);
+
+		UserGroup testGroup = TestData.defaulUserGroup();
+		Client clientForDelete = Client.builder()
+				.id(clientId)
+				.login("user@farmp.ru")
+				.fullName("User for delete")
+				.userGroup(testGroup)
+				.build();
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(clientForDelete));
+
+		clientService.delete(clientId, admin);
+
+		verify(clientRepository, times(1)).findById(clientId);
+		verify(clientRepository, times(1)).delete(clientForDelete);
+
+		var expectedSignal = new SseEventNames.AppUserDetailsSignalDTO(testGroup.getId(), SseSignalTypes.DELETED);
+		verify(sseController, times(1)).broadcastNotification(SseEventNames.REFRESH_CLIENTS, expectedSignal);
+	}
+
+	@Test
+	void delete_ThrowsSelfDeleteException() {
+		UUID clientId = UUID.randomUUID();
+
+		Client adminClient = Client.builder()
+				.id(clientId)
+				.login("admin@farmp.ru")
+				.fullName("Admin User")
+				.password("encoded")
+				.roles(Set.of(UserRole.ADMIN))
+				.userGroup(TestData.defaulUserGroup())
+				.avatarURL("/avatars/default.png")
+				.build();
+
+		AppUserDetails admin = new AppUserDetails(adminClient);
+
+		assertThrows(SelfDeleteException.class,
+				() -> clientService.delete(clientId, admin));
+	}
+
+	@Test
+	void delete_ThrowsException_WhenNotAdmin() {
+		UUID clientId = UUID.randomUUID();
+		AppUserDetails senior = TestData.mockJustSenior();
+
+		assertThrows(AccessDeniedException.class,
+				() -> clientService.delete(clientId, senior));
+	}
+
+	// ==================== addRole ====================
+	@Test
+	void addRole_Success() {
+		UUID clientId = UUID.randomUUID();
+		UserGroup group = TestData.defaulUserGroup();
+
+		Client clientWithOneRole = Client.builder()
+				.id(clientId)
+				.roles(new HashSet<>(Set.of(UserRole.USER)))
+				.userGroup(group)
+				.build();
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(clientWithOneRole));
+
+		AppUserDetails admin = TestData.mockJustAdmin();
+		ClientResponseDTO result = clientService.addRole(clientId, "SENIOR", admin);
+
+		assertTrue(result.roles().contains(UserRole.SENIOR));
+		verify(clientSecurityService).canGiveRoleToClient(anySet(), eq(admin), eq(group));
+	}
+
+	// ==================== removeRole ====================
+	@Test
+	void removeRole_Success() {
+		UUID clientId = UUID.randomUUID();
+		UserGroup group = TestData.defaulUserGroup();
+
+		Client clientWithTwoRoles = Client.builder()
+				.id(clientId)
+				.roles(new HashSet<>(Set.of(UserRole.ADMIN, UserRole.USER)))
+				.userGroup(group)
+				.build();
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(clientWithTwoRoles));
+
+		AppUserDetails admin = TestData.mockJustAdmin();
+		ClientResponseDTO result = clientService.removeRole(clientId, "USER", admin);
+
+		assertEquals(1, result.roles().size());
+		assertTrue(result.roles().contains(UserRole.ADMIN));
+		verify(clientSecurityService).canRemoveRoles(anySet(), eq(admin), eq(group));
+	}
+
+	@Test
+	void removeRole_ThrowsException_WhenLastRole() {
+		UUID clientId = UUID.randomUUID();
+
+		Client clientWithOneRole = Client.builder()
+				.id(clientId)
+				.roles(Set.of(UserRole.USER))
+				.userGroup(TestData.defaulUserGroup())
+				.build();
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(clientWithOneRole));
+
+		AppUserDetails admin = TestData.mockJustAdmin();
+		assertThrows(AccessDeniedException.class,
+				() -> clientService.removeRole(clientId, "USER", admin));
+	}
+
+	// ==================== getAll ====================
+	@Test
+	void getAll_Success_AsAdmin() {
+		UUID clientId = UUID.randomUUID();
+		AppUserDetails admin = TestData.mockJustAdmin();
+
+		Client client = Client.builder()
+				.id(clientId)
+				.login("user@farmp.ru")
+				.fullName("User Name")
+				.roles(Set.of(UserRole.USER))
+				.userGroup(TestData.defaulUserGroup())
+				.avatarURL("/avatars/default.png")
+				.build();
+
+		when(clientRepository.findAll()).thenReturn(List.of(client));
+
+		List<ClientResponseDTO> result = clientService.getAll(admin);
+
+		assertEquals(1, result.size());
+		verify(clientRepository).findAll();
+	}
+
+	@Test
+	void getAll_ThrowsException_WhenNotAdmin() {
+		AppUserDetails senior = TestData.mockJustSenior();
+		assertThrows(AccessDeniedException.class,
+				() -> clientService.getAll(senior));
+	}
+
+	// ==================== getOne ====================
+	@Test
+	void getOne_Success() {
+		UUID clientId = UUID.randomUUID();
+		AppUserDetails admin = TestData.mockJustAdmin();
+
+		Client client = Client.builder()
+				.id(clientId)
+				.login("user@farmp.ru")
+				.fullName("User Name")
+				.userGroup(TestData.defaulUserGroup())
+				.roles(Set.of(UserRole.USER))
+				.build();
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.of(client));
+
+		ClientResponseDTO result = clientService.getOne(clientId, admin);
+
+		assertEquals(clientId, result.id());
+	}
+
+	@Test
+	void getOne_ThrowsException_WhenNotFound() {
+		UUID clientId = UUID.randomUUID();
+		AppUserDetails admin = TestData.mockJustAdmin();
+
+		when(clientRepository.findById(clientId)).thenReturn(Optional.empty());
+
+		assertThrows(ClientNotFoundException.class,
+				() -> clientService.getOne(clientId, admin));
+	}
+
+	// ==================== getByGroup ====================
+	@Test
+	void getByGroup_Success() {
+		Integer groupId = 1;
+		AppUserDetails admin = TestData.mockJustAdmin();
+
+		Client client = Client.builder()
+				.id(UUID.randomUUID())
+				.userGroup(TestData.defaulUserGroup())
+				.build();
+
+		when(userGroupRepository.existsById(groupId)).thenReturn(true);
+		when(clientRepository.findByUserGroupId(groupId)).thenReturn(List.of(client));
+
+		List<ClientResponseDTO> result = clientService.getByGroup(groupId, admin);
+
+		assertEquals(1, result.size());
+	}
+
+	@Test
+	void getByGroup_ThrowsException_WhenGroupNotFound() {
+		Integer invalidGroupId = 999;
+		AppUserDetails admin = TestData.mockJustAdmin();
+
+		when(userGroupRepository.existsById(invalidGroupId)).thenReturn(false);
+
+		assertThrows(GroupUserNotFoundException.class,
+				() -> clientService.getByGroup(invalidGroupId, admin));
+	}
+
+	// ==================== getMyStats ====================
+	@Test
+	void getMyStats_Success() {
+		UUID clientId = UUID.randomUUID();
+
+		// Создаём пользователя с нужным ID
+		Client client = Client.builder()
+				.id(clientId)
+				.login("user@farmp.ru")
+				.fullName("User Name")
+				.password("encoded")
+				.roles(Set.of(UserRole.USER))
+				.userGroup(TestData.defaulUserGroup())
+				.avatarURL("/avatars/default.png")
+				.build();
+
+		AppUserDetails user = new AppUserDetails(client);
+
+		AssignedStatsDTO assignedStats = new AssignedStatsDTO(clientId, 5L, 2L, 1L, 1L, 1L);
+		CreatedStatsDTO createdStats = new CreatedStatsDTO(clientId, 3L);
+
+		when(taskRepository.getClientAssignedStatsBatch(List.of(clientId))).thenReturn(List.of(assignedStats));
+		when(taskRepository.getClientCreatedStatsBatch(List.of(clientId))).thenReturn(List.of(createdStats));
+
+		TaskStatsDTO result = clientService.getMyStats(user);
+
+		assertEquals(5L, result.assignedStats().totalCount());
+		assertEquals(3L, result.createdStats().openCreated());
+	}
+
+	@Test
+	void getMyStats_ReturnsEmptyStats_WhenNoData() {
+		UUID clientId = UUID.randomUUID();
+
+		Client client = Client.builder()
+				.id(clientId)
+				.login("user@farmp.ru")
+				.fullName("User Name")
+				.password("encoded")
+				.roles(Set.of(UserRole.USER))
+				.userGroup(TestData.defaulUserGroup())
+				.avatarURL("/avatars/default.png")
+				.build();
+
+		AppUserDetails user = new AppUserDetails(client);
+
+		when(taskRepository.getClientAssignedStatsBatch(List.of(clientId))).thenReturn(List.of());
+		when(taskRepository.getClientCreatedStatsBatch(List.of(clientId))).thenReturn(List.of());
+
+		TaskStatsDTO result = clientService.getMyStats(user);
+
+		assertEquals(0L, result.assignedStats().totalCount());
+		assertEquals(0L, result.createdStats().openCreated());
+	}
 }

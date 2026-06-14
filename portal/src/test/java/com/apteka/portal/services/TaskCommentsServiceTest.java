@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.TaskCommentRequestDTO;
 import com.apteka.portal.dtos.response.TaskCommentResponseDTO;
 import com.apteka.portal.exceptions.AvtorCommentNotInputException;
@@ -43,6 +44,9 @@ public class TaskCommentsServiceTest {
 
 	@Mock
 	private ClientRepository clientRepository;
+
+	@Mock
+	private SseController sseController;
 
 	@InjectMocks
 	private TaskCommentService taskCommentsService;

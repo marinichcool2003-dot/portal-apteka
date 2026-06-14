@@ -17,4 +17,8 @@ public final class CacheNames {
     public static final String GROUP_USER_STATS = "group_user_stats";
 
     public static final String USER_STATS = "user_stats";
+
+    public static final String GROUPS_MAIN_PAGE_LINKS = "groups_main_page_links";
+    public static final String MAIN_PAGE_LINKS_BY_GROUP = "main_page_links_by_group";
+    public static final String MAIN_PAGE_LINKS = "main_page_links";
 }

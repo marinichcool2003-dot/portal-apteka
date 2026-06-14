@@ -13,14 +13,18 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.apteka.portal.components.AvatarClientService;
-import com.apteka.portal.components.ClientSecurityService;
+import com.apteka.portal.components.servicesecurity.ClientSecurityService;
 import com.apteka.portal.dtos.request.ClientRequestDTO;
 import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
-import com.apteka.portal.components.PasswordValidator;
+import com.apteka.portal.components.validators.FullNameValidator;
+import com.apteka.portal.components.validators.LoginValidator;
+import com.apteka.portal.components.validators.PasswordValidator;
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.response.AssignedStatsDTO;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
@@ -30,11 +34,11 @@ import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.DublicateClientLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
-import com.apteka.portal.exceptions.InvalidClientFullNameException;
-import com.apteka.portal.exceptions.InvalidClientLoginException;
 import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
+import com.apteka.portal.models.SseEventNames;
+import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.ClientRepository;
@@ -55,6 +59,10 @@ public class ClientService {
     private final TaskRepository taskRepository;
     private final ClientSecurityService clientSecurityService;
     private final PasswordValidator passwordValidator;
+    private final LoginValidator loginValidator;
+    private final FullNameValidator fullNameValidator;
+
+    private final SseController sseController;
 
     @Value("${app.default.avatars.upload.dir}")
     private String uploadAvatarDir;
@@ -79,16 +87,18 @@ public class ClientService {
     @Transactional(readOnly = true)
     public TaskStatsDTO getMyStats(AppUserDetails currentUser) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
-        List<AssignedStatsDTO> assignedStatsList = taskRepository.getClientAssignedStatsBatch(List.of(currentUser.getClientId()));
-        List<CreatedStatsDTO> createdStatsList = taskRepository.getClientCreatedStatsBatch(List.of(currentUser.getClientId()));
+        List<AssignedStatsDTO> assignedStatsList = taskRepository
+                .getClientAssignedStatsBatch(List.of(currentUser.getClientId()));
+        List<CreatedStatsDTO> createdStatsList = taskRepository
+                .getClientCreatedStatsBatch(List.of(currentUser.getClientId()));
 
-        AssignedStatsDTO assignedStats = assignedStatsList.isEmpty() 
-            ? new AssignedStatsDTO(currentUser.getClientId(), 0L, 0L, 0L, 0L, 0L)
-            : assignedStatsList.getFirst();
-        
+        AssignedStatsDTO assignedStats = assignedStatsList.isEmpty()
+                ? new AssignedStatsDTO(currentUser.getClientId(), 0L, 0L, 0L, 0L, 0L)
+                : assignedStatsList.getFirst();
+
         CreatedStatsDTO createdStats = createdStatsList.isEmpty()
-            ? new CreatedStatsDTO(currentUser.getClientId(), 0L)
-            : createdStatsList.getFirst();
+                ? new CreatedStatsDTO(currentUser.getClientId(), 0L)
+                : createdStatsList.getFirst();
 
         return new TaskStatsDTO(assignedStats, createdStats);
     }
@@ -127,16 +137,9 @@ public class ClientService {
     public ClientResponseDTO create(ClientRequestDTO dto, AppUserDetails currentUser) throws IOException {
         clientSecurityService.validateCanCreateClient(currentUser, dto.groupClientId());
 
-        String cleanLogin = dto.login().strip();
-        String normalizedName = dto.fullName() != null
-                ? dto.fullName().replaceAll("[\\s_]+", " ").trim()
-                : "";
-
+        String cleanLogin = loginValidator.getCleanLogin(dto.login());
         validateLogin(dto.login());
-        if (normalizedName == null || normalizedName.isBlank()) {
-            throw new InvalidClientFullNameException("ФИО не может быть пустым");
-        }
-        validateFullName(dto.fullName());
+        String normalizedName = fullNameValidator.getCleanFullName(dto.fullName());
         passwordValidator.validatePassword(dto.password(), true);
 
         UserGroup group = userGroupRepository.findById(dto.groupClientId())
@@ -146,8 +149,9 @@ public class ClientService {
                 .stream()
                 .map(UserRole::fromCode)
                 .collect(Collectors.toSet());
-                
-        if (roles.size() == 0) roles.add(UserRole.USER);
+
+        if (roles.size() == 0)
+            roles.add(UserRole.USER);
 
         clientSecurityService.canGiveRoleToClient(roles, currentUser, group);
 
@@ -161,6 +165,8 @@ public class ClientService {
                 .build();
 
         Client client = clientRepository.save(newClient);
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(newClient.getUserGroup().getId(), SseSignalTypes.CREATED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
         return ClientResponseDTO.from(client);
     }
 
@@ -171,7 +177,9 @@ public class ClientService {
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.canGiveRoleToClient(Set.of(role), currentUser, client.getUserGroup());
         client.getRoles().add(role);
-        return ClientResponseDTO.from(client);
+        ClientResponseDTO response = ClientResponseDTO.from(client);
+        sseController.sendNotification(client.getLogin(), SseEventNames.REFRESH_CLIENTS, response);
+        return response;
     }
 
     @Transactional
@@ -184,16 +192,21 @@ public class ClientService {
         }
         clientSecurityService.canRemoveRoles(Set.of(role), currentUser, client.getUserGroup());
         client.getRoles().remove(role);
-        return ClientResponseDTO.from(client);
+        ClientResponseDTO response = ClientResponseDTO.from(client);
+        sseController.sendNotification(client.getLogin(), SseEventNames.REFRESH_CLIENTS, response);
+        return response;
     }
 
     @Transactional
     public ClientResponseDTO updateYourself(ClientUpdateRequestDTO dto, AppUserDetails currentUser)
             throws IOException {
 
-        Client savedClient = updateBasicClientForm(currentUser.getClientId(), dto.login(), dto.password(), dto.avatar());
+        Client savedClient = updateBasicClientForm(currentUser.getClientId(), dto.login(), dto.password(),
+                dto.avatar());
 
-        return ClientResponseDTO.from(savedClient);
+        ClientResponseDTO response = ClientResponseDTO.from(savedClient);
+        sseController.sendNotification(savedClient.getLogin(), SseEventNames.REFRESH_CLIENTS, response);
+        return response;
     }
 
     @Transactional
@@ -205,12 +218,13 @@ public class ClientService {
 
         Client savedClient = updateBasicClientForm(id, dto.login(), dto.password(), dto.avatar());
 
-        if (dto.fullName() != null && !dto.fullName().isBlank()) {
-            validateFullName(dto.fullName());
-            savedClient.setFullName(dto.fullName());
+        if (StringUtils.hasText(dto.fullName())) {
+            String cleanFullName = fullNameValidator.getCleanFullName(dto.fullName());
+            savedClient.setFullName(cleanFullName);
         }
 
-        if (dto.groupClientId() != null && !Objects.equals(savedClient.getUserGroup().getId(), dto.groupClientId())) {
+        if (dto.groupClientId() != null && dto.groupClientId() > 0
+                && !Objects.equals(savedClient.getUserGroup().getId(), dto.groupClientId())) {
             List<AssignedStatsDTO> stats = taskRepository.getClientAssignedStatsBatch(List.of(savedClient.getId()));
             AssignedStatsDTO thisClientStats = stats.stream()
                     .findFirst()
@@ -223,6 +237,8 @@ public class ClientService {
             savedClient.setUserGroup(group);
         }
 
+        var signal = new SseEventNames.EntityUpdateSignalDTO(savedClient.getId(), SseSignalTypes.UPDATED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
         return ClientResponseDTO.from(savedClient);
     }
 
@@ -234,9 +250,12 @@ public class ClientService {
         if (Objects.equals(currentUser.getClientId(), id)) {
             throw new SelfDeleteException("Вы не можете удалить самого себя!");
         }
-        if (clientRepository.existsById(id)) {
-            clientRepository.deleteById(id);
-        }
+        Client client = clientRepository.findById(id)
+            .orElseThrow(() -> new ClientNotFoundException(id));
+
+        clientRepository.delete(client);
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(client.getUserGroup().getId(), SseSignalTypes.DELETED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
     }
 
     private Client updateBasicClientForm(UUID id, String login, String password, MultipartFile avatar)
@@ -251,16 +270,16 @@ public class ClientService {
             updateAvatar(upClient, avatar);
         }
 
-        if (login != null && !login.isBlank()) {
-            String newLogin = login.strip();
-            if (!newLogin.equals(upClient.getLogin())) {
-                validateLogin(newLogin);
-                upClient.setLogin(newLogin);
+        if (StringUtils.hasText(login)) {
+            String cleanLogin = loginValidator.getCleanLogin(login);
+            if (!cleanLogin.equals(upClient.getLogin())) {
+                validateLogin(cleanLogin);
+                upClient.setLogin(cleanLogin);
                 needsLogout = true;
             }
         }
 
-        if (password != null && !password.isBlank()) {
+        if (StringUtils.hasText(password)) {
             if (passwordEncoder.matches(password, upClient.getPassword())) {
                 throw new AlreadyHaveThisPasswordException();
             }
@@ -282,24 +301,8 @@ public class ClientService {
     }
 
     private void validateLogin(String login) {
-        if (login == null || login.isBlank()) {
-            throw new InvalidClientLoginException();
-        }
         if (clientRepository.existsByLogin(login)) {
             throw new DublicateClientLoginException(login);
-        }
-        if (!login.contains("@farmp.ru")) {
-            throw new InvalidClientLoginException("Логин должен содержать домен");
-        }
-    }
-
-    private void validateFullName(String normalizedName) {
-        if (normalizedName.length() > 100) {
-            throw new InvalidClientFullNameException("ФИО не может быть длиннее 100 символов");
-        }
-
-        if (!normalizedName.matches("^[\\p{L}'-]+(?:\\s[\\p{L}'-]+){1,2}$")) {
-            throw new InvalidClientFullNameException("Введите корректные Фамилию и Имя (или ФИО)");
         }
     }
 }

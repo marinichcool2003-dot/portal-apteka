@@ -42,7 +42,6 @@ public class TestData {
                 .build();
     }
 
-    // Группа задач
     public static GroupTask defaultGroupTask() {
         return GroupTask.builder().name("Накладные")
                 .id(1)
@@ -66,17 +65,17 @@ public class TestData {
 
     public static WorkType newDefaultWorkType() {
         return WorkType.builder().name("Маркировка")
-                .id(1)
+                .id(2)
                 .groupTask(newGroupTask())
                 .build();
     }
 
     public static Task defaultTask() {
         return Task.builder()
-            .title("Не работает касса")
-            .description("При включении не работает касса")
-            .workType(defaultWorkType())
-            .build();
+                .title("Не работает касса")
+                .description("При включении не работает касса")
+                .workType(defaultWorkType())
+                .build();
     }
 
     public static AppUserDetails mockJustApteka() {
@@ -91,17 +90,28 @@ public class TestData {
     }
 
     public static AppUserDetails mockJustUser() {
-        Client client = mock(Client.class);
-        lenient().when(client.getId()).thenReturn(UUID.randomUUID());
-        lenient().when(client.getRoles()).thenReturn(Set.of(UserRole.USER));
-        lenient().when(client.getUserGroup()).thenReturn(defaulUserGroup());
+        Client client = Client.builder()
+                .id(UUID.randomUUID())
+                .login("user@farmp.ru")
+                .fullName("Default User")
+                .password("encoded_password")
+                .roles(Set.of(UserRole.USER))
+                .userGroup(defaulUserGroup())
+                .avatarURL("/avatars/default.png")
+                .build();
         return new AppUserDetails(client);
     }
 
     public static AppUserDetails mockJustSenior() {
-        Client client = mock(Client.class);
-        when(client.getRoles()).thenReturn(Set.of(UserRole.SENIOR));
-        when(client.getUserGroup()).thenReturn(defaulUserGroup());
+        Client client = Client.builder()
+                .id(UUID.randomUUID())
+                .login("senior@farmp.ru")
+                .fullName("Senior User")
+                .password("encoded_password")
+                .roles(Set.of(UserRole.SENIOR))
+                .userGroup(defaulUserGroup())
+                .avatarURL("/avatars/default.png")
+                .build();
         return new AppUserDetails(client);
     }
 
@@ -113,8 +123,15 @@ public class TestData {
     }
 
     public static AppUserDetails mockJustAdmin() {
-        Client client = mock(Client.class);
-        when(client.getRoles()).thenReturn(Set.of(UserRole.ADMIN));
+        Client client = Client.builder()
+                .id(UUID.randomUUID())
+                .login("admin@farmp.ru")
+                .fullName("Admin User")
+                .password("encoded_password")
+                .roles(Set.of(UserRole.ADMIN))
+                .userGroup(defaulUserGroup())
+                .avatarURL("/avatars/default.png")
+                .build();
         return new AppUserDetails(client);
     }
 }

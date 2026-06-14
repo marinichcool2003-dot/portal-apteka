@@ -18,7 +18,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.apteka.portal.components.TaskAuditService;
-import com.apteka.portal.components.TaskSecurityService;
+import com.apteka.portal.components.servicesecurity.TaskSecurityService;
+import com.apteka.portal.components.validators.TypeNameValidator;
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.request.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.TaskShortResponseDTO;
@@ -54,6 +56,12 @@ public class TaskServiceTest {
 
 	@Mock
 	private TaskSecurityService taskSecurityService;
+
+	@Mock
+	private TypeNameValidator typeNameValidator;
+
+	@Mock
+	private SseController sseController;
 
 	@InjectMocks
 	private TaskService taskService;
@@ -99,11 +107,12 @@ public class TaskServiceTest {
 				.assignedClient(null)
 				.build();
 
-		when(workTypeRepository.getReferenceById(workType.getId()))
-				.thenReturn(workType);
+		when(workTypeRepository.findById(dto.workTypeId())).thenReturn(Optional.of(workType));
 
 		when(aptekaRepository.findById(currentUser.getAptekaId()))
 				.thenReturn(Optional.of(creator));
+
+		when(typeNameValidator.getCleanName(dto.title())).thenReturn("Не работает касса");
 
 		when(taskRepository.save(any(Task.class)))
 				.thenReturn(savedTask);
@@ -119,7 +128,7 @@ public class TaskServiceTest {
 				.validateCanCreate(dto, currentUser);
 
 		verify(workTypeRepository, times(1))
-				.getReferenceById(workType.getId());
+				.findById(workType.getId());
 
 		verify(aptekaRepository, times(1))
 				.findById(currentUser.getAptekaId());
@@ -130,8 +139,7 @@ public class TaskServiceTest {
 	}
 
 	@Test
-	void update_Succesful() {
-
+	void update_Successful() {
 		AppUserDetails currentUser = TestData.mockJustSenior();
 
 		WorkType oldWorkType = TestData.defaultWorkType();
@@ -151,6 +159,7 @@ public class TaskServiceTest {
 
 		Apteka creator = Apteka.builder()
 				.id(10)
+				.userGroup(TestData.defaulUserGroup())
 				.build();
 
 		Task taskForUpdate = Task.builder()
@@ -169,15 +178,7 @@ public class TaskServiceTest {
 				.assignedClientId(newAssigner.getId())
 				.build();
 
-		Task updatedTask = Task.builder()
-				.id(10L)
-				.title("Не работает терминал")
-				.description("Нужно проверить терминал срочно")
-				.workType(newWorkType)
-				.createdByApteka(creator)
-				.assignedClient(newAssigner)
-				.build();
-
+		when(clientRepository.getReferenceById(newAssigner.getId())).thenReturn(newAssigner);
 		when(taskRepository.findById(taskForUpdate.getId()))
 				.thenReturn(Optional.of(taskForUpdate));
 
@@ -187,63 +188,38 @@ public class TaskServiceTest {
 				currentUser))
 				.thenReturn(true);
 
+		when(typeNameValidator.getCleanName(dto.title())).thenReturn("Не работает терминал");
+
 		when(taskSecurityService.changeAssigner(
 				taskForUpdate,
 				dto,
 				currentUser))
 				.thenReturn(true);
 
+		when(workTypeRepository.findById(dto.workTypeId())).thenReturn(Optional.of(newWorkType));
+
 		when(clientRepository.existsById(newAssigner.getId()))
 				.thenReturn(true);
 
-		when(taskRepository.save(any(Task.class)))
-				.thenReturn(updatedTask);
-
 		TaskShortResponseDTO result = taskService.update(taskForUpdate.getId(), dto, currentUser);
 
+		System.out.println("Result: " + result);
+		System.out.println("Result assignedBy: " + result.assignedBy());
+		System.out.println("Result workTypeName: " + result.workTypeName());
+
 		assertNotNull(result);
+		assertEquals("Не работает терминал", result.title());
+		assertEquals("Нужно проверить терминал срочно", result.description());
+		assertEquals("Маркировка", result.workTypeName());
 
-		assertEquals(updatedTask.getTitle(), result.title());
-		assertEquals(updatedTask.getDescription(), result.description());
+		assertNotNull(result.assignedBy());
+		assertEquals(newAssigner.getId(), result.assignedBy().id());
 
-		assertEquals(
-				updatedTask.getWorkType().getName(),
-				result.workTypeName());
-
-		assertEquals(
-				updatedTask.getAssignedClient().getId(),
-				result.assignedBy().id());
-
-		verify(taskRepository, times(1))
-				.findById(taskForUpdate.getId());
-
-		verify(taskSecurityService, times(1))
-				.validateCanUpdate(taskForUpdate, dto, currentUser);
-
-		verify(taskSecurityService, times(1))
-				.changeWorkTypeToAnotherDepartament(
-						taskForUpdate,
-						dto,
-						currentUser);
-
-		verify(taskSecurityService, times(1))
-				.changeAssigner(
-						taskForUpdate,
-						dto,
-						currentUser);
-
-		verify(clientRepository, times(1))
-				.existsById(newAssigner.getId());
-
-		verify(taskAuditService, times(3))
-				.logChange(
-						any(),
-						any(),
-						anyString(),
-						any(),
-						any());
-
-		verify(taskRepository, times(1))
-				.save(any(Task.class));
+		verify(taskRepository, times(1)).findById(taskForUpdate.getId());
+		verify(taskSecurityService, times(1)).validateCanUpdate(taskForUpdate, dto, currentUser);
+		verify(taskSecurityService, times(1)).changeWorkTypeToAnotherDepartament(taskForUpdate, dto, currentUser);
+		verify(taskSecurityService, times(1)).changeAssigner(taskForUpdate, dto, currentUser);
+		verify(clientRepository, times(1)).existsById(newAssigner.getId());
+		verify(taskAuditService, times(3)).logChange(any(), any(), anyString(), any(), any());
 	}
 }

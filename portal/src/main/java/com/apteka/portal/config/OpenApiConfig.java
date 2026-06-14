@@ -14,17 +14,19 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenApi() {
-        final String securitySchemeName = "bearerAuth";
+        final String securitySchemeName = "cookieAuth";
+        
         return new OpenAPI()
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
                 .components(new Components()
                         .addSecuritySchemes(securitySchemeName, new SecurityScheme()
-                                .name(securitySchemeName)
-                                .type(SecurityScheme.Type.HTTP)
-                                .scheme("bearer")
-                                .bearerFormat("JWT")
-                                .description("Введите ваш JWT access токен в поле ниже")))
+                                .name("X-Access-Token")
+                                .type(SecurityScheme.Type.APIKEY)
+                                .in(SecurityScheme.In.COOKIE)
+                                .description("Для авторизации через Swagger выполните эндпоинт /login. " +
+                                             "Браузер автоматически сохранит куку X-Access-Token, " +
+                                             "и Swagger будет прикреплять её ко всем последующим запросам.")))
                 .info(new Info()
                         .title("Портал Социальных аптек API")
                         .version("1.0.0")

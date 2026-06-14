@@ -33,7 +33,8 @@ public class AuthService {
 
         return new AuthResponseDTO(
                 accessToken,
-                refreshToken.getToken());
+                refreshToken.getToken(),
+                dto.rememberMe());
     }
 
     public AuthResponseDTO refresh(RefreshRequestDTO dto) {
@@ -48,7 +49,8 @@ public class AuthService {
         RefreshToken newRefreshToken = refreshTokenService.create(token.getUsername(), token.isRememberMe());
         return new AuthResponseDTO(
                 newAccessToken,
-                newRefreshToken.getToken());
+                newRefreshToken.getToken(),
+                newRefreshToken.isRememberMe());
     }
 
     public void logout(String refreshToken) {

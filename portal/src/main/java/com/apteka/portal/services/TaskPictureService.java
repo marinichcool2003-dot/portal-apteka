@@ -9,9 +9,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.response.TaskPictureResponseDTO;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.exceptions.TaskPictureNotFoundException;
+import com.apteka.portal.models.SseEventNames;
+import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskPicture;
 import com.apteka.portal.repository.TaskPictureRepository;
@@ -24,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 public class TaskPictureService {
     private final TaskPictureRepository taskPictureRepository;
     private final TaskRepository taskRepository;
+    private final SseController sseController;
 
     @Value("${app.default.upload.task-picture.dir}")
     private String uploadDir;
@@ -50,6 +54,10 @@ public class TaskPictureService {
             .build();
 
         taskPictureRepository.save(picture);
+
+        var signal = new SseEventNames.EntityUpdateSignalDTO(picture.getTask().getId(), SseSignalTypes.UPDATED);
+        sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, signal);
+
         return TaskPictureResponseDTO.from(picture);
     }
 
