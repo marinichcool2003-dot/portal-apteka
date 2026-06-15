@@ -298,7 +298,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleInvalidGroupMainPageLinksNameException(InvalidGroupMainPageLinksNameException e) {
         log.warn("Ошибка при изменении группы ссылок: {}", e.getMessage());
-        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок" + e.getMessage();
+        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок: " + e.getMessage();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
@@ -306,7 +306,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleGroupMainPageLinksAlreadyExistsException(GroupMainPageLinksAlreadyExistsException e) {
         log.warn("Ошибка при изменении группы ссылок: {}", e.getMessage());
-        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок" + e.getMessage();
+        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
     }
 
@@ -314,7 +314,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleInvalidGroupMainPageLinksDescriptionException(InvalidGroupMainPageLinksDescriptionException e) {
         log.warn("Ошибка! Ошибка при изменении группы ссылок: {}", e.getMessage());
-        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок" + e.getMessage();
+        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок: " + e.getMessage();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 

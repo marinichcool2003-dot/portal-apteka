@@ -29,14 +29,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/v1/auth/**", "/swagger-ui/**", "/v3/api-docs/**")
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
+                // .csrf(csrf -> csrf
+                //         .ignoringRequestMatchers("/api/v1/auth/**", "/swagger-ui/**", "/v3/api-docs/**")
+                //         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                //         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/sse/subscribe").authenticated()
                         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                        .requestMatchers("/api/v1/main-page-links/get-all").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/avatars/**").permitAll()
                         .requestMatchers(

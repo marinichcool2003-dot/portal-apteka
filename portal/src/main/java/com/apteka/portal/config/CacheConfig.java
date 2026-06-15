@@ -57,9 +57,17 @@ public class CacheConfig implements CachingConfigurer {
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
 
-        RedisCacheConfiguration userGroupConfig = defaultConfiguration.entryTtl(Duration.ofDays(1));
+        RedisCacheConfiguration userGroupConfig = defaultConfiguration.entryTtl(Duration.ofDays(3));
         cacheConfigurations.put(CacheNames.USER_GROUPS_LIST, userGroupConfig);
         cacheConfigurations.put(CacheNames.USER_GROUP, userGroupConfig);
+
+        RedisCacheConfiguration groupTaskConfig = defaultConfiguration.entryTtl(Duration.ofDays(3));
+        cacheConfigurations.put(CacheNames.GROUP_TASK, groupTaskConfig);
+        cacheConfigurations.put(CacheNames.GROUP_TASKS_BY_GROUP, groupTaskConfig);
+
+        RedisCacheConfiguration workTypeConfig = defaultConfiguration.entryTtl(Duration.ofDays(3));
+        cacheConfigurations.put(CacheNames.WORK_TYPE, workTypeConfig);
+        cacheConfigurations.put(CacheNames.WORK_TYPES_BY_GROUP, workTypeConfig);
 
         RedisCacheConfiguration groupsStatsConfig = defaultConfiguration.entryTtl(Duration.ofSeconds(30));
         cacheConfigurations.put(CacheNames.GROUPS_USER_STATS, groupsStatsConfig);
@@ -67,8 +75,12 @@ public class CacheConfig implements CachingConfigurer {
         RedisCacheConfiguration userStatsConfig = defaultConfiguration.entryTtl(Duration.ofSeconds(10));
         cacheConfigurations.put(CacheNames.USER_STATS, userStatsConfig);
 
-        RedisCacheConfiguration groupsMainPageLinks = defaultConfiguration.entryTtl(Duration.ofDays(3));
+        RedisCacheConfiguration groupsMainPageLinks = defaultConfiguration.entryTtl(Duration.ofDays(30));
         cacheConfigurations.put(CacheNames.GROUPS_MAIN_PAGE_LINKS, groupsMainPageLinks);
+
+        RedisCacheConfiguration mainPageLinks= defaultConfiguration.entryTtl(Duration.ofDays(30));
+        cacheConfigurations.put(CacheNames.MAIN_PAGE_LINKS_BY_GROUP, mainPageLinks);
+        cacheConfigurations.put(CacheNames.MAIN_PAGE_LINKS, mainPageLinks);
         
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfiguration)

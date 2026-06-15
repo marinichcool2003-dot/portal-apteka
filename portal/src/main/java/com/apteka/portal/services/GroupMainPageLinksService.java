@@ -5,7 +5,6 @@ import java.util.Objects;
 
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
@@ -54,13 +53,15 @@ public class GroupMainPageLinksService {
                 .orElseThrow(() -> new GroupMainPageLinksNotFoundException("Группа ссылок не найдена")));
     }
 
-    @Caching(put = @CachePut(value = CacheNames.GROUPS_MAIN_PAGE_LINKS, key = "#result.id"), evict = @CacheEvict(value = CacheNames.GROUPS_MAIN_PAGE_LINKS, allEntries = true))
+    @CacheEvict(value = CacheNames.GROUPS_MAIN_PAGE_LINKS, allEntries = true)
     @Transactional
     public GroupMainPageLinksResponseDTO create(GroupMainPageLinksRequestDTO dto, AppUserDetails currentUser) {
         groupMainPageLinksSecurityService.validateCanCreateAndUpdate(currentUser);
+
         if (!StringUtils.hasText(dto.name())) {
             throw new InvalidGroupMainPageLinksNameException("Наименование группы ссылок не может быть пустым!");
         }
+
         String cleanName = typeNameValidator.getCleanName(dto.name());
         validateName(cleanName);
         GroupMainPageLinks.GroupMainPageLinksBuilder savedBuilder = GroupMainPageLinks.builder().name(cleanName);

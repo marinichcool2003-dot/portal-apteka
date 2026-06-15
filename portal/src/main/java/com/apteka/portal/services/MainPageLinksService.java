@@ -57,6 +57,12 @@ public class MainPageLinksService {
                 .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка на главной странице не найдена!")));
     }
 
+    @Cacheable(value = CacheNames.MAIN_PAGE_LINKS)
+    @Transactional(readOnly = true)
+    public List<MainPageLinkResponseDTO> getAll() {
+        return mainPageLinkRepository.findAll().stream().map(MainPageLinkResponseDTO::from).toList();
+    }
+
     @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#result.groupMainPageLinksResponseDTO().id()")
     @Transactional
     public MainPageLinkResponseDTO create(MainPageLinkRequestDTO dto, AppUserDetails currentUser) {

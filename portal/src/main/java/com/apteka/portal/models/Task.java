@@ -8,10 +8,12 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -35,6 +37,7 @@ import lombok.ToString;
 @Setter
 @DynamicInsert
 @NoArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -105,7 +108,6 @@ public class Task {
         this.title = taskBuilder.title;
         this.description = taskBuilder.description;
         this.updatedDate = taskBuilder.updatedDate;
-        this.priority = taskBuilder.priority;
         this.workType = taskBuilder.workType;
         this.createdByApteka = taskBuilder.createdByApteka;
         this.createdByClient = taskBuilder.createdByClient;

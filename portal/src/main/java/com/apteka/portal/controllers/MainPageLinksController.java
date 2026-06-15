@@ -23,6 +23,7 @@ import com.apteka.portal.services.MainPageLinksService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -44,10 +45,16 @@ public class MainPageLinksController {
         return ResponseEntity.ok(mainPageLinksService.getOne(id));
     }
 
+    @Operation(summary = "Получить все ссылки")
+    @GetMapping("/get-all")
+    public ResponseEntity<List<MainPageLinkResponseDTO>> getAll() {
+        return ResponseEntity.ok(mainPageLinksService.getAll());
+    }
+
     @Operation(summary = "Создать ссылку")
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'LINK_CHANGER')")
-    public ResponseEntity<MainPageLinkResponseDTO> create(@RequestBody MainPageLinkRequestDTO dto,
+    public ResponseEntity<MainPageLinkResponseDTO> create(@Valid @RequestBody MainPageLinkRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED).body(mainPageLinksService.create(dto, currentUser));
     }
@@ -56,7 +63,7 @@ public class MainPageLinksController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LINK_CHANGER')")
     public ResponseEntity<MainPageLinkResponseDTO> update(@PathVariable Integer id,
-            @RequestBody MainPageLinkUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+            @Valid @RequestBody MainPageLinkUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(mainPageLinksService.update(id, dto, currentUser));
     }
 

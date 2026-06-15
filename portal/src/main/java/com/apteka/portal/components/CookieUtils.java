@@ -1,5 +1,7 @@
 package com.apteka.portal.components;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.http.Cookie;
@@ -11,22 +13,31 @@ public class CookieUtils {
     public static final String ACCESS_TOKEN_COOKIE = "X-Access-Token";
     public static final String REFRESH_TOKEN_COOKIE = "X-Refresh-Token";
 
+    @Value("${cookie.secure.flag}")
+    private boolean cookieSecureFlag;
+
     public void createAccessCookie(HttpServletResponse response, String token, int durationSeconds) {
-        Cookie cookie = new Cookie(ACCESS_TOKEN_COOKIE, token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(durationSeconds);
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(ACCESS_TOKEN_COOKIE, token)
+                .httpOnly(true)
+                .secure(cookieSecureFlag)
+                .path("/")
+                .maxAge(durationSeconds)
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 
     public void createRefreshCookie(HttpServletResponse response, String refreshToken, int durationSeconds) {
-        Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE, refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(durationSeconds);
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
+                .httpOnly(true)
+                .secure(cookieSecureFlag)
+                .path("/")
+                .maxAge(durationSeconds)
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 
     public void deleteAuthCookies(HttpServletResponse response) {
@@ -43,16 +54,18 @@ public class CookieUtils {
                 return cookie.getValue();
             }
         }
-
         return null;
     }
 
     public void clearCookie(HttpServletResponse response, String name, String path) {
-        Cookie cookie = new Cookie(name, null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath(path);
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(name, "")
+                .httpOnly(true)
+                .secure(cookieSecureFlag)
+                .path(path)
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 }

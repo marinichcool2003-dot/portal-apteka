@@ -56,7 +56,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 logger.error("Ошибка валидации JWT токена: " + e.getMessage());
             }
         }
-        
+
         filterChain.doFilter(request, response);
     }
 }

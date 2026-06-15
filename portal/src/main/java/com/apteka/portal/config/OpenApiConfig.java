@@ -15,16 +15,16 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenApi() {
         final String securitySchemeName = "cookieAuth";
-        
-        return new OpenAPI()
+
+        OpenAPI openApi = new OpenAPI()
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
                 .components(new Components()
                         .addSecuritySchemes(securitySchemeName, new SecurityScheme()
-                                .name("X-Access-Token")
+                                .name("X-Access-Token") // Имя куки, которую ищет бэкенд
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.COOKIE)
-                                .description("Для авторизации через Swagger выполните эндпоинт /login. " +
+                                .description("Авторизация на основе Cookies. Выполните эндпоинт /login. " +
                                              "Браузер автоматически сохранит куку X-Access-Token, " +
                                              "и Swagger будет прикреплять её ко всем последующим запросам.")))
                 .info(new Info()
@@ -35,5 +35,12 @@ public class OpenApiConfig {
                                 .name("Birdux Dev Team")
                                 .email("support@birdux.kz")
                                 .url("https://rutube.ru/video/71a3f8b5315c645256c7fae5cbac3afe/")));
+
+        // КРИТИЧЕСКИЙ ШАГ: заставляем Swagger-UI автоматически отправлять куки в Docker-окружении
+        openApi.addExtension("x-requestInterceptor",
+                "req => { req.credentials = 'include'; return req; }");
+
+        return openApi;
     }
 }
+
