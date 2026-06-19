@@ -25,7 +25,7 @@ public class NewsSecurityService {
     }
 
     public void validateCanUpdate(AppUserDetails currentUser, News news) {
-        if (!currentUser.hasRole(UserRole.AMBASSADOR)) {
+        if (!currentUser.hasAnyRole(UserRole.AMBASSADOR, UserRole.SENIOR_AMBASSADOR)) {
             throw new AccessDeniedException("Только пользователи с ролью AMBASSADOR могут изменять новости");
         }
         if (!Objects.equals(news.getUserGroup().getId(), currentUser.getUserGroup().getId())) {
