@@ -1,6 +1,6 @@
 package com.apteka.portal.services;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -55,8 +55,8 @@ public class NewsService {
         validateTitle(dto.title());
         validateNewsText(dto.newsText());
         newsSecurityService.validateCanCreateNews(currentUser, dto);
-        Client client = clientRepository.findById(currentUser.getClientId())
-                .orElseThrow(() -> new ClientNotFoundException(currentUser.getClientId()));
+        Client client = clientRepository.findById(currentUser.getInternalId())
+                .orElseThrow(() -> new ClientNotFoundException(currentUser.getInternalId()));
         UserGroup userGroup = userGroupRepository.findById(dto.userGroupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.userGroupId()));
         News news = News.builder()
@@ -64,7 +64,7 @@ public class NewsService {
                 .newsText(dto.newsText())
                 .author(client)
                 .userGroup(userGroup)
-                .creationDate(LocalDateTime.now())
+                .creationDate(Instant.now())
                 .build();
         News savedNews = newsRepository.save(news);
 
@@ -94,8 +94,8 @@ public class NewsService {
         }
 
         if (hasChange) {
-            news.setUpdatedDate(LocalDateTime.now());
-            news.setLastModifiedBy(currentUser.getDisplayName());
+            news.setUpdatedAt(Instant.now());
+            news.setUpdatedBy(currentUser.getDisplayName());
 
             var signal = new SseEventNames.EntityUpdateSignalDTO(news.getId(), SseSignalTypes.UPDATED);
             sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);

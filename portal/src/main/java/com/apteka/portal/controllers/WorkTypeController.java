@@ -29,6 +29,7 @@ import com.apteka.portal.docs.InternalServerErrorApiResponse;
 import com.apteka.portal.docs.NotFoundApiResponse;
 import com.apteka.portal.docs.UnauthorizedApiResponse;
 import com.apteka.portal.dtos.request.WorkTypeRequestDTO;
+import com.apteka.portal.dtos.request.WorkTypeUpdateRequestDTO;
 import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 
@@ -87,7 +88,7 @@ public class WorkTypeController {
     @ConflictApiResponse
     @InternalServerErrorApiResponse
     @PutMapping("/{id}")
-    public ResponseEntity<WorkTypeResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody WorkTypeRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<WorkTypeResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody WorkTypeUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok().body(workTypeService.update(id, dto, currentUser));
     }
 

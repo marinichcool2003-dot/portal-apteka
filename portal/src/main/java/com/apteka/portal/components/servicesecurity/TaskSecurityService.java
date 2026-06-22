@@ -44,8 +44,8 @@ public class TaskSecurityService {
                 Client targetClient = clientRepository.findByIdWithAccount(dto.assignedClientId())
                         .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
 
-                Integer targetClientGroupId = targetClient.getUserGroup() != null
-                        ? targetClient.getUserGroup().getId()
+                Integer targetClientGroupId = targetClient.getAccount().getUserGroup() != null
+                        ? targetClient.getAccount().getUserGroup().getId()
                         : null;
 
                 if (!Objects.equals(targetClientGroupId, taskGroupId)) {
@@ -149,7 +149,7 @@ public class TaskSecurityService {
         }
 
         if (currentUser.getType() == UserType.APTEKA) {
-            if (!isAptekaRelatedToTask(task, currentUser)) {
+            if (!isUserRelatedToTask(task, currentUser)) {
                 throw new AccessDeniedException(
                         "Аптека может изменять только свои собственные или назначенные ей задачи");
             }
@@ -166,14 +166,9 @@ public class TaskSecurityService {
                 || user.getRoles().contains(UserRole.SENIOR);
     }
 
-    private boolean isUserRelatedToTask(Task task, AppUserDetails user) {
-        return Objects.equals(getAssignedClientId(task), user.getClientId())
-                || Objects.equals(getCreatedByClientId(task), user.getClientId());
-    }
 
-    private boolean isAptekaRelatedToTask(Task task, AppUserDetails user) {
-        return Objects.equals(getCreatedByAptekaId(task), user.getAptekaId())
-                || Objects.equals(getAssignedAptekaId(task), user.getAptekaId());
+    private boolean isUserRelatedToTask(Task task, AppUserDetails user) {
+        return Objects.equals(getCreator(task), user.getInternalId());
     }
 
     private boolean isTaskLockedForChanges(Task task) {
@@ -198,8 +193,7 @@ public class TaskSecurityService {
             currentGroupId = task.getWorkType().getGroupTask().getUserGroup().getId();
         }
 
-        return !Objects.equals(getAssignedAptekaId(task), dto.assignedAptekaId()) ||
-                !Objects.equals(getAssignedClientId(task), dto.assignedClientId()) ||
+        return !Objects.equals(getAssignerId(task), dto.assignedAptekaId()) ||
                 !Objects.equals(currentGroupId, targetGroupId);
     }
 
@@ -214,8 +208,8 @@ public class TaskSecurityService {
         if (dto.assignedClientId() != null) {
             Client newClient = clientRepository.findById(dto.assignedClientId())
                     .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
-            Integer newClientGroupId = (newClient != null && newClient.getUserGroup() != null)
-                    ? newClient.getUserGroup().getId()
+            Integer newClientGroupId = (newClient != null && newClient.getAccount().getUserGroup() != null)
+                    ? newClient.getAccount().getUserGroup().getId()
                     : null;
 
             return Objects.equals(userGroupId, newClientGroupId);
@@ -224,12 +218,15 @@ public class TaskSecurityService {
         return true;
     }
 
-    private Integer getAssignedAptekaId(Task task) {
-        return task.getAssignedApteka() != null ? task.getAssignedApteka().getId() : null;
-    }
-
-    private UUID getAssignedClientId(Task task) {
-        return task.getAssignedClient() != null ? task.getAssignedClient().getId() : null;
+    private UUID getAssignerId(Task task) {
+        if (task.getAssignedApteka() != null) {
+            return task.getAssignedApteka().getId();
+        }
+        else if (task.getAssignedClient() != null) {
+            return task.getAssignedClient().getId();
+        } else {
+            return null;
+        }
     }
 
     private UserGroup getUserGroupFromWorkTypeId(Integer workTypeId) {
@@ -245,11 +242,15 @@ public class TaskSecurityService {
                 .orElse(null);
     }
 
-    private Integer getCreatedByAptekaId(Task task) {
-        return task.getCreatedByApteka() != null ? task.getCreatedByApteka().getId() : null;
-    }
-
-    private UUID getCreatedByClientId(Task task) {
-        return task.getCreatedByClient() != null ? task.getCreatedByClient().getId() : null;
+    private UUID getCreator(Task task) {
+        if (task.getCreatedByApteka() != null) {
+            return task.getCreatedByApteka().getId();
+        }
+        else if (task.getCreatedByClient() != null) {
+            return task.getCreatedByClient().getId();
+        }
+        else {
+            return null;
+        }
     }
 }

@@ -123,6 +123,10 @@ public class MainPageLinksService {
             hasChange = true;
         }
 
+        if (hasChange) {
+            mainPageLink.setUpdatedBy(currentUser.getDisplayName());
+        }
+
         MainPageLinkResponseDTO response = MainPageLinkResponseDTO.from(mainPageLink);
 
         if (hasChange) {

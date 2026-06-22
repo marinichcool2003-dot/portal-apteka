@@ -7,8 +7,6 @@ import org.springframework.stereotype.Service;
 
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.repository.AccountRepository;
-import com.apteka.portal.repository.AptekaRepository;
-import com.apteka.portal.repository.ClientRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +18,7 @@ public class AppUserDetailService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String login) {
 
-        return accountRepository.findByLogin(login).map(account -> new AppUserDetails(account.getClient()))
+        return accountRepository.findByLogin(login).map(AppUserDetails::new)
                 .orElseThrow(() -> new UsernameNotFoundException(login));
     }
 }

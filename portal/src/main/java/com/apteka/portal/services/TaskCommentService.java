@@ -89,15 +89,9 @@ public class TaskCommentService {
         }
 
         if (currentUser.isClient()) {
-            if (currentUser.getClientId() == null) {
-                throw new AvtorCommentNotInputException("ID клиента отсутствует в контексте безопасности.");
-            }
-            builder.client(clientRepository.getReferenceById(currentUser.getClientId()));
+            builder.client(clientRepository.getReferenceById(currentUser.getInternalId()));
         } else if (currentUser.isApteka()) {
-            if (currentUser.getAptekaId() == null) {
-                throw new AvtorCommentNotInputException("ID аптеки отсутствует в контексте безопасности.");
-            }
-            builder.apteka(aptekaRepository.getReferenceById(currentUser.getAptekaId()));
+            builder.apteka(aptekaRepository.getReferenceById(currentUser.getInternalId()));
         } else {
             throw new AvtorCommentNotInputException("Автор комментария имеет неопределенный тип аккаунта.");
         }

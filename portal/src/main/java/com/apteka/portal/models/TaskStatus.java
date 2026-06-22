@@ -8,24 +8,25 @@ import lombok.Getter;
 @AllArgsConstructor
 @Getter
 public enum TaskStatus {
-    OPEN("Открыта"),
-    CLOSED("Закрыта"),
-    DENIED("Отклонена"),
-    PROCESSED("В процессе");
+    OPEN("OPEN", "Открыта"),
+    CLOSED("CLOSED", "Закрыта"),
+    DENIED("DENIED", "Отклонена"),
+    PROCESSED("PROCESSED", "В процессе");
 
+    private final String code;
     private final String description;
 
-    public static TaskStatus fromDescription(String description) {
+    public static TaskStatus fromCode(String code) {
 
-        if (description == null || description.isBlank()) {
+        if (code == null || code.isBlank()) {
             throw new UnknowTaskStatusException("Статус не может быть пустым");
         }
 
         for (TaskStatus status : values()) {
-            if (status.description.equals(description)) {
+            if (status.code.equals(code)) {
                 return status;
             }
         }
-        throw new UnknowTaskStatusException("Неизвестный статус: " + description);
+        throw new UnknowTaskStatusException("Неизвестный статус: " + code);
     }
 }

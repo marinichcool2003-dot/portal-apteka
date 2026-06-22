@@ -107,24 +107,34 @@ public class UserGroupService {
                 upGroup.setName(cleanName);
                 hasChange = true;
             }
-        }        
-        
+        }
+
         if (StringUtils.hasText(dto.phoneNumber())) {
             String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
-            upGroup.setPhoneNumber(cleanPhoneNumber);
-            hasChange = true;
+            if (!Objects.equals(cleanPhoneNumber, upGroup.getPhoneNumber())) {
+                upGroup.setPhoneNumber(cleanPhoneNumber);
+                hasChange = true;
+            }
         }
 
         if (StringUtils.hasText(dto.internalNumber())) {
-           String cleanInternalnumber = phoneNumberValidator.getCleanInternalNumber(dto.internalNumber()); 
-           upGroup.setInternalNumber(cleanInternalnumber);
-           hasChange = true; 
+            String cleanInternalnumber = phoneNumberValidator.getCleanInternalNumber(dto.internalNumber());
+            if (!Objects.equals(cleanInternalnumber, upGroup.getInternalNumber())) {
+                upGroup.setInternalNumber(cleanInternalnumber);
+                hasChange = true;
+            }
         }
 
         if (StringUtils.hasText(dto.extensionNumber())) {
             String cleanExtensionNumber = phoneNumberValidator.getCleanInternalNumber(dto.internalNumber());
-            upGroup.setExtensionNumber(cleanExtensionNumber);
-            hasChange = true;
+            if (!Objects.equals(cleanExtensionNumber, upGroup.getExtensionNumber())) {
+                upGroup.setExtensionNumber(cleanExtensionNumber);
+                hasChange = true;
+            }
+        }
+
+        if (hasChange) {
+            upGroup.setUpdatedBy(currentUser.getDisplayName());
         }
 
         UserGroupResponseDTO response = UserGroupResponseDTO.from(upGroup);

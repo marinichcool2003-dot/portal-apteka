@@ -10,9 +10,9 @@ import jakarta.validation.constraints.Positive;
 public record DepartmentFullFilterRequestDTO(
         @Positive(message = "Идентификатор группы пользователя должен быть больше нуля") Integer groupId,
         UUID creatorClientId,
-        @Positive(message = "Идентификатор аптек должен быть больше нуля") Integer creatorAptekaId,
+        UUID creatorAptekaId,
         UUID specificClientId,
-        @Positive(message = "Идентификатор аптек должен быть больше нуля") Integer specificAptekaId,
+        UUID specificAptekaId,
         TaskStatus status,
         TaskPriority priority,
         @Positive(message = "Идентификатор вида работ должен быть больше нуля") Integer workTypeId,

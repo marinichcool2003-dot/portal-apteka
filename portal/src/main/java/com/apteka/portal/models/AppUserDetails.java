@@ -3,7 +3,6 @@ package com.apteka.portal.models;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -44,6 +43,7 @@ public class AppUserDetails implements UserDetails {
             this.type = UserType.APTEKA;
             Apteka apteka = account.getApteka();
             this.displayName = account.getUserGroup().getName() + " " + apteka.getNumber();
+            this.roles = Set.of(UserRole.APTEKA);
         }
         else {
             throw new AccessDeniedException("Не удалось идентифицировать тип пользователя!");

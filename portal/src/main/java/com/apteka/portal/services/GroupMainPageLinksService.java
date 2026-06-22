@@ -105,6 +105,10 @@ public class GroupMainPageLinksService {
             }
         }
 
+        if (hasChange) {
+            groupMainPageLinks.setUpdatedBy(currentUser.getDisplayName());
+        }
+
         GroupMainPageLinksResponseDTO response = GroupMainPageLinksResponseDTO.from(groupMainPageLinks);
 
         if (hasChange) {

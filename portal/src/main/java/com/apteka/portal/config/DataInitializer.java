@@ -9,6 +9,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import com.apteka.portal.models.Account;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
@@ -46,16 +47,22 @@ public class DataInitializer implements CommandLineRunner {
                 .orElseThrow(() -> new RuntimeException("Критическая ошибка: Группа не найдена"));
         }
 
-        if (!clientRepository.existsByLogin(adminLogin)) {
+        if (!clientRepository.existsByAccount_Login(adminLogin)) {
             log.info("Начальный эадминистратор не найден. Запуск процесса создания...");
 
             Client admin = Client.builder()
+                    .fullName("Администратор")
+                    .roles(Set.of(UserRole.ADMIN))   
+                    .build();
+
+            Account account = Account.builder()
                     .login(adminLogin)
                     .password(passwordEncoder.encode(adminPassword))
-                    .fullName("Администратор")
-                    .roles(Set.of(UserRole.ADMIN))
                     .userGroup(adminGroup)
+                    .client(admin)
                     .build();
+            
+            admin.setAccount(account);
             clientRepository.save(admin);
         }
 

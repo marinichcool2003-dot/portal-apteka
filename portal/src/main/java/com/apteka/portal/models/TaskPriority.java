@@ -8,18 +8,19 @@ import lombok.Getter;
 @AllArgsConstructor
 @Getter
 public enum TaskPriority {
-    LOW("Низкий"),
-    MIDDLE("Средний"),
-    HIGH("Высокий");
+    LOW("LOW", "Низкий"),
+    MIDDLE("MIDDLE", "Средний"),
+    HIGH("HIGH", "Высокий");
 
+    private final String code;
     private final String description;
 
-    public static TaskPriority fromDescription(String description) {
+    public static TaskPriority fromCode(String code) {
         for (TaskPriority priority : values()) {
-            if (priority.description.equals(description)) {
+            if (priority.code.equals(code)) {
                 return priority;
             }
         }
-        throw new UnknowTaskPriorityException("Неизвестный статус: " + description);
+        throw new UnknowTaskPriorityException("Неизвестный статус: " + code);
     }
 }

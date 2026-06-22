@@ -14,6 +14,7 @@ import com.apteka.portal.components.servicesecurity.WorkTypeSecurityService;
 import com.apteka.portal.components.validators.TypeNameValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.WorkTypeRequestDTO;
+import com.apteka.portal.dtos.request.WorkTypeUpdateRequestDTO;
 import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
 import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
@@ -24,6 +25,7 @@ import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
+import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.repository.GroupTaskRepository;
 import com.apteka.portal.repository.WorkTypeRepository;
@@ -67,15 +69,29 @@ public class WorkTypeService {
 
         workTypeSecurityService.validateBossOrAdminInGroup(currentUser, groupTask.getUserGroup());
 
-        if (!StringUtils.hasText(dto.name()))
+        WorkType.WorkTypeBuilder workTypeBuilder = WorkType.builder();
+
+        workTypeBuilder.groupTask(groupTask);
+
+        if (!StringUtils.hasText(dto.name())) {
             throw new InvalidWorkTypeNameException();
+        }
+
         String cleanWorkTypeName = typeNameValidator.getCleanName(dto.name());
         validateWorkTypeName(cleanWorkTypeName, dto.groupTaskId());
+        workTypeBuilder.name(cleanWorkTypeName);
 
-        WorkType newWorkType = workTypeRepository.save(WorkType.builder()
-                .name(cleanWorkTypeName)
-                .groupTask(groupTask)
-                .build());
+        if (StringUtils.hasText(dto.priorityCode())) {
+            workTypeBuilder.priority(TaskPriority.fromCode(dto.priorityCode()));
+        } else {
+            workTypeBuilder.priority(TaskPriority.LOW);
+        }
+
+        if (StringUtils.hasText(dto.wiki_link())) {
+            workTypeBuilder.wikiLink(dto.wiki_link());
+        }
+
+        WorkType newWorkType = workTypeRepository.save(workTypeBuilder.build());
 
         var signal = new SseEventNames.WorkTypeSignalDTO(newWorkType.getGroupTask().getId(), SseSignalTypes.CREATED);
         sseController.broadcastNotification(SseEventNames.REFRESH_WORK_TYPES, signal);
@@ -84,7 +100,7 @@ public class WorkTypeService {
     }
 
     @Transactional
-    public WorkTypeResponseDTO update(Integer id, WorkTypeRequestDTO dto, AppUserDetails currentUser) {
+    public WorkTypeResponseDTO update(Integer id, WorkTypeUpdateRequestDTO dto, AppUserDetails currentUser) {
 
         WorkType upWorkType = workTypeRepository.findById(id)
                 .orElseThrow(() -> new WorkTypeNotFoundException(id));
@@ -101,6 +117,19 @@ public class WorkTypeService {
             }
         }
 
+        if (StringUtils.hasText(dto.priorityCode())) {
+            TaskPriority newPriority = TaskPriority.fromCode(dto.priorityCode());
+            if (!Objects.equals(newPriority, upWorkType.getPriority())) {
+                upWorkType.setPriority(TaskPriority.fromCode(dto.priorityCode()));
+                hasChanged = true;
+            }
+        }
+
+        if (StringUtils.hasText(dto.wiki_link()) && !Objects.equals(dto.wiki_link(), upWorkType.getWikiLink())) {
+            upWorkType.setWikiLink(dto.wiki_link());
+            hasChanged = true;
+        }
+
         if (dto.groupTaskId() != null && dto.groupTaskId() > 0) {
             GroupTask newGroupTask = groupTaskRepository.findById(dto.groupTaskId())
                     .orElseThrow(() -> new GroupTaskNotFoundException(dto.groupTaskId()));
@@ -111,6 +140,10 @@ public class WorkTypeService {
                 upWorkType.setGroupTask(newGroupTask);
                 hasChanged = true;
             }
+        }
+
+        if (hasChanged) {
+            upWorkType.setUpdatedBy(currentUser.getDisplayName());
         }
 
         WorkTypeResponseDTO response = WorkTypeResponseDTO.from(upWorkType);

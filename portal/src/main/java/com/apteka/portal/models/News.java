@@ -1,7 +1,6 @@
 package com.apteka.portal.models;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.CreatedDate;
 

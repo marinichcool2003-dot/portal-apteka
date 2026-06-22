@@ -111,6 +111,10 @@ public class GroupTaskService {
             hasChange = true;
         }
 
+        if (hasChange) {
+            upGroup.setUpdatedBy(currentUser.getDisplayName());
+        }
+
         GroupTaskResponseDTO response = GroupTaskResponseDTO.from(upGroup);
 
         if (hasChange) {
@@ -118,6 +122,7 @@ public class GroupTaskService {
             if (cache != null) {
                 cache.put(id, response);
             }
+            
             cacheManager.getCache(CacheNames.GROUP_TASKS_BY_GROUP).evict(response.userGroup().id());
             var signal = new SseEventNames.EntityUpdateSignalDTO(upGroup.getId(), SseSignalTypes.UPDATED);
             sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);

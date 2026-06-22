@@ -31,6 +31,7 @@ import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.dtos.response.CreatedStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
+import com.apteka.portal.dtos.response.UpdateBasicClientFormResponseDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.DublicateClientLoginException;
@@ -145,6 +146,7 @@ public class ClientService {
         String normalizedName = fullNameValidator.getCleanFullName(dto.fullName());
         passwordValidator.validatePassword(dto.password(), true);
         String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
+        String cleanExtensionNumber = phoneNumberValidator.getCleanExtensionNumber(dto.extensionNumber());
 
         UserGroup group = userGroupRepository.findById(dto.groupClientId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.groupClientId()));
@@ -162,6 +164,7 @@ public class ClientService {
         Client newClient = Client.builder()
                 .fullName(normalizedName)
                 .roles(roles)
+                .extensionNumber(cleanExtensionNumber)
                 .avatarURL(uploadAvatarDir + "/default.png")
                 .build();
 
@@ -176,7 +179,8 @@ public class ClientService {
         newClient.setAccount(account);
 
         Client client = clientRepository.save(newClient);
-        var signal = new SseEventNames.AppUserDetailsSignalDTO(newClient.getAccount().getUserGroup().getId(), SseSignalTypes.CREATED);
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(newClient.getAccount().getUserGroup().getId(),
+                SseSignalTypes.CREATED);
         sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
         return ClientResponseDTO.from(client);
     }
@@ -186,10 +190,17 @@ public class ClientService {
         UserRole role = UserRole.fromCode(code);
         Client client = clientRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
+
         clientSecurityService.canGiveRoleToClient(Set.of(role), currentUser, client.getAccount().getUserGroup());
+
+        if (client.getRoles().contains(role)) {
+            return ClientResponseDTO.from(client);
+        }
+
         client.getRoles().add(role);
         ClientResponseDTO response = ClientResponseDTO.from(client);
         sseController.sendNotification(client.getAccount().getLogin(), SseEventNames.REFRESH_CLIENTS, response);
+
         return response;
     }
 
@@ -212,11 +223,17 @@ public class ClientService {
     public ClientResponseDTO updateYourself(ClientUpdateRequestDTO dto, AppUserDetails currentUser)
             throws IOException {
 
-        Client savedClient = updateBasicClientForm(currentUser.getInternalId(), dto.login(), dto.password(),
+        UpdateBasicClientFormResponseDTO savedClient = updateBasicClientForm(currentUser.getInternalId(), dto.login(), dto.password(),
                 dto.avatar());
+        Client client = savedClient.client();
 
-        ClientResponseDTO response = ClientResponseDTO.from(savedClient);
-        sseController.sendNotification(savedClient.getAccount().getLogin(), SseEventNames.REFRESH_CLIENTS, response);
+        if (!savedClient.hasChange()) {
+            return ClientResponseDTO.from(client);
+        }
+
+        client.setUpdatedBy(currentUser.getDisplayName());
+        ClientResponseDTO response = ClientResponseDTO.from(client);
+        sseController.sendNotification(client.getAccount().getLogin(), SseEventNames.REFRESH_CLIENTS, response);
         return response;
     }
 
@@ -227,30 +244,39 @@ public class ClientService {
             throw new AccessDeniedException("Только администратор может полностью изменять сотрудника");
         }
 
-        Client savedClient = updateBasicClientForm(id, dto.login(), dto.password(), dto.avatar());
+        UpdateBasicClientFormResponseDTO savedClient = updateBasicClientForm(id, dto.login(), dto.password(), dto.avatar());
+        Client client = savedClient.client();
+        boolean hasChange = savedClient.hasChange();
 
         if (StringUtils.hasText(dto.fullName())) {
             String cleanFullName = fullNameValidator.getCleanFullName(dto.fullName());
-            savedClient.setFullName(cleanFullName);
+            if (!Objects.equals(cleanFullName, client.getFullName())) {
+                client.setFullName(cleanFullName);
+                hasChange = true;
+            } 
         }
 
         if (dto.groupClientId() != null && dto.groupClientId() > 0
-                && !Objects.equals(savedClient.getAccount().getUserGroup().getId(), dto.groupClientId())) {
-            List<AssignedStatsDTO> stats = taskRepository.getClientAssignedStatsBatch(List.of(savedClient.getId()));
+                && !Objects.equals(client.getAccount().getUserGroup().getId(), dto.groupClientId())) {
+            List<AssignedStatsDTO> stats = taskRepository.getClientAssignedStatsBatch(List.of(client.getId()));
             AssignedStatsDTO thisClientStats = stats.stream()
                     .findFirst()
-                    .orElse(new AssignedStatsDTO(savedClient.getId(), 0L, 0L, 0L, 0L, 0L));
+                    .orElse(new AssignedStatsDTO(client.getId(), 0L, 0L, 0L, 0L, 0L));
             if (thisClientStats.openCount() + thisClientStats.processedCount() > 0) {
                 throw new AccessDeniedException("У пользователя еще имеются открытые задачи");
             }
             UserGroup group = userGroupRepository.findById(dto.groupClientId())
                     .orElseThrow(() -> new GroupUserNotFoundException(dto.groupClientId()));
-            savedClient.getAccount().setUserGroup(group);
+            client.getAccount().setUserGroup(group);
+            hasChange = true;
         }
 
-        var signal = new SseEventNames.EntityUpdateSignalDTO(savedClient.getId(), SseSignalTypes.UPDATED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
-        return ClientResponseDTO.from(savedClient);
+        if (hasChange) {
+            client.setUpdatedBy(currentUser.getDisplayName());
+            var signal = new SseEventNames.EntityUpdateSignalDTO(client.getId(), SseSignalTypes.UPDATED);
+            sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+        }
+        return ClientResponseDTO.from(client);
     }
 
     @Transactional
@@ -262,31 +288,37 @@ public class ClientService {
             throw new SelfDeleteException("Вы не можете удалить самого себя!");
         }
         Client client = clientRepository.findByIdWithAccount(id)
-            .orElseThrow(() -> new ClientNotFoundException(id));
+                .orElseThrow(() -> new ClientNotFoundException(id));
 
         clientRepository.delete(client);
-        var signal = new SseEventNames.AppUserDetailsSignalDTO(client.getAccount().getUserGroup().getId(), SseSignalTypes.DELETED);
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(client.getAccount().getUserGroup().getId(),
+                SseSignalTypes.DELETED);
         sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
     }
 
-    private Client updateBasicClientForm(UUID id, String login, String password, MultipartFile avatar)
+    private UpdateBasicClientFormResponseDTO updateBasicClientForm(UUID id, String login, String password, MultipartFile avatar)
             throws IOException {
         Client upClient = clientRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
 
         String oldUserName = upClient.getAccount().getLogin();
         boolean needsLogout = false;
+        boolean hasChange = false;
 
         if (avatar != null && !avatar.isEmpty()) {
-            updateAvatar(upClient, avatar);
+            if (!Objects.equals(avatar.getOriginalFilename(), upClient.getAvatarURL())) {
+                updateAvatar(upClient, avatar);
+                hasChange = true;
+            }
         }
 
         if (StringUtils.hasText(login)) {
             String cleanLogin = loginValidator.getCleanLogin(login);
-            if (!cleanLogin.equals(upClient.getAccount().getLogin())) {
+            if (!Objects.equals(cleanLogin, upClient.getAccount().getLogin())) {
                 validateLogin(cleanLogin);
                 upClient.getAccount().setLogin(cleanLogin);
                 needsLogout = true;
+                hasChange = true;
             }
         }
 
@@ -297,13 +329,14 @@ public class ClientService {
             passwordValidator.validatePassword(password, true);
             upClient.getAccount().setPassword(passwordEncoder.encode(password));
             needsLogout = true;
+            hasChange = true;
         }
 
         if (needsLogout) {
             authService.invalidateAllSession(oldUserName);
         }
 
-        return upClient;
+        return new UpdateBasicClientFormResponseDTO(upClient, hasChange);
     }
 
     private void updateAvatar(Client client, MultipartFile avatar) throws IOException {

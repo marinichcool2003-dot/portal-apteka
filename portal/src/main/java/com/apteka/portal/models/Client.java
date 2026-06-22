@@ -53,6 +53,9 @@ public class Client{
     @Column(name = "role", nullable = false)
     private Set<UserRole> roles = new HashSet<>();
 
+    @Column(name = "extension_number", length = 20)
+    private String extensionNumber;
+
     @Column(name = "avatar_url", length = 255)
     private String avatarURL;
 

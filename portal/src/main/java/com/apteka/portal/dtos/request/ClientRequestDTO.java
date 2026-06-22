@@ -12,5 +12,6 @@ public record ClientRequestDTO(
         @NotBlank(message = "ФИО обязательно") @Size(min = 2, max = 150, message = "Фио должно быть от 2 до 150 символов") @Pattern(regexp = "^[а-яА-Яa-zA-Z\\s\\-]+$", message = "ФИО не может содержать цифры или спецсимволы") String fullName,
         @NotBlank(message = "Номер телефона обязателен") @Size(max = 20, message = "Номер телефона - максимум 20 символов") String phoneNumber,
         Set<String> rolesCode,
+        String extensionNumber,
         Integer groupClientId) {
 }

@@ -35,7 +35,6 @@ import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.models.Task;
-import com.apteka.portal.models.TaskPriority;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.AptekaRepository;
@@ -102,10 +101,10 @@ public class TaskService {
         var dtoBuilder = dto.toBuilder();
 
         if (currentUser.isClient()) {
-            dtoBuilder.specificClientId(currentUser.getClientId());
+            dtoBuilder.specificClientId(currentUser.getInternalId());
             dtoBuilder.specificAptekaId(null);
         } else if (currentUser.isApteka()) {
-            dtoBuilder.specificAptekaId(currentUser.getAptekaId());
+            dtoBuilder.specificAptekaId(currentUser.getInternalId());
             dtoBuilder.specificClientId(null);
         }
 
@@ -120,10 +119,10 @@ public class TaskService {
         var dtoBuilder = dto.toBuilder();
 
         if (currentUser.isClient()) {
-            dtoBuilder.creatorClientId(currentUser.getClientId());
+            dtoBuilder.creatorClientId(currentUser.getInternalId());
             dtoBuilder.creatorAptekaId(null);
         } else if (currentUser.isApteka()) {
-            dtoBuilder.creatorAptekaId(currentUser.getAptekaId());
+            dtoBuilder.creatorAptekaId(currentUser.getInternalId());
             dtoBuilder.creatorClientId(null);
         }
 
@@ -171,13 +170,13 @@ public class TaskService {
 
         switch (currentUser.getType()) {
             case APTEKA -> {
-                Apteka apteka = aptekaRepository.findById(currentUser.getAptekaId())
-                        .orElseThrow(() -> new AptekaNotFoundException(currentUser.getAptekaId()));
+                Apteka apteka = aptekaRepository.findById(currentUser.getInternalId())
+                        .orElseThrow(() -> new AptekaNotFoundException(currentUser.getInternalId()));
                 task.setCreatedByApteka(apteka);
             }
             case CLIENT -> {
-                Client client = clientRepository.findById(currentUser.getClientId())
-                        .orElseThrow(() -> new ClientNotFoundException(currentUser.getClientId()));
+                Client client = clientRepository.findById(currentUser.getInternalId())
+                        .orElseThrow(() -> new ClientNotFoundException(currentUser.getInternalId()));
                 task.setCreatedByClient(client);
             }
         }
@@ -235,17 +234,9 @@ public class TaskService {
             hasChange = true;
         }
 
-        if (dto.statusDescription() != null && !dto.statusDescription().isBlank()
-                && !Objects.equals(task.getStatus().getDescription(), dto.statusDescription())) {
-            task = changeStatus(task, dto.statusDescription(), currentUser);
-            hasChange = true;
-        }
-
-        if (dto.priorityDescription() != null && !dto.priorityDescription().isBlank()
-                && !Objects.equals(task.getPriority().getDescription(), dto.priorityDescription())) {
-            String oldPriority = task.getPriority().getDescription();
-            task.setPriority(TaskPriority.fromDescription(dto.priorityDescription()));
-            taskAuditService.logChange(id, currentUser, "приоритет", oldPriority, dto.priorityDescription());
+        if (dto.statusCode() != null && !dto.statusCode().isBlank()
+                && !Objects.equals(task.getStatus().getDescription(), dto.statusCode())) {
+            task = changeStatus(task, dto.statusCode(), currentUser);
             hasChange = true;
         }
 
@@ -268,9 +259,9 @@ public class TaskService {
         sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
     }
 
-    private Task changeStatus(Task task, String statusDescription, AppUserDetails currentUser) {
+    private Task changeStatus(Task task, String code, AppUserDetails currentUser) {
         taskSecurityService.validateStatus(task, currentUser);
-        TaskStatus newStatus = TaskStatus.fromDescription(statusDescription);
+        TaskStatus newStatus = TaskStatus.fromCode(code);
 
         if (newStatus == task.getStatus()) {
             return task;
@@ -328,7 +319,7 @@ public class TaskService {
 
         if (task.getAssignedApteka() != null) {
             Integer number = task.getAssignedApteka().getNumber();
-            String ident = (number != null) ? "№" + number : task.getAssignedApteka().getLogin();
+            String ident = (number != null) ? "№" + number : task.getAssignedApteka().getAccount().getLogin();
             assigneeNameBuilder.append(" - ").append("Аптека ").append(ident);
             return assigneeNameBuilder.toString();
         }

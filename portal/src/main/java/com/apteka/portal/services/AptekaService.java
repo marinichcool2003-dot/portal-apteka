@@ -66,7 +66,7 @@ public class AptekaService {
     @Transactional(readOnly = true)
     public List<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto) {
         return aptekaRepository.filter(dto.login(), dto.groupId(), dto.number(), dto.phoneNumber())
-            .stream().map(AptekaResponseDTO::from).toList();
+                .stream().map(AptekaResponseDTO::from).toList();
     }
 
     @Transactional
@@ -97,7 +97,8 @@ public class AptekaService {
         apteka.setAccount(account);
         aptekaRepository.save(apteka);
 
-        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getAccount().getUserGroup().getId(), SseSignalTypes.CREATED);
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getAccount().getUserGroup().getId(),
+                SseSignalTypes.CREATED);
         sseController.broadcastNotification(SseEventNames.REFRESH_APTEKI, signal);
 
         return AptekaResponseDTO.from(apteka);
@@ -108,7 +109,9 @@ public class AptekaService {
         hasAccessToApteki(currentUser);
 
         Apteka apteka = aptekaRepository.findById(id)
-            .orElseThrow(() -> new AptekaNotFoundException(id));
+                .orElseThrow(() -> new AptekaNotFoundException(id));
+
+        boolean hasChange = false;
 
         Account account = apteka.getAccount();
 
@@ -121,6 +124,7 @@ public class AptekaService {
                 validateLogin(newLogin);
                 account.setLogin(newLogin);
                 needsLogout = true;
+                hasChange = true;
             }
         }
 
@@ -131,53 +135,65 @@ public class AptekaService {
             }
             account.setPassword(passwordEncoder.encode(dto.password()));
             needsLogout = true;
+            hasChange = true;
         }
 
         if (StringUtils.hasText(dto.adress())) {
             String cleanAdress = adressValidator.getCleanAdress(dto.adress());
-            apteka.setAdress(cleanAdress);
+            if (!Objects.equals(cleanAdress, apteka.getAdress())) {
+                apteka.setAdress(cleanAdress);
+                hasChange = true;
+            }
         }
 
         if (dto.number() != null && dto.number() > 0) {
             if (!dto.number().equals(apteka.getNumber())) {
                 validateAptekaNumberInGroup(dto.number(), account.getUserGroup().getId());
                 apteka.setNumber(dto.number());
+                hasChange = true;
             }
         }
 
         if (dto.groupId() != null && dto.groupId() > 0) {
             UserGroup userGroup = userGroupRepository.findById(dto.groupId())
                     .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
-            validateAptekaNumberInGroup(apteka.getNumber(), dto.groupId());
-            account.setUserGroup(userGroup);
+            if (!Objects.equals(userGroup.getId(), account.getUserGroup().getId())) {
+                validateAptekaNumberInGroup(apteka.getNumber(), dto.groupId());
+                account.setUserGroup(userGroup);
+                hasChange = true;
+            }
         }
 
         if (StringUtils.hasText(dto.phoneNumber())) {
             String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
-            apteka.setPhoneNumber(cleanPhoneNumber);
+            if (!Objects.equals(cleanPhoneNumber, apteka.getPhoneNumber())) {
+                apteka.setPhoneNumber(cleanPhoneNumber);
+                hasChange = true;
+            }
         }
 
-        Apteka savedApteka = aptekaRepository.save(apteka);
-        savedApteka.setAccount(account);
-
-        if (needsLogout) {
-            authService.invalidateAllSession(oldLogin);
+        if (hasChange) {
+            apteka.setAccount(account);
+            if (needsLogout) {
+                authService.invalidateAllSession(oldLogin);
+            }
+            apteka.setUpdatedBy(currentUser.getDisplayName());
+            var signal = new SseEventNames.EntityUpdateSignalDTO(apteka.getId(), SseSignalTypes.UPDATED);
+            sseController.broadcastNotification(SseEventNames.REFRESH_APTEKI, signal);
         }
 
-        var signal = new SseEventNames.EntityUpdateSignalDTO(apteka.getId(), SseSignalTypes.UPDATED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_APTEKI, signal);
-
-        return AptekaResponseDTO.from(savedApteka);
+        return AptekaResponseDTO.from(apteka);
     }
 
     @Transactional
     public void delete(UUID id, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
         Apteka apteka = aptekaRepository.findById(id)
-            .orElseThrow(() -> new AptekaNotFoundException(id));
+                .orElseThrow(() -> new AptekaNotFoundException(id));
         aptekaRepository.delete(apteka);
 
-        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getAccount().getUserGroup().getId(), SseSignalTypes.DELETED);
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getAccount().getUserGroup().getId(),
+                SseSignalTypes.DELETED);
         sseController.broadcastNotification(SseEventNames.REFRESH_APTEKI, signal);
     }
 
