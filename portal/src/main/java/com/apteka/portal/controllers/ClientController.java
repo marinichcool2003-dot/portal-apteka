@@ -81,7 +81,7 @@ public class ClientController {
     @InternalServerErrorApiResponse
     @GetMapping("/me")
     public ResponseEntity<ClientResponseDTO> getMe(@AuthenticationPrincipal AppUserDetails currentUser) {
-        return ResponseEntity.ok(clientService.getOne(currentUser.getClientId(), currentUser));
+        return ResponseEntity.ok(clientService.getOne(currentUser.getInternalId(), currentUser));
     }
 
     @Operation(summary = "Получить статистику задач текущего сотрудника")

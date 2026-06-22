@@ -33,7 +33,6 @@ import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;
-import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskPriority;
@@ -262,10 +261,8 @@ public class TaskService {
     public void delete(Long id, AppUserDetails currentUser) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
+        taskSecurityService.validateCanDelete(currentUser);
 
-        if (!currentUser.hasRole(UserRole.ADMIN)) {
-            throw new AccessDeniedException("Только пользователь с правами администратора может удалить задачу");
-        }
         taskRepository.delete(task);
         var event = new SseEventNames.EntityUpdateSignalDTO(task.getWorkType().getId(), SseSignalTypes.DELETED);
         sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);

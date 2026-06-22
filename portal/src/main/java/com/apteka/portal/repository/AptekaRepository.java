@@ -2,6 +2,7 @@ package com.apteka.portal.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,23 +11,25 @@ import org.springframework.data.repository.query.Param;
 
 import com.apteka.portal.models.Apteka;
 
-public interface AptekaRepository extends JpaRepository<Apteka, Integer> {
+public interface AptekaRepository extends JpaRepository<Apteka, UUID> {
 
-        @EntityGraph(attributePaths = { "userGroup" })
+        @Override
+        @Query("""
+                SELECT ap FROM Apteka ap
+                JOIN FETCH ap.account
+                        """)
         List<Apteka> findAll();
 
-        boolean existsByLogin(String login);
+        boolean existsByAccount_Login(String login);
 
-        boolean existsByUserGroup_IdAndNumber(Integer userGroupId, Integer number);
-
-        @EntityGraph(attributePaths = { "userGroup" })
-        Optional<Apteka> findByLogin(String login);
+        boolean existsByAccount_UserGroup_IdAndNumber(Integer userGroupName, Integer number);
 
         @Query("""
                         SELECT a FROM Apteka a
-                        LEFT JOIN FETCH a.userGroup
-                        WHERE (:login IS NULL OR LOWER(a.login) LIKE LOWER(CONCAT(:login, '%')))
-                        AND (:groupId IS NULL OR a.userGroup.id = :groupId)
+                        LEFT JOIN FETCH a.account acc
+                        LEFT JOIN FETCH acc.userGroup ug
+                        WHERE (:login IS NULL OR LOWER(acc.login) LIKE LOWER(CONCAT(:login, '%')))
+                        AND (:groupId IS NULL OR acc.userGroup.id = :groupId)
                         AND (:number IS NULL OR a.number = :number)
                         AND (:phoneNumber IS NULL OR LOWER(a.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
                         """)

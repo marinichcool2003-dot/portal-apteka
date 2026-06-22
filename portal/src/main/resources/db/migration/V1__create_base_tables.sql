@@ -13,47 +13,58 @@ CREATE TYPE task_priority AS ENUM (
     'HIGH'
 );
 
-CREATE TABLE IF NOT EXISTS group_task(
+CREATE TABLE IF NOT EXISTS group_task (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
-    user_group_id INT NOT NULL
+    user_group_id INT NOT NULL,
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(50)
 );
 
-CREATE TABLE IF NOT EXISTS task_picture (
-    id BIGSERIAL PRIMARY KEY,
-    path VARCHAR(255) UNIQUE NOT NULL,
-    task_id BIGINT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS group_user(
+CREATE TABLE IF NOT EXISTS group_user (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL,
-    phone_number VARCHAR(20) 
+    phone_number VARCHAR(20),
+    internal_number VARCHAR(20),
+    extension_number VARCHAR(20),
+    avatar_url VARCHAR(255),
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(50)
 );
 
-CREATE TABLE IF NOT EXISTS work_type(
+CREATE TABLE IF NOT EXISTS work_type (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    group_task_id INT NOT NULL
+    priority task_priority NOT NULL DEFAULT 'LOW',
+    wiki_link VARCHAR(2048),
+    group_task_id INT NOT NULL REFERENCES group_task(id) ON DELETE CASCADE,
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(50)
 );
 
-CREATE TABLE IF NOT EXISTS apteka(
-    id SERIAL PRIMARY KEY,
-    login VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(100) NOT NULL,
-    number INT NOT NULL,
-    adress VARCHAR(255),
-    phone_number VARCHAR(20) UNIQUE,
-    group_id INT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS client(
+CREATE TABLE IF NOT EXISTS account (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     login VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(20) UNIQUE,
+    group_id INT NOT NULL REFERENCES group_user(id)
+);
+
+CREATE TABLE IF NOT EXISTS apteka (
+    id UUID PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    number INT NOT NULL,
+    adress VARCHAR(255),
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS client (
+    id UUID PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
     full_name VARCHAR(150) NOT NULL,
-    group_id INT NOT NULL,
-    avatar_url VARCHAR(255)
+    extension_number VARCHAR(20),
+    avatar_url VARCHAR(255),
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS client_roles (
@@ -67,48 +78,56 @@ CREATE TABLE IF NOT EXISTS task (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     description VARCHAR(255) NOT NULL,
-    creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    closing_date TIMESTAMP,
-    updated_date TIMESTAMP,
-    status task_status NOT NULL DEFAULT 'OPEN',
-    priority task_priority NOT NULL DEFAULT 'LOW', 
-    work_type_id INT NOT NULL,
-    assigned_client_id UUID,
-    assigned_apteka_id INT,
-    created_by_apteka_id INT,
-    created_by_client_id UUID   
+    creation_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    closing_date TIMESTAMPTZ,
+    updated_date TIMESTAMPTZ,
+    status task_status NOT NULL DEFAULT 'OPEN', 
+    work_type_id INT NOT NULL REFERENCES work_type(id), 
+    assigned_client_id UUID REFERENCES client(id) ON DELETE SET NULL,
+    assigned_apteka_id UUID REFERENCES apteka(id) ON DELETE SET NULL,
+    created_by_apteka_id UUID REFERENCES apteka(id) ON DELETE SET NULL,
+    created_by_client_id UUID REFERENCES client(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS task_comment(
+CREATE TABLE IF NOT EXISTS task_picture (
+    id BIGSERIAL PRIMARY KEY,
+    path VARCHAR(255) UNIQUE NOT NULL,
+    task_id BIGINT NOT NULL REFERENCES task(id) ON DELETE CASCADE 
+);
+
+CREATE TABLE IF NOT EXISTS task_comment (
     id BIGSERIAL PRIMARY KEY,
     comment VARCHAR(255) NOT NULL,
-    task_id BIGINT NOT NULL,
-    client_id UUID,
-    apteka_id INT
+    task_id BIGINT NOT NULL REFERENCES task(id) ON DELETE CASCADE,
+    client_id UUID REFERENCES client(id) ON DELETE SET NULL,
+    apteka_id UUID REFERENCES apteka(id) ON DELETE SET NULL
 );
 
-CREATE TABLE news(
+CREATE TABLE IF NOT EXISTS news (
     id SERIAL PRIMARY KEY,
     title VARCHAR(50) NOT NULL,
     news_text TEXT NOT NULL,
-    author_id UUID,
-    group_user_id INT NOT NULL,
-    creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_date TIMESTAMP,
-    last_modified_by VARCHAR(50)
+    author_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    group_user_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
+    creation_date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(50)
 );
 
-CREATE TABLE groups_main_page_links(
+CREATE TABLE IF NOT EXISTS groups_main_page_links (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
-    description VARCHAR(100)
+    description VARCHAR(100),
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(50)
 );
 
-CREATE TABLE main_page_links(
+CREATE TABLE IF NOT EXISTS main_page_links (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
-    link TEXT NOT NULL,
+    link VARCHAR(2048) NOT NULL,
     group_link_id INT NOT NULL,
-    FOREIGN KEY (group_link_id) REFERENCES groups_main_page_links(id) ON DELETE CASCADE,
-    CHECK (LENGTH(link) < 1000)
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(50),
+    FOREIGN KEY (group_link_id) REFERENCES groups_main_page_links(id) ON DELETE CASCADE
 );

@@ -1,5 +1,7 @@
 package com.apteka.portal.models;
 
+import java.time.Instant;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -30,6 +32,12 @@ public class GroupTask {
 
     @Column(name = "name", nullable = false)
     private String name;
+
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @Column(name = "updated_by")
+    private String updatedBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_groupId", nullable = false)

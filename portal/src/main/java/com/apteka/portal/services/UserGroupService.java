@@ -73,6 +73,16 @@ public class UserGroupService {
             savedGroupBuilder.phoneNumber(cleanPhoneNumber);
         }
 
+        if (StringUtils.hasText(dto.internalNumber())) {
+            String cleanInternalnumber = phoneNumberValidator.getCleanInternalNumber(dto.internalNumber());
+            savedGroupBuilder.internalNumber(cleanInternalnumber);
+        }
+
+        if (StringUtils.hasText(dto.extensionNumber())) {
+            String cleanExtensionNumber = phoneNumberValidator.getCleanExtensionNumber(dto.extensionNumber());
+            savedGroupBuilder.extensionNumber(cleanExtensionNumber);
+        }
+
         UserGroup saved = savedGroupBuilder.build();
         userGroupRepository.save(saved);
 
@@ -102,6 +112,18 @@ public class UserGroupService {
         if (StringUtils.hasText(dto.phoneNumber())) {
             String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
             upGroup.setPhoneNumber(cleanPhoneNumber);
+            hasChange = true;
+        }
+
+        if (StringUtils.hasText(dto.internalNumber())) {
+           String cleanInternalnumber = phoneNumberValidator.getCleanInternalNumber(dto.internalNumber()); 
+           upGroup.setInternalNumber(cleanInternalnumber);
+           hasChange = true; 
+        }
+
+        if (StringUtils.hasText(dto.extensionNumber())) {
+            String cleanExtensionNumber = phoneNumberValidator.getCleanInternalNumber(dto.internalNumber());
+            upGroup.setExtensionNumber(cleanExtensionNumber);
             hasChange = true;
         }
 

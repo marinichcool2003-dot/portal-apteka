@@ -1,6 +1,6 @@
 package com.apteka.portal.dtos.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 import com.apteka.portal.models.News;
@@ -12,8 +12,8 @@ public record NewsResponseDTO(
     String newsText,
     String authorName,
     UserGroupShortResponseDTO userGroup,
-    LocalDateTime creationDate,
-    LocalDateTime updatedDate
+    Instant creationDate,
+    Instant updatedAt
 ) {
     public static NewsResponseDTO from(News news) {
         return new NewsResponseDTO(
@@ -25,6 +25,6 @@ public record NewsResponseDTO(
                 Optional.ofNullable(news.getUserGroup()).map(UserGroup::getId).orElse(null),
                 Optional.ofNullable(news.getUserGroup()).map(UserGroup::getName).orElse(null)),
             news.getCreationDate(), 
-            news.getUpdatedDate());
+            news.getUpdatedAt());
     }
 }

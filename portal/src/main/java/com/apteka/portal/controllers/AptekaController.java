@@ -1,6 +1,7 @@
 package com.apteka.portal.controllers;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +56,7 @@ public class AptekaController {
     @NotFoundApiResponse
     @InternalServerErrorApiResponse
     @GetMapping("/{id}")
-    public ResponseEntity<AptekaResponseDTO> getOne(@PathVariable Integer id) {
+    public ResponseEntity<AptekaResponseDTO> getOne(@PathVariable UUID id) {
         return ResponseEntity.ok(aptekaService.getOne(id));
     }
 
@@ -66,7 +67,7 @@ public class AptekaController {
     @InternalServerErrorApiResponse
     @GetMapping("/me")
     public ResponseEntity<AptekaResponseDTO> getMe(@AuthenticationPrincipal AppUserDetails currentUser) {
-        return ResponseEntity.ok(aptekaService.getOne(currentUser.getAptekaId()));
+        return ResponseEntity.ok(aptekaService.getOne(currentUser.getInternalId()));
     }
 
     @Operation(summary = "Фильтрация аптек")
@@ -104,7 +105,7 @@ public class AptekaController {
     @ConflictApiResponse
     @InternalServerErrorApiResponse
     @PutMapping("/{id}")
-    public ResponseEntity<AptekaResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody AptekaUpdateRequestDTO dto,
+    public ResponseEntity<AptekaResponseDTO> update(@PathVariable UUID id, @Valid @RequestBody AptekaUpdateRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(aptekaService.update(id, dto, currentUser));
     }
@@ -116,7 +117,7 @@ public class AptekaController {
     @NotFoundApiResponse
     @InternalServerErrorApiResponse
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
         aptekaService.delete(id, currentUser);
         return ResponseEntity.noContent().build();
     }

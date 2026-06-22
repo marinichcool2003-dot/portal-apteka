@@ -13,10 +13,10 @@ public record TaskShortResponseDTO(
         LocalDateTime updatedDate,
         LocalDateTime closingDate,
         String status,
-        String priority,
 
         Integer workTypeId,
         String workTypeName,
+        String priority,
         String groupTaskName,
         String userGroupName,
         UserShortInfo createdBy,
@@ -30,9 +30,9 @@ public record TaskShortResponseDTO(
                 task.getUpdatedDate(),
                 task.getClosingDate(),
                 task.getStatus() != null ? task.getStatus().name() : null,
-                task.getPriority() != null ? task.getPriority().name() : null,
                 Optional.ofNullable(task.getWorkType()).map(wt -> wt.getId()).orElse(null),
                 Optional.ofNullable(task.getWorkType()).map(wt -> wt.getName()).orElse(null),
+                Optional.ofNullable(task.getWorkType()).map(wt -> wt.getPriority().getDescription()).orElse(null),
                 Optional.ofNullable(task.getWorkType()).map(wt -> wt.getGroupTask()).map(gt -> gt.getName())
                         .orElse(null),
                 Optional.ofNullable(task.getWorkType())

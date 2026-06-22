@@ -1,5 +1,7 @@
 package com.apteka.portal.models;
 
+import java.time.Instant;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -30,4 +32,10 @@ public class GroupMainPageLinks {
 
     @Column(name = "description", nullable = true)
     private String description;
+    
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @Column(name = "updated_by")
+    private String updatedBy;
 }

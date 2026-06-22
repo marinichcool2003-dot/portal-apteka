@@ -2,12 +2,13 @@ package com.apteka.portal.dtos.response;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.UserRole;
 
 public record AptekaResponseDTO(
-    Integer id,
+    UUID id,
     String login,
     String adress,
     String phoneNumber,
@@ -18,11 +19,11 @@ public record AptekaResponseDTO(
     public static AptekaResponseDTO from(Apteka apteka){
         return new AptekaResponseDTO(
             apteka.getId(),
-            apteka.getLogin(), 
+            apteka.getAccount().getLogin(), 
             apteka.getAdress(),
             apteka.getPhoneNumber(),
             apteka.getRoles(),
-            Optional.ofNullable(apteka.getUserGroup())
+            Optional.ofNullable(apteka.getAccount().getUserGroup())
                 .map(group -> new UserGroupShortResponseDTO(group.getId(), group.getName()))
                 .orElse(null)
         );

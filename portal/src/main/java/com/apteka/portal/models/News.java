@@ -1,5 +1,6 @@
 package com.apteka.portal.models;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.CreatedDate;
@@ -47,11 +48,11 @@ public class News {
 
     @CreatedDate
     @Column(name = "creation_date", nullable = false, updatable = false)
-    private LocalDateTime creationDate;
+    private Instant creationDate;
 
-    @Column(name = "updated_date")
-    private LocalDateTime updatedDate;
+    @Column(name = "updated_at")
+    private Instant updatedAt;
 
-    @Column(name = "last_modified_by")
-    private String lastModifiedBy;
+    @Column(name = "updated_by")
+    private String updatedBy;
 }

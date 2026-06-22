@@ -1,5 +1,7 @@
 package com.apteka.portal.models;
 
+import java.time.Instant;
+
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -41,4 +43,10 @@ public class MainPageLink {
     @JoinColumn(name = "group_link_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private GroupMainPageLinks groupMainPageLinks;
+
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @Column(name = "updated_by")
+    private String updatedBy;
 }

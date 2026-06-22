@@ -17,11 +17,11 @@ public record ClientResponseDTO(
     public static ClientResponseDTO from(Client client) {
         return new ClientResponseDTO(
                 client.getId(),
-                client.getLogin(),
+                client.getAccount().getLogin(),
                 client.getFullName(),
                 client.getRoles(),
                 client.getAvatarURL(),
-                Optional.ofNullable(client.getUserGroup())
+                Optional.ofNullable(client.getAccount().getUserGroup())
                         .map(group -> new UserGroupShortResponseDTO(group.getId(), group.getName()))
                         .orElse(null));
     }

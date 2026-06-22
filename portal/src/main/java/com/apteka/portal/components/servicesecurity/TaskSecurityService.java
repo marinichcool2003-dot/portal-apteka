@@ -41,7 +41,7 @@ public class TaskSecurityService {
         if (currentUser.getType() == UserType.CLIENT) {
 
             if (dto.assignedClientId() != null) {
-                Client targetClient = clientRepository.findById(dto.assignedClientId())
+                Client targetClient = clientRepository.findByIdWithAccount(dto.assignedClientId())
                         .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
 
                 Integer targetClientGroupId = targetClient.getUserGroup() != null
@@ -87,6 +87,12 @@ public class TaskSecurityService {
             if (currentUser.getType() == UserType.APTEKA) {
                 throw new AccessDeniedException("Аптека не может изменять описание задачи, которую уже создала");
             }
+        }
+    }
+
+    public void validateCanDelete(AppUserDetails currentUser) {
+        if (!currentUser.hasRole(UserRole.ADMIN)) {
+            throw new AccessDeniedException("Только пользователь с правами администратора может удалить задачу");
         }
     }
 

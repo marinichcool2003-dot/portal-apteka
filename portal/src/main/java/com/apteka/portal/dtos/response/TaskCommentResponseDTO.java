@@ -23,9 +23,9 @@ public record TaskCommentResponseDTO(
             authorId = taskComments.getClient().getId();
         } else if (taskComments.getApteka() != null) {
             type = UserType.APTEKA;
-            authorName = Optional.ofNullable(taskComments.getApteka().getUserGroup())
+            authorName = Optional.ofNullable(taskComments.getApteka().getAccount().getUserGroup())
                 .map(group -> group.getName() + " " + taskComments.getApteka().getNumber())
-                .orElse(taskComments.getApteka().getLogin());
+                .orElse(taskComments.getApteka().getAccount().getLogin());
             authorId = taskComments.getApteka().getId();
         }
 

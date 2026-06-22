@@ -1,5 +1,7 @@
 package com.apteka.portal.exceptions;
 
+import java.util.UUID;
+
 import jakarta.persistence.EntityNotFoundException;
 
 public class AptekaNotFoundException extends EntityNotFoundException{
@@ -9,7 +11,7 @@ public class AptekaNotFoundException extends EntityNotFoundException{
     public AptekaNotFoundException(String message){
         super(message);
     }
-    public AptekaNotFoundException(Integer id){
+    public AptekaNotFoundException(UUID id){
         super("Аптека с ID: " + id + " не найдена!");
     }
 }

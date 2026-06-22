@@ -15,9 +15,9 @@ public record UserShortInfo(
             return new UserShortInfo(task.getCreatedByClient().getId(), UserType.CLIENT,
                     task.getCreatedByClient().getFullName());
         } else if (task.getCreatedByApteka() != null) {
-            String aptekaName = Optional.ofNullable(task.getCreatedByApteka().getUserGroup())
+            String aptekaName = Optional.ofNullable(task.getCreatedByApteka().getAccount().getUserGroup())
                     .map(ug -> ug.getName() + " " + task.getCreatedByApteka().getNumber())
-                    .orElse(task.getCreatedByApteka().getLogin());
+                    .orElse(task.getCreatedByApteka().getAccount().getLogin());
             return new UserShortInfo(task.getCreatedByApteka().getId(), UserType.APTEKA, aptekaName);
         }
         return null;
@@ -28,9 +28,9 @@ public record UserShortInfo(
             return new UserShortInfo(task.getAssignedClient().getId(), UserType.CLIENT,
                     task.getAssignedClient().getFullName());
         } else if (task.getAssignedApteka() != null) {
-            String aptekaName = Optional.ofNullable(task.getAssignedApteka().getUserGroup())
+            String aptekaName = Optional.ofNullable(task.getAssignedApteka().getAccount().getUserGroup())
                     .map(ug -> ug.getName() + " " + task.getAssignedApteka().getNumber())
-                    .orElse(task.getAssignedApteka().getLogin());
+                    .orElse(task.getAssignedApteka().getAccount().getLogin());
             return new UserShortInfo(task.getAssignedApteka().getId(), UserType.APTEKA, aptekaName);
         }
         return null;

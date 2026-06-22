@@ -41,6 +41,6 @@ public class NewsSecurityService {
     }
 
     private boolean newsCreator(AppUserDetails currentUser, News news) {
-        return Objects.equals(news.getAuthor().getId(), currentUser.getClientId());
+        return Objects.equals(news.getAuthor().getId(), currentUser.getInternalId());
     }
 }

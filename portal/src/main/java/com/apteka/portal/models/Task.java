@@ -72,11 +72,6 @@ public class Task {
     @ToString.Include
     private TaskStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "priority", nullable = false)
-    private TaskPriority priority;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "work_type_id", nullable = false)
     private WorkType workType;
@@ -115,7 +110,6 @@ public class Task {
         this.assignedApteka = taskBuilder.assignedApteka;
 
         this.status = TaskStatus.OPEN;
-        this.priority = taskBuilder.priority != null ? taskBuilder.priority : TaskPriority.LOW;
     }
 
     public static TaskBuilder builder() {
@@ -127,7 +121,6 @@ public class Task {
         private String title;
         private String description;
         private LocalDateTime updatedDate;
-        private TaskPriority priority;
         private WorkType workType;
         private Apteka createdByApteka;
         private Client createdByClient;
@@ -171,11 +164,6 @@ public class Task {
 
         public TaskBuilder assignedApteka(Apteka assignedApteka) {
             this.assignedApteka = assignedApteka;
-            return this;
-        }
-
-        public TaskBuilder priority(TaskPriority priority) {
-            this.priority = priority;
             return this;
         }
 

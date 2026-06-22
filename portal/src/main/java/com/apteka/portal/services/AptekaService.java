@@ -2,6 +2,7 @@ package com.apteka.portal.services;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +25,7 @@ import com.apteka.portal.exceptions.DublicateAptekaFullNameException;
 import com.apteka.portal.exceptions.DublicateAptekaLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
+import com.apteka.portal.models.Account;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.SseEventNames;
@@ -51,12 +53,11 @@ public class AptekaService {
 
     @Transactional(readOnly = true)
     public List<AptekaResponseDTO> getAll() {
-        return aptekaRepository.findAll().stream()
-            .map(AptekaResponseDTO::from).toList();
+        return aptekaRepository.findAll().stream().map(AptekaResponseDTO::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public AptekaResponseDTO getOne(Integer id) {
+    public AptekaResponseDTO getOne(UUID id) {
         Apteka apteka = aptekaRepository.findById(id)
                 .orElseThrow(() -> new AptekaNotFoundException(id));
         return AptekaResponseDTO.from(apteka);
@@ -80,46 +81,55 @@ public class AptekaService {
         String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
 
         Apteka apteka = Apteka.builder()
-                .login(cleanLogin)
-                .password(passwordEncoder.encode(dto.password()))
                 .number(dto.number())
                 .adress(cleanAdress)
-                .userGroup(userGroup)
                 .phoneNumber(cleanPhoneNumber)
                 .build();
 
+        Account account = Account.builder()
+                .login(cleanLogin)
+                .password(passwordEncoder.encode(dto.password()))
+                .phoneNumber(cleanPhoneNumber)
+                .userGroup(userGroup)
+                .apteka(apteka)
+                .build();
+
+        apteka.setAccount(account);
         aptekaRepository.save(apteka);
 
-        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getUserGroup().getId(), SseSignalTypes.CREATED);
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getAccount().getUserGroup().getId(), SseSignalTypes.CREATED);
         sseController.broadcastNotification(SseEventNames.REFRESH_APTEKI, signal);
 
         return AptekaResponseDTO.from(apteka);
     }
 
     @Transactional
-    public AptekaResponseDTO update(Integer id, AptekaUpdateRequestDTO dto, AppUserDetails currentUser) {
+    public AptekaResponseDTO update(UUID id, AptekaUpdateRequestDTO dto, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
 
         Apteka apteka = aptekaRepository.findById(id)
             .orElseThrow(() -> new AptekaNotFoundException(id));
-        String oldLogin = apteka.getLogin();
+
+        Account account = apteka.getAccount();
+
+        String oldLogin = account.getLogin();
         boolean needsLogout = false;
 
         if (StringUtils.hasText(dto.login())) {
             String newLogin = loginValidator.getCleanLogin(dto.login());
             if (!Objects.equals(newLogin, oldLogin)) {
                 validateLogin(newLogin);
-                apteka.setLogin(newLogin);
+                account.setLogin(newLogin);
                 needsLogout = true;
             }
         }
 
         if (StringUtils.hasText(dto.password())) {
             passwordValidator.validatePassword(dto.password(), false);
-            if (passwordEncoder.matches(dto.password(), apteka.getPassword())) {
+            if (passwordEncoder.matches(dto.password(), account.getPassword())) {
                 throw new AlreadyHaveThisPasswordException();
             }
-            apteka.setPassword(passwordEncoder.encode(dto.password()));
+            account.setPassword(passwordEncoder.encode(dto.password()));
             needsLogout = true;
         }
 
@@ -130,7 +140,7 @@ public class AptekaService {
 
         if (dto.number() != null && dto.number() > 0) {
             if (!dto.number().equals(apteka.getNumber())) {
-                validateAptekaNumberInGroup(dto.number(), apteka.getUserGroup().getId());
+                validateAptekaNumberInGroup(dto.number(), account.getUserGroup().getId());
                 apteka.setNumber(dto.number());
             }
         }
@@ -139,7 +149,7 @@ public class AptekaService {
             UserGroup userGroup = userGroupRepository.findById(dto.groupId())
                     .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
             validateAptekaNumberInGroup(apteka.getNumber(), dto.groupId());
-            apteka.setUserGroup(userGroup);
+            account.setUserGroup(userGroup);
         }
 
         if (StringUtils.hasText(dto.phoneNumber())) {
@@ -148,6 +158,7 @@ public class AptekaService {
         }
 
         Apteka savedApteka = aptekaRepository.save(apteka);
+        savedApteka.setAccount(account);
 
         if (needsLogout) {
             authService.invalidateAllSession(oldLogin);
@@ -160,13 +171,13 @@ public class AptekaService {
     }
 
     @Transactional
-    public void delete(Integer id, AppUserDetails currentUser) {
+    public void delete(UUID id, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
         Apteka apteka = aptekaRepository.findById(id)
             .orElseThrow(() -> new AptekaNotFoundException(id));
         aptekaRepository.delete(apteka);
 
-        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getUserGroup().getId(), SseSignalTypes.DELETED);
+        var signal = new SseEventNames.AppUserDetailsSignalDTO(apteka.getAccount().getUserGroup().getId(), SseSignalTypes.DELETED);
         sseController.broadcastNotification(SseEventNames.REFRESH_APTEKI, signal);
     }
 
@@ -174,13 +185,13 @@ public class AptekaService {
         if (number == 0 || number == null) {
             throw new InvalidAptekaNumberException();
         }
-        if (aptekaRepository.existsByUserGroup_IdAndNumber(groupId, number)) {
+        if (aptekaRepository.existsByAccount_UserGroup_IdAndNumber(groupId, number)) {
             throw new DublicateAptekaFullNameException("Аптека с таким юридическим лицом и номером уже существует");
         }
     }
 
     private void validateLogin(String login) {
-        if (aptekaRepository.existsByLogin(login)) {
+        if (aptekaRepository.existsByAccount_Login(login)) {
             throw new DublicateAptekaLoginException(login);
         }
     }

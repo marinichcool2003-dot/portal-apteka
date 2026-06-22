@@ -6,22 +6,30 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.apteka.portal.models.Client;
 
-public interface ClientRepository extends JpaRepository<Client, UUID>{
+public interface ClientRepository extends JpaRepository<Client, UUID> {
 
-    @EntityGraph(attributePaths = { "userGroup", "roles"})
+    @Override
+    @EntityGraph(attributePaths = { "account", "account.userGroup" })
     List<Client> findAll();
 
-    @EntityGraph(attributePaths = { "userGroup", "roles"})
-    Optional<Client> findByLogin(String login);
+    @Query("SELECT c FROM Client c JOIN FETCH c.account acc WHERE acc.login = :login")
+    Optional<Client> findByLogin(@Param("login") String login);
 
-    @EntityGraph(attributePaths = { "userGroup", "roles"})
-    List<Client> findByUserGroupId(Integer groupId);
+    @Query("""
+            SELECT c FROM Client c
+            JOIN FETCH c.account acc
+            JOIN FETCH acc.userGroup ug
+            WHERE ug.id = :groupId
+                """)
+    List<Client> findByUserGroupId(@Param("groupId") Integer groupId);
 
-    @EntityGraph(attributePaths = { "userGroup", "roles"})
-    Optional<Client> findById(UUID id);
+    @EntityGraph(attributePaths = { "account", "account.userGroup" })
+    Optional<Client> findByIdWithAccount(UUID id);
 
-    boolean existsByLogin(String login);
+    boolean existsByAccount_Login(String login);
 }
