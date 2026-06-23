@@ -3,6 +3,8 @@ package com.apteka.portal.controllers;
 import java.util.List;
 
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,8 +45,8 @@ public class TaskController {
     @Operation(summary = "Получить весь список задач (Только ADMIN, BOSS)")
     @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
     @GetMapping
-    public ResponseEntity<List<TaskShortResponseDTO>> getAll() {
-        return ResponseEntity.ok(taskService.getAll());
+    public ResponseEntity<Page<TaskShortResponseDTO>> getAll(Pageable pageable) {
+        return ResponseEntity.ok(taskService.getAll(pageable));
     }
 
     @Operation(summary = "Получить задачу по ID")
@@ -55,9 +57,9 @@ public class TaskController {
 
     @Operation(summary = "Получить задачи назначенные авторизированному пользователю")
     @GetMapping("/tasks-assigned-me")
-    public ResponseEntity<List<TaskShortResponseDTO>> getTasksAssignedMe(
+    public ResponseEntity<Page<TaskShortResponseDTO>> getTasksAssignedMe(
             @AuthenticationPrincipal AppUserDetails currentUser,
-            @ParameterObject @Valid @ModelAttribute DepartmentFilterRequestDTO dto) {
+            @ParameterObject @Valid @ModelAttribute DepartmentFilterRequestDTO dto, Pageable pageable) {
 
         DepartamentTaskWithFiltersDTO filter = DepartamentTaskWithFiltersDTO.builder()
                 .status(dto.status())
@@ -66,7 +68,7 @@ public class TaskController {
                 .groupTaskId(dto.groupTaskId())
                 .build();
 
-        return ResponseEntity.ok(taskService.getMyDepartmentTasks(filter, currentUser));
+        return ResponseEntity.ok(taskService.getMyDepartmentTasks(filter, currentUser, pageable));
     }
 
     @Operation(summary = "Получить статистику всех групп по задачам")
@@ -83,9 +85,9 @@ public class TaskController {
 
     @Operation(summary = "Получить задачи назначенные на группу данного пользователя")
     @GetMapping("/tasks-assigned-my-group")
-    public ResponseEntity<List<TaskShortResponseDTO>> getTasksAssignedMyGroup(
+    public ResponseEntity<Page<TaskShortResponseDTO>> getTasksAssignedMyGroup(
             @AuthenticationPrincipal AppUserDetails currentUser,
-            @ParameterObject @Valid @ModelAttribute DepartmentFilterRequestDTO dto) {
+            @ParameterObject @Valid @ModelAttribute DepartmentFilterRequestDTO dto, Pageable pageable) {
 
         DepartamentTaskWithFiltersDTO filter = DepartamentTaskWithFiltersDTO.builder()
                 .groupId(currentUser.getUserGroup().getId())
@@ -95,14 +97,14 @@ public class TaskController {
                 .groupTaskId(dto.groupTaskId())
                 .build();
 
-        return ResponseEntity.ok(taskService.getDepartmentTaskWithFilters(filter));
+        return ResponseEntity.ok(taskService.getDepartmentTaskWithFilters(filter, pageable));
     }
 
     @Operation(summary = "Получить задачи созданные авторизированным пользователем")
     @GetMapping("/tasks-created-by-me")
-    public ResponseEntity<List<TaskShortResponseDTO>> getTasksCreatedByMe(
+    public ResponseEntity<Page<TaskShortResponseDTO>> getTasksCreatedByMe(
             @AuthenticationPrincipal AppUserDetails currentUser,
-            @ParameterObject @Valid @ModelAttribute DepartmentFilterRequestDTO dto) {
+            @ParameterObject @Valid @ModelAttribute DepartmentFilterRequestDTO dto, Pageable pageable) {
 
         DepartamentTaskWithFiltersDTO filter = DepartamentTaskWithFiltersDTO.builder()
                 .status(dto.status())
@@ -112,14 +114,14 @@ public class TaskController {
                 .build();
         System.out.println(dto);
 
-        return ResponseEntity.ok(taskService.getCreatedMeTasks(filter, currentUser));
+        return ResponseEntity.ok(taskService.getCreatedMeTasks(filter, currentUser, pageable));
     }
 
     @Operation(summary = "Получить задачи по всем возможным фильтрам (Только для ADMIN)")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/full-filter")
-    public ResponseEntity<List<TaskShortResponseDTO>> getDepartamentTaskWithFilters(
-            @ParameterObject @Valid @ModelAttribute DepartmentFullFilterRequestDTO dto) {
+    public ResponseEntity<Page<TaskShortResponseDTO>> getDepartamentTaskWithFilters(
+            @ParameterObject @Valid @ModelAttribute DepartmentFullFilterRequestDTO dto, Pageable pageable) {
         DepartamentTaskWithFiltersDTO filter = DepartamentTaskWithFiltersDTO.builder()
                 .status(dto.status())
                 .priority(dto.priority())
@@ -132,7 +134,7 @@ public class TaskController {
                 .specificAptekaId(dto.specificAptekaId())
                 .build();
         System.out.println(dto);
-        return ResponseEntity.ok(taskService.getDepartmentTaskWithFilters(filter));
+        return ResponseEntity.ok(taskService.getDepartmentTaskWithFilters(filter, pageable));
     }
 
     @Operation(summary = "Создать задачу")

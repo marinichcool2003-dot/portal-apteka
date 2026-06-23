@@ -39,9 +39,6 @@ public class Apteka {
     @Column(name = "adress")
     private String adress;
 
-    @Column(name = "phone_number")
-    private String phoneNumber;
-
     @OneToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @MapsId
     @JoinColumn(name = "id")
@@ -51,9 +48,12 @@ public class Apteka {
         return Set.of(UserRole.APTEKA);
     }
 
+    @Column(name = "created_by", length = 50)
+    private String createdBy;
+
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    @Column(name = "updated_by")
+    @Column(name = "updated_by", length = 50)
     private String updatedBy;
 }

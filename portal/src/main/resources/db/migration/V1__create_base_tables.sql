@@ -1,5 +1,8 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- =========================================================================
+-- ТИПЫ ДАННЫХ (ENUMS)
+-- =========================================================================
 CREATE TYPE task_status AS ENUM (
     'OPEN',
     'CLOSED',
@@ -13,14 +16,9 @@ CREATE TYPE task_priority AS ENUM (
     'HIGH'
 );
 
-CREATE TABLE IF NOT EXISTS group_task (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) UNIQUE NOT NULL,
-    user_group_id INT NOT NULL,
-    updated_at TIMESTAMPTZ,
-    updated_by VARCHAR(50)
-);
-
+-- =========================================================================
+-- ТАБЛИЦЫ СТРУКТУРЫ И ГРУПП
+-- =========================================================================
 CREATE TABLE IF NOT EXISTS group_user (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL,
@@ -32,48 +30,64 @@ CREATE TABLE IF NOT EXISTS group_user (
     updated_by VARCHAR(50)
 );
 
+CREATE TABLE IF NOT EXISTS group_task (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    user_group_id INT NOT NULL,
+    updated_at TIMESTAMPTZ,
+    updated_by VARCHAR(50)
+);
+
 CREATE TABLE IF NOT EXISTS work_type (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     priority task_priority NOT NULL DEFAULT 'LOW',
     wiki_link VARCHAR(2048),
-    group_task_id INT NOT NULL REFERENCES group_task(id) ON DELETE CASCADE,
+    group_task_id INT NOT NULL,
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)
 );
 
+-- =========================================================================
+-- СУЩНОСТИ ПОЛЬЗОВАТЕЛЕЙ И АВТОРИЗАЦИИ
+-- =========================================================================
 CREATE TABLE IF NOT EXISTS account (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     login VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(100) NOT NULL,
     phone_number VARCHAR(20) UNIQUE,
-    group_id INT NOT NULL REFERENCES group_user(id)
+    role VARCHAR(30) NOT NULL,
+    group_id INT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS account_actions (
+    account_id UUID NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    PRIMARY KEY (account_id, action) 
 );
 
 CREATE TABLE IF NOT EXISTS apteka (
-    id UUID PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
     number INT NOT NULL,
     adress VARCHAR(255),
+    created_by VARCHAR(50),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS client (
-    id UUID PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
     full_name VARCHAR(150) NOT NULL,
     extension_number VARCHAR(20),
     avatar_url VARCHAR(255),
+    created_by VARCHAR(50),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)
 );
 
-CREATE TABLE IF NOT EXISTS client_roles (
-    client_id UUID NOT NULL,
-    role VARCHAR(50) NOT NULL,
-    CONSTRAINT fk_client FOREIGN KEY (client_id) REFERENCES client(id) ON DELETE CASCADE,
-    PRIMARY KEY (client_id, role) 
-);
-
+-- =========================================================================
+-- ТАБЛИЦЫ ЗАДАЧ И КОММЕНТАРИЕВ
+-- =========================================================================
 CREATE TABLE IF NOT EXISTS task (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
@@ -82,33 +96,36 @@ CREATE TABLE IF NOT EXISTS task (
     closing_date TIMESTAMPTZ,
     updated_date TIMESTAMPTZ,
     status task_status NOT NULL DEFAULT 'OPEN', 
-    work_type_id INT NOT NULL REFERENCES work_type(id), 
-    assigned_client_id UUID REFERENCES client(id) ON DELETE SET NULL,
-    assigned_apteka_id UUID REFERENCES apteka(id) ON DELETE SET NULL,
-    created_by_apteka_id UUID REFERENCES apteka(id) ON DELETE SET NULL,
-    created_by_client_id UUID REFERENCES client(id) ON DELETE SET NULL
+    work_type_id INT NOT NULL, 
+    assigned_client_id UUID,
+    assigned_apteka_id UUID,
+    created_by_apteka_id UUID,
+    created_by_client_id UUID   
 );
 
 CREATE TABLE IF NOT EXISTS task_picture (
     id BIGSERIAL PRIMARY KEY,
     path VARCHAR(255) UNIQUE NOT NULL,
-    task_id BIGINT NOT NULL REFERENCES task(id) ON DELETE CASCADE 
+    task_id BIGINT NOT NULL 
 );
 
 CREATE TABLE IF NOT EXISTS task_comment (
     id BIGSERIAL PRIMARY KEY,
     comment VARCHAR(255) NOT NULL,
-    task_id BIGINT NOT NULL REFERENCES task(id) ON DELETE CASCADE,
-    client_id UUID REFERENCES client(id) ON DELETE SET NULL,
-    apteka_id UUID REFERENCES apteka(id) ON DELETE SET NULL
+    task_id BIGINT NOT NULL,
+    client_id UUID,
+    apteka_id UUID
 );
 
+-- =========================================================================
+-- ИНФОРМАЦИОННЫЕ ТАБЛИЦЫ И ССЫЛКИ
+-- =========================================================================
 CREATE TABLE IF NOT EXISTS news (
     id SERIAL PRIMARY KEY,
     title VARCHAR(50) NOT NULL,
     news_text TEXT NOT NULL,
-    author_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
-    group_user_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
+    author_id UUID,
+    group_user_id INT NOT NULL,
     creation_date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)
@@ -128,6 +145,5 @@ CREATE TABLE IF NOT EXISTS main_page_links (
     link VARCHAR(2048) NOT NULL,
     group_link_id INT NOT NULL,
     updated_at TIMESTAMPTZ,
-    updated_by VARCHAR(50),
-    FOREIGN KEY (group_link_id) REFERENCES groups_main_page_links(id) ON DELETE CASCADE
+    updated_by VARCHAR(50)
 );

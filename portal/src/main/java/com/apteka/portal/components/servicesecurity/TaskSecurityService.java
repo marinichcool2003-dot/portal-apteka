@@ -1,6 +1,7 @@
 package com.apteka.portal.components.servicesecurity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -166,7 +167,6 @@ public class TaskSecurityService {
                 || user.getRoles().contains(UserRole.SENIOR);
     }
 
-
     private boolean isUserRelatedToTask(Task task, AppUserDetails user) {
         return Objects.equals(getCreator(task), user.getInternalId());
     }
@@ -177,7 +177,12 @@ public class TaskSecurityService {
         }
 
         if (task.getStatus() == TaskStatus.CLOSED && task.getClosingDate() != null) {
-            return LocalDateTime.now().isAfter(task.getClosingDate().plusMonths(1));
+            Instant expirationInstant = task.getClosingDate()
+                    .atZone(ZoneId.systemDefault())
+                    .plusMonths(1)
+                    .toInstant();
+
+            return Instant.now().isAfter(expirationInstant);
         }
 
         return false;
@@ -221,8 +226,7 @@ public class TaskSecurityService {
     private UUID getAssignerId(Task task) {
         if (task.getAssignedApteka() != null) {
             return task.getAssignedApteka().getId();
-        }
-        else if (task.getAssignedClient() != null) {
+        } else if (task.getAssignedClient() != null) {
             return task.getAssignedClient().getId();
         } else {
             return null;
@@ -245,11 +249,9 @@ public class TaskSecurityService {
     private UUID getCreator(Task task) {
         if (task.getCreatedByApteka() != null) {
             return task.getCreatedByApteka().getId();
-        }
-        else if (task.getCreatedByClient() != null) {
+        } else if (task.getCreatedByClient() != null) {
             return task.getCreatedByClient().getId();
-        }
-        else {
+        } else {
             return null;
         }
     }

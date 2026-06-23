@@ -1,14 +1,13 @@
 package com.apteka.portal.repository.specification;
 
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.springframework.data.jpa.domain.Specification;
 
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.models.Task;
-
-import jakarta.persistence.criteria.Predicate;
 
 public class TaskSpecifications {
     private TaskSpecifications(){}
@@ -19,22 +18,26 @@ public class TaskSpecifications {
             
             if (filters.groupId() != null && filters.groupId() > 0) {
                 predicates.add(cb.equal(
-                    root.get("workType").get("groupTask").get("userGroup").get("id"),
+                    root.join("workType").join("groupTask").join("userGroup").get("id"),
                     filters.groupId()
                 ));
+            } else if (filters.groupTaskId() != null) {
+                predicates.add(cb.equal(root.join("workType").join("groupTask").get("id"), filters.groupTaskId()));
+            } else if (filters.workTypeId() != null) {
+                predicates.add(cb.equal(root.join("workType").get("id"), filters.workTypeId()));
             }
 
             if (filters.creatorClientId() != null) {
-                predicates.add(cb.equal(root.get("createdByClient").get("id"), filters.creatorClientId()));
+                predicates.add(cb.equal(root.join("createdByClient", JoinType.LEFT).get("id"), filters.creatorClientId()));
             }
             if (filters.creatorAptekaId() != null) {
-                predicates.add(cb.equal(root.get("createdByApteka").get("id"), filters.creatorAptekaId()));
+                predicates.add(cb.equal(root.join("createdByApteka", JoinType.LEFT).get("id"), filters.creatorAptekaId()));
             }
             if (filters.specificClientId() != null) {
-                predicates.add(cb.equal(root.get("assignedClient").get("id"), filters.specificClientId()));
+                predicates.add(cb.equal(root.join("assignedClient", JoinType.LEFT).get("id"), filters.specificClientId()));
             }
             if (filters.specificAptekaId() != null) {
-                predicates.add(cb.equal(root.get("assignedApteka").get("id"), filters.specificAptekaId()));
+                predicates.add(cb.equal(root.join("assignedApteka", JoinType.LEFT).get("id"), filters.specificAptekaId()));
             }
 
             if (filters.status() != null) {
@@ -43,15 +46,6 @@ public class TaskSpecifications {
             if (filters.priority() != null) {
                 predicates.add(cb.equal(root.get("priority"), filters.priority()));
             }
-
-            if (filters.workTypeId() != null) {
-                predicates.add(cb.equal(root.get("workType").get("id"), filters.workTypeId()));
-            }
-            if (filters.groupTaskId() != null) {
-                predicates.add(cb.equal(root.get("workType").get("groupTask").get("id"), filters.groupTaskId()));
-            }
-
-            query.orderBy(cb.desc(root.get("creationDate")));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };

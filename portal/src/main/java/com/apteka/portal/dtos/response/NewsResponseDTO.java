@@ -13,7 +13,8 @@ public record NewsResponseDTO(
     String authorName,
     UserGroupShortResponseDTO userGroup,
     Instant creationDate,
-    Instant updatedAt
+    Instant updatedAt,
+    String updatedBy
 ) {
     public static NewsResponseDTO from(News news) {
         return new NewsResponseDTO(
@@ -25,6 +26,7 @@ public record NewsResponseDTO(
                 Optional.ofNullable(news.getUserGroup()).map(UserGroup::getId).orElse(null),
                 Optional.ofNullable(news.getUserGroup()).map(UserGroup::getName).orElse(null)),
             news.getCreationDate(), 
-            news.getUpdatedAt());
+            news.getUpdatedAt(),
+            news.getUpdatedBy());
     }
 }

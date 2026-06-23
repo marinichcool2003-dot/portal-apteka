@@ -1,9 +1,10 @@
 package com.apteka.portal.services;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -52,21 +53,21 @@ public class AptekaService {
     private final SseController sseController;
 
     @Transactional(readOnly = true)
-    public List<AptekaResponseDTO> getAll() {
-        return aptekaRepository.findAll().stream().map(AptekaResponseDTO::from).toList();
+    public Page<AptekaResponseDTO> getAll(Pageable pageable) {
+        return aptekaRepository.findAll(pageable).map(AptekaResponseDTO::from);
     }
 
     @Transactional(readOnly = true)
     public AptekaResponseDTO getOne(UUID id) {
-        Apteka apteka = aptekaRepository.findById(id)
+        Apteka apteka = aptekaRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new AptekaNotFoundException(id));
         return AptekaResponseDTO.from(apteka);
     }
 
     @Transactional(readOnly = true)
-    public List<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto) {
-        return aptekaRepository.filter(dto.login(), dto.groupId(), dto.number(), dto.phoneNumber())
-                .stream().map(AptekaResponseDTO::from).toList();
+    public Page<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto, Pageable pageable) {
+        return aptekaRepository.filter(dto.login(), dto.groupId(), dto.number(), dto.phoneNumber(), pageable)
+                .map(AptekaResponseDTO::from);
     }
 
     @Transactional
@@ -83,7 +84,6 @@ public class AptekaService {
         Apteka apteka = Apteka.builder()
                 .number(dto.number())
                 .adress(cleanAdress)
-                .phoneNumber(cleanPhoneNumber)
                 .build();
 
         Account account = Account.builder()
@@ -108,7 +108,7 @@ public class AptekaService {
     public AptekaResponseDTO update(UUID id, AptekaUpdateRequestDTO dto, AppUserDetails currentUser) {
         hasAccessToApteki(currentUser);
 
-        Apteka apteka = aptekaRepository.findById(id)
+        Apteka apteka = aptekaRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new AptekaNotFoundException(id));
 
         boolean hasChange = false;
@@ -166,8 +166,8 @@ public class AptekaService {
 
         if (StringUtils.hasText(dto.phoneNumber())) {
             String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
-            if (!Objects.equals(cleanPhoneNumber, apteka.getPhoneNumber())) {
-                apteka.setPhoneNumber(cleanPhoneNumber);
+            if (!Objects.equals(cleanPhoneNumber, apteka.getAccount().getPhoneNumber())) {
+                apteka.getAccount().setPhoneNumber(cleanPhoneNumber);
                 hasChange = true;
             }
         }

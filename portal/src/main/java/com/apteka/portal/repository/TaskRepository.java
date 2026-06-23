@@ -4,6 +4,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -15,6 +19,17 @@ import com.apteka.portal.dtos.response.CreatedStatsDTO;
 import com.apteka.portal.models.Task;
 
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
+
+	@EntityGraph(attributePaths = {
+			"workType",
+			"workType.groupTask",
+			"createdByClient",
+			"createdByApteka",
+			"assignedClient",
+			"assignedApteka"
+	})
+	@Override
+	Page<Task> findAll(Specification<Task> spec, Pageable pageable);
 
 	@Query("""
 			SELECT DISTINCT t FROM Task t
@@ -90,18 +105,22 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 	DepartmentTaskStatsDTO findGroupUserStatsByGroup(@Param("userGroupId") Integer userGroupId);
 
 	@Query("""
-			    SELECT DISTINCT t FROM Task t
-			    JOIN FETCH t.workType w
-			    JOIN FETCH w.groupTask gt
-			    LEFT JOIN FETCH gt.userGroup ug
-			    LEFT JOIN FETCH t.createdByClient
-			    LEFT JOIN FETCH t.createdByApteka cba
-			    LEFT JOIN FETCH cba.userGroup
-			    LEFT JOIN FETCH t.assignedClient
-			    LEFT JOIN FETCH t.assignedApteka aa
-			    LEFT JOIN FETCH aa.userGroup
-			    LEFT JOIN FETCH t.pictures
-			    WHERE t.id = :id
+			SELECT DISTINCT t FROM Task t
+			JOIN FETCH t.workType w
+			JOIN FETCH w.groupTask gt
+			LEFT JOIN FETCH gt.userGroup ug
+			LEFT JOIN FETCH t.createdByClient cbc
+			LEFT JOIN FETCH cbc.account acc_client
+			LEFT JOIN FETCH t.createdByApteka cba
+			LEFT JOIN FETCH cba.account acc_apteka
+			LEFT JOIN FETCH acc_apteka.userGroup
+			LEFT JOIN FETCH t.assignedClient ac
+			LEFT JOIN FETCH ac.account acc_assigned_client
+			LEFT JOIN FETCH t.assignedApteka aa
+			LEFT JOIN FETCH aa.account acca
+			LEFT JOIN FETCH acca.userGroup
+			LEFT JOIN FETCH t.pictures
+			WHERE t.id = :id
 			""")
 	Optional<Task> findByIdWithDetailsAndPictures(@Param("id") Long id);
 
@@ -110,7 +129,8 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			    LEFT JOIN FETCH t.employeeComments ec
 			    LEFT JOIN FETCH ec.client
 			    LEFT JOIN FETCH ec.apteka a
-			    LEFT JOIN FETCH a.userGroup
+				LEFT JOIN FETCH a.account acc
+			    LEFT JOIN FETCH acc.userGroup
 			    WHERE t.id = :id
 			""")
 	Optional<Task> fetchCommentsForTask(@Param("id") Long id);

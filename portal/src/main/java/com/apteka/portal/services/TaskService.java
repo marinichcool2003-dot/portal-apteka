@@ -1,11 +1,13 @@
 package com.apteka.portal.services;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -62,10 +64,9 @@ public class TaskService {
     private final SseController sseController;
 
     @Transactional(readOnly = true)
-    public List<TaskShortResponseDTO> getAll() {
-        return taskRepository.findAll().stream()
-                .map(TaskShortResponseDTO::from)
-                .toList();
+    public Page<TaskShortResponseDTO> getAll(Pageable pageable) {
+        return taskRepository.findAll(pageable)
+                .map(TaskShortResponseDTO::from);
     }
 
     @Transactional(readOnly = true)
@@ -79,8 +80,8 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<TaskShortResponseDTO> getDepartmentTaskWithFilters(DepartamentTaskWithFiltersDTO dto) {
-        return fetchAndMapTasks(dto);
+    public Page<TaskShortResponseDTO> getDepartmentTaskWithFilters(DepartamentTaskWithFiltersDTO dto, Pageable pageable) {
+        return fetchAndMapTasks(dto, pageable);
     }
 
     @Cacheable(value = CacheNames.GROUPS_USER_STATS, sync = true)
@@ -96,8 +97,8 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<TaskShortResponseDTO> getMyDepartmentTasks(DepartamentTaskWithFiltersDTO dto,
-            AppUserDetails currentUser) {
+    public Page<TaskShortResponseDTO> getMyDepartmentTasks(DepartamentTaskWithFiltersDTO dto,
+            AppUserDetails currentUser, Pageable pageable) {
         var dtoBuilder = dto.toBuilder();
 
         if (currentUser.isClient()) {
@@ -111,11 +112,11 @@ public class TaskService {
         dtoBuilder.creatorAptekaId(null);
         dtoBuilder.creatorClientId(null);
 
-        return fetchAndMapTasks(dtoBuilder.build());
+        return fetchAndMapTasks(dtoBuilder.build(), pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<TaskShortResponseDTO> getCreatedMeTasks(DepartamentTaskWithFiltersDTO dto, AppUserDetails currentUser) {
+    public Page<TaskShortResponseDTO> getCreatedMeTasks(DepartamentTaskWithFiltersDTO dto, AppUserDetails currentUser, Pageable pageable) {
         var dtoBuilder = dto.toBuilder();
 
         if (currentUser.isClient()) {
@@ -129,25 +130,30 @@ public class TaskService {
         dtoBuilder.specificAptekaId(null);
         dtoBuilder.specificClientId(null);
 
-        return fetchAndMapTasks(dtoBuilder.build());
+        return fetchAndMapTasks(dtoBuilder.build(), pageable);
     }
 
-    private List<TaskShortResponseDTO> fetchAndMapTasks(DepartamentTaskWithFiltersDTO dto) {
+    private Page<TaskShortResponseDTO> fetchAndMapTasks(DepartamentTaskWithFiltersDTO dto, Pageable pageable) {
         Specification<Task> specification = TaskSpecifications.getTaskWithFilters(dto);
+
+        Page<Task> taskPage = taskRepository.findAll(specification, pageable);
+
+        if (taskPage.isEmpty()) {
+            return Page.empty(pageable);
+        }
 
         List<Long> taskIds = taskRepository.findAll(specification).stream()
                 .map(Task::getId)
                 .toList();
 
-        if (taskIds.isEmpty()) {
-            return Collections.emptyList();
-        }
+        List<Task> heavyTasks = taskRepository.findShortTasksByIds(taskIds);
 
-        System.out.println(dto);
-
-        return taskRepository.findShortTasksByIds(taskIds).stream()
+        List<TaskShortResponseDTO> dtoList = taskIds.stream()
+                .map(id -> heavyTasks.stream().filter(t -> t.getId().equals(id)).findFirst().orElseThrow())
                 .map(TaskShortResponseDTO::from)
                 .toList();
+
+        return new PageImpl<>(dtoList, pageable, taskPage.getTotalElements());
     }
 
     @Transactional
@@ -235,7 +241,7 @@ public class TaskService {
         }
 
         if (dto.statusCode() != null && !dto.statusCode().isBlank()
-                && !Objects.equals(task.getStatus().getDescription(), dto.statusCode())) {
+                && !Objects.equals(task.getStatus().getCode(), dto.statusCode())) {
             task = changeStatus(task, dto.statusCode(), currentUser);
             hasChange = true;
         }

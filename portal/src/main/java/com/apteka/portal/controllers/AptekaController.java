@@ -1,8 +1,9 @@
 package com.apteka.portal.controllers;
 
-import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -47,8 +48,8 @@ public class AptekaController {
     @ApiResponse(responseCode = "200", description = "Список аптек успешно получен")
     @InternalServerErrorApiResponse
     @GetMapping
-    public ResponseEntity<List<AptekaResponseDTO>> getAll() {
-        return ResponseEntity.ok(aptekaService.getAll());
+    public ResponseEntity<Page<AptekaResponseDTO>> getAll(Pageable pageable) {
+        return ResponseEntity.ok(aptekaService.getAll(pageable));
     }
 
     @Operation(summary = "Получить аптеку по ID")
@@ -75,8 +76,8 @@ public class AptekaController {
     @BadRequestApiResponse
     @InternalServerErrorApiResponse
     @GetMapping("/filter")
-    public ResponseEntity<List<AptekaResponseDTO>> filter(@Parameter @Valid @ModelAttribute AptekaFilterRequestDTO dto) {
-        return ResponseEntity.ok().body(aptekaService.filter(dto));
+    public ResponseEntity<Page<AptekaResponseDTO>> filter(@Parameter @Valid @ModelAttribute AptekaFilterRequestDTO dto, Pageable pageable) {
+        return ResponseEntity.ok().body(aptekaService.filter(dto, pageable));
     }
 
 

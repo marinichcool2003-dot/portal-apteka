@@ -8,18 +8,14 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum UserRole {
-
-    ADMIN("ADMIN", "Администратор"),
-    BOSS("BOSS", "Босс"),
-    SENIOR("SENIOR", "Старший сотрудник"),
-    USER("USER", "Сотрудник"),
-    AMBASSADOR("AMBASSADOR", "Вестник"),
-    SENIOR_AMBASSADOR("SENIOR_AMBASSADOR", "Старший вестник"),
-    LINK_CHANGER("LINK_CHANGER", "Корректировщик ссылок"),
-    APTEKA("APTEKA", "Аптека");
+    ADMIN("ADMIN", "Администратор", 3),
+    BOSS("BOSS", "Босс", 2),
+    USER("USER", "Сотрудник", 1),
+    APTEKA("APTEKA", "Аптека", 0);
 
     private final String code;
     private final String description;
+    private final int level;
 
     public static UserRole fromCode(String code) {
         for (UserRole role : UserRole.values()) {
@@ -32,13 +28,14 @@ public enum UserRole {
     }
 
     public int getLevel() {
-        return switch (this) {
-            case APTEKA -> 0;
-            case USER -> 1;
-            case SENIOR -> 2;
-            case BOSS -> 3;
-            case ADMIN -> 4;
-            default -> -1;
-        };
+        return this.level;
+    }
+
+    public boolean isHigherThan(UserRole other) {
+        return this.level > other.level;
+    }
+
+    public boolean isHigherOrEqual(UserRole other) {
+        return this.level >= other.level;
     }
 }

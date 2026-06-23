@@ -28,6 +28,7 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
                 """)
     List<Client> findByUserGroupId(@Param("groupId") Integer groupId);
 
+    @Query("SELECT c FROM Client c WHERE c.id = :id")
     @EntityGraph(attributePaths = { "account", "account.userGroup" })
     Optional<Client> findByIdWithAccount(UUID id);
 

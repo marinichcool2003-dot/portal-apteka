@@ -1,6 +1,6 @@
 package com.apteka.portal.models;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 import org.hibernate.annotations.DynamicInsert;
@@ -55,15 +55,15 @@ public class Task {
     @CreatedDate
     @Setter(AccessLevel.NONE)
     @Column(name = "creation_date", nullable = false, updatable = false)
-    private LocalDateTime creationDate;
+    private Instant creationDate;
 
     @Setter
     @Column(name = "closing_date")
-    private LocalDateTime closingDate;
+    private Instant closingDate;
 
     @LastModifiedDate
     @Column(name = "updated_date")
-    private LocalDateTime updatedDate;
+    private Instant updatedDate;
 
     @Setter(AccessLevel.NONE)
     @Enumerated(EnumType.STRING)
@@ -120,7 +120,7 @@ public class Task {
         private Long id;
         private String title;
         private String description;
-        private LocalDateTime updatedDate;
+        private Instant updatedDate;
         private WorkType workType;
         private Apteka createdByApteka;
         private Client createdByClient;
@@ -187,7 +187,7 @@ public class Task {
 
     private void close() {
         this.status = TaskStatus.CLOSED;
-        this.closingDate = LocalDateTime.now();;
+        this.closingDate = Instant.now();
     }
 
     public void changeStatus(TaskStatus newStatus) {
