@@ -21,7 +21,8 @@ public class AppUserDetails implements UserDetails {
 
     private final String login;
     private final String password;
-    private final Set<UserRole> roles;
+    private final UserRole role;
+    private final Set<AccountAction> actions;
     private final UserGroup userGroup;
     private final UserType type;
     private final UUID userId;
@@ -36,16 +37,16 @@ public class AppUserDetails implements UserDetails {
         if (getUserTypeFromAccount(account) == UserType.CLIENT) {
             this.type = UserType.CLIENT;
             Client client = account.getClient();
-            this.roles = client.getRoles();
+            this.role = account.getUserRole();
+            this.actions = account.getActions();
             this.displayName = client.getFullName();
-        }
-        else if (getUserTypeFromAccount(account) == UserType.APTEKA) {
+        } else if (getUserTypeFromAccount(account) == UserType.APTEKA) {
             this.type = UserType.APTEKA;
             Apteka apteka = account.getApteka();
             this.displayName = account.getUserGroup().getName() + " " + apteka.getNumber();
-            this.roles = Set.of(UserRole.APTEKA);
-        }
-        else {
+            this.role = UserRole.APTEKA;
+            this.actions = null;
+        } else {
             throw new AccessDeniedException("Не удалось идентифицировать тип пользователя!");
         }
     }
@@ -64,13 +65,6 @@ public class AppUserDetails implements UserDetails {
         return userId;
     }
 
-    public boolean isJustUser() {
-        if (type == UserType.APTEKA)
-            return false;
-        return roles.stream()
-                .noneMatch(role -> role == UserRole.ADMIN || role == UserRole.BOSS || role == UserRole.SENIOR);
-    }
-
     public boolean isApteka() {
         return type == UserType.APTEKA;
     }
@@ -79,14 +73,15 @@ public class AppUserDetails implements UserDetails {
         return type == UserType.CLIENT;
     }
 
-    public boolean hasRole(UserRole role) {
-        return roles.contains(role);
+    public boolean hasAction(AccountAction action) {
+        return actions.contains(action);
     }
 
-    public boolean hasAnyRole(UserRole... targetRoles) {
-        for (UserRole target : targetRoles) {
-            if (roles.contains(target))
+    public boolean hasAnyAction(AccountAction... checkedActions) {
+        for (AccountAction action : checkedActions) {
+            if (actions.contains(action)) {
                 return true;
+            }
         }
         return false;
     }
@@ -96,11 +91,11 @@ public class AppUserDetails implements UserDetails {
 
         List<GrantedAuthority> result = new ArrayList<>();
 
-        roles.forEach(r -> result.add(new SimpleGrantedAuthority("ROLE_" + r.name())));
+        result.add(new SimpleGrantedAuthority("GROUP_" + userGroup.getName()));
 
-        if (userGroup != null) {
-            result.add(new SimpleGrantedAuthority("GROUP_" + userGroup.getName()));
-        }
+        result.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+
+        actions.forEach(a -> result.add(new SimpleGrantedAuthority("ACTION_" + a.name())));
 
         return result;
     }

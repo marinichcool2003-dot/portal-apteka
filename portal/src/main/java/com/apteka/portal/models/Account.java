@@ -61,7 +61,7 @@ public class Account {
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "account_actions", joinColumns = @JoinColumn(name = "account_id"))
     @Column(name = "role", nullable = false)
-    private Set<UserRole> roles = new HashSet<>();
+    private Set<AccountAction> actions = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "group_id", nullable = false)

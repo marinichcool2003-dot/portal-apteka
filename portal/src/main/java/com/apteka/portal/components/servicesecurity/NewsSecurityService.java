@@ -6,6 +6,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
 import com.apteka.portal.dtos.request.NewsRequestDTO;
+import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.News;
 import com.apteka.portal.models.UserRole;
@@ -14,13 +15,14 @@ import com.apteka.portal.models.UserRole;
 public class NewsSecurityService {
 
     public void validateCanCreateNews(AppUserDetails currentUser, NewsRequestDTO dto) {
-        if (!currentUser.hasAnyRole(UserRole.AMBASSADOR, UserRole.SENIOR_AMBASSADOR)) {
-            throw new AccessDeniedException("Только пользователи с ролью AMBASSADOR могут создавать новости");
-        }
 
-        if (!currentUser.hasRole(UserRole.SENIOR_AMBASSADOR) && !Objects.equals(currentUser.getUserGroup().getId(), dto.userGroupId())) {
-            throw new AccessDeniedException(
-                    "Только пользователи с ролью (SENIOR_AMBASSADOR) могут создавать новости в другие отделы");
+        boolean sameGroup = Objects.equals(currentUser.getUserGroup().getId(), dto.userGroupId());
+
+        if (sameGroup && !currentUser.hasAnyAction(AccountAction.NEWS_WORK, AccountAction.NEWS_WORK_ALL_GROUPS)) {
+            throw new AccessDeniedException("У вас нет прав доступа для работы с новостями!");
+        }
+        if (!sameGroup && !currentUser.hasAction(AccountAction.NEWS_WORK_ALL_GROUPS)) {
+            throw new AccessDeniedException("У вас нет прав доступа для работы с новостями в других группах!");
         }
     }
 
@@ -33,7 +35,8 @@ public class NewsSecurityService {
                 throw new AccessDeniedException("Вы не можете изменить новость к которой не имеете отношения");
             }
         } else {
-            if (!newsCreator(currentUser, news) && !currentUser.hasAnyRole(UserRole.ADMIN) && !currentUser.hasRole(UserRole.SENIOR_AMBASSADOR)) {
+            if (!newsCreator(currentUser, news) && !currentUser.hasAnyRole(UserRole.ADMIN)
+                    && !currentUser.hasRole(UserRole.SENIOR_AMBASSADOR)) {
                 throw new AccessDeniedException("Вы не можете изменить новость к которой не имеете отношения");
             }
         }
