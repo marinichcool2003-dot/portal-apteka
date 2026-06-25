@@ -86,6 +86,10 @@ public class AppUserDetails implements UserDetails {
         return false;
     }
 
+    public boolean hasRole(UserRole role) {
+        return role.equals(role);
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
 

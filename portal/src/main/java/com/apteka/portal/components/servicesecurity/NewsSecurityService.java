@@ -1,6 +1,8 @@
 package com.apteka.portal.components.servicesecurity;
 
+import com.apteka.portal.dtos.response.WorkTypeResponseDTO.PriorityResponseDTO;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
@@ -15,8 +17,11 @@ import com.apteka.portal.models.UserRole;
 public class NewsSecurityService {
 
     public void validateCanCreateNews(AppUserDetails currentUser, NewsRequestDTO dto) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
 
-        boolean sameGroup = Objects.equals(currentUser.getUserGroup().getId(), dto.userGroupId());
+        boolean sameGroup = sameGroup(currentUser, dto.userGroupId());
 
         if (sameGroup && !currentUser.hasAnyAction(AccountAction.NEWS_WORK, AccountAction.NEWS_WORK_ALL_GROUPS)) {
             throw new AccessDeniedException("У вас нет прав доступа для работы с новостями!");
@@ -27,6 +32,23 @@ public class NewsSecurityService {
     }
 
     public void validateCanUpdate(AppUserDetails currentUser, News news) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+
+        UUID authorId = news.getAuthor().getId();
+        Integer creatoeGroupId = news.getAuthor().getAccount().getUserGroup().getId();
+        boolean sameGroup = sameGroup(currentUser, creatoeGroupId);
+        boolean isAuthor = isAuthor(currentUser, authorId);
+
+        if (!isAuthor && sameGroup && !currentUser.hasAction(AccountAction.UPDATE_ALL_NEWS_CREATE_GROUP)) {
+            throw new AccessDeniedException("У вас нет прав на изменение чужих новостей");
+        }
+
+        if (!isAuthor && !sameGroup && !currentUser.hasAction(AccountAction.UPDATE_ALL_NEWS)) {
+            throw new AccessDeniedException("У вас нет прав на изменение чужих новостей");
+        }
+
         if (!currentUser.hasAnyRole(UserRole.AMBASSADOR, UserRole.SENIOR_AMBASSADOR)) {
             throw new AccessDeniedException("Только пользователи с ролью AMBASSADOR могут изменять новости");
         }
@@ -44,6 +66,14 @@ public class NewsSecurityService {
     }
 
     private boolean newsCreator(AppUserDetails currentUser, News news) {
-        return Objects.equals(news.getAuthor().getId(), currentUser.getInternalId());
+        return Objects.equals(currentUser.getInternalId(), news.getAuthor().getId());
+    }
+
+    private boolean sameGroup(AppUserDetails currentUser, Integer userGroupId) {
+        return Objects.equals(currentUser.getUserGroup().getId(), userGroupId);
+    }
+
+    private boolean isAuthor(AppUserDetails currentUser, UUID authorId) {
+        return Objects.equals(currentUser.getInternalId(), authorId);
     }
 }
