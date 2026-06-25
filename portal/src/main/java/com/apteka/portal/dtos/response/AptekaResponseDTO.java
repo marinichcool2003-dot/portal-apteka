@@ -15,7 +15,8 @@ public record AptekaResponseDTO(
     Set<UserRole> roles,
     UserGroupShortResponseDTO userGroup,
     Integer number,
-    String phoneNumber
+    String phoneNumber,
+    boolean isActive
 )
 {
     public static AptekaResponseDTO from(Apteka apteka){
@@ -28,7 +29,8 @@ public record AptekaResponseDTO(
                 .map(group -> new UserGroupShortResponseDTO(group.getId(), group.getName()))
                 .orElse(null),
             apteka.getNumber(),
-            Optional.ofNullable(apteka.getAccount()).map(Account::getPhoneNumber).orElse(null)
+            Optional.ofNullable(apteka.getAccount()).map(Account::getPhoneNumber).orElse(null),
+            apteka.getAccount().isActive()
         );
     }
 }

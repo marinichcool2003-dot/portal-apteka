@@ -6,6 +6,8 @@ import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.apteka.portal.components.servicesecurity.NewsSecurityService;
 import com.apteka.portal.controllers.SseController;
@@ -68,15 +70,25 @@ public class NewsService {
                 .build();
         News savedNews = newsRepository.save(news);
 
-        var signal = new SseEventNames.NewsSignalDTO(savedNews.getUserGroup().getId(), SseSignalTypes.CREATED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
+        Integer groupId = userGroup.getId();
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var signal = new SseEventNames.NewsSignalDTO(groupId,
+                            SseSignalTypes.CREATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
+                }
+            });
+        }
         return NewsResponseDTO.from(savedNews);
     }
 
     @Transactional
     public NewsResponseDTO update(Integer id, NewsUpdateRequestDTO dto, AppUserDetails currentUser) {
         News news = newsRepository.findById(id)
-                .orElseThrow((() -> new NewsNotFoundException("Новость не найдена")));
+                .orElseThrow(() -> new NewsNotFoundException("Новость не найдена"));
 
         boolean hasChange = false;
 
@@ -96,9 +108,17 @@ public class NewsService {
         if (hasChange) {
             news.setUpdatedAt(Instant.now());
             news.setUpdatedBy(currentUser.getDisplayName());
+            Integer newsId = news.getId();
 
-            var signal = new SseEventNames.EntityUpdateSignalDTO(news.getId(), SseSignalTypes.UPDATED);
-            sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        var signal = new SseEventNames.EntityUpdateSignalDTO(newsId, SseSignalTypes.UPDATED);
+                        sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
+                    }
+                });
+            }
         }
 
         return NewsResponseDTO.from(news);
@@ -108,11 +128,18 @@ public class NewsService {
     public void delete(Integer id, AppUserDetails currentUser) {
         News news = newsRepository.findById(id)
                 .orElseThrow((() -> new NewsNotFoundException("Новость не найдена")));
-        newsSecurityService.validateCanUpdate(currentUser, news);
+        newsSecurityService.validateCanDelete(currentUser, news);
         newsRepository.delete(news);
 
-        var signal = new SseEventNames.NewsSignalDTO(news.getUserGroup().getId(), SseSignalTypes.DELETED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var signal = new SseEventNames.NewsSignalDTO(news.getUserGroup().getId(), SseSignalTypes.DELETED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
+                }
+            });
+        }
     }
 
     private void validateTitle(String title) {

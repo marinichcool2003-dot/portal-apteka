@@ -12,7 +12,7 @@ ALTER TABLE account_actions ADD CONSTRAINT fk_account_actions_account FOREIGN KE
 ALTER TABLE group_task ADD CONSTRAINT fk_group_task_group_user FOREIGN KEY (user_group_id) REFERENCES group_user(id) ON DELETE CASCADE;
 ALTER TABLE work_type ADD CONSTRAINT fk_work_type_group FOREIGN KEY (group_task_id) REFERENCES group_task(id) ON DELETE CASCADE;
 
--- Связи задач (Убран конфликт NOT NULL с SET NULL)
+-- Связи задач
 ALTER TABLE task ADD CONSTRAINT fk_work_type_task FOREIGN KEY (work_type_id) REFERENCES work_type(id) ON DELETE CASCADE;
 ALTER TABLE task ADD CONSTRAINT fk_client_task FOREIGN KEY (assigned_client_id) REFERENCES client(id) ON DELETE SET NULL;
 ALTER TABLE task ADD CONSTRAINT fk_apteka_task FOREIGN KEY (assigned_apteka_id) REFERENCES apteka(id) ON DELETE SET NULL;

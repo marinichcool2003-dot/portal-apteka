@@ -66,4 +66,7 @@ public class Account {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "group_id", nullable = false)
     private UserGroup userGroup;
+
+    @Column(name = "is_active")
+    private boolean isActive;
 }

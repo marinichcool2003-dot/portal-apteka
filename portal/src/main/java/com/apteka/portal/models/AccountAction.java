@@ -18,9 +18,11 @@ public enum AccountAction {
     DELETE_ALL_NEWS("DELETE_ALL_NEWS", "Удаление любых новостей"),
 
     CREATE_APTEKA("CREATE_APTEKA", "Создание учетных записей аптек"),
-    UPDATE_APTEKA("UPDATE_APTEKA", "Изменение данных учетных записей аптек"),
+    UPDATE_ALL_APTEKA("UPDATE_APTEKA", "Изменение всех данных учетных записей аптек"),
+    UPDATE_APTEKA_ACCOUNT("UPDATE_APTEKA_ACCOUNT", "Изменение аккаунта и данных для входа аптеки"),
+    UPDATE_APTEKA_DESCRIPTION("UPDATE_APTEKA_DESCRIPTION", "Изменение описания аптек"),
     SAFE_DELETE_APTEKA("SAFE_DELETE_APTEKA", "Безопасное удаление учетной записи аптеки"),
-    PERMANENT_DELETE_APTEKA("PERMANENT_DELETE_APTEKA", "Полное удаление учетной записи аптеки"),
+    PERMANENT_DELETE_APTEKA("PERMANENT_DELETE_APTEKA", "Полное удаление учетной записи аптеки или безопасное при необходимости"),
 
     CREATE_MAIN_PAGE_LINK("CREATE_MAIN_PAGE_LINK", "Создание ссылок на главной странице"),
     UPDATE_MAIN_PAGE_LINK("UPDATE_MAIN_PAGE_LINK", "Обновление ссылок на главной странице"),

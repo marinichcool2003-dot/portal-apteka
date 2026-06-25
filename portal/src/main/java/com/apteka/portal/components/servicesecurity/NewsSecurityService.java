@@ -1,6 +1,5 @@
 package com.apteka.portal.components.servicesecurity;
 
-import com.apteka.portal.dtos.response.WorkTypeResponseDTO.PriorityResponseDTO;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -21,56 +20,130 @@ public class NewsSecurityService {
             return;
         }
 
-        boolean sameGroup = sameGroup(currentUser, dto.userGroupId());
+        boolean sameGroup = sameGroupWithGroupWhereNews(currentUser, dto.userGroupId());
 
-        if (sameGroup && !currentUser.hasAnyAction(AccountAction.NEWS_WORK, AccountAction.NEWS_WORK_ALL_GROUPS)) {
-            throw new AccessDeniedException("У вас нет прав доступа для работы с новостями!");
-        }
-        if (!sameGroup && !currentUser.hasAction(AccountAction.NEWS_WORK_ALL_GROUPS)) {
+        if (!sameGroup) {
+            if (currentUser.hasAction(AccountAction.NEWS_WORK_ALL_GROUPS)) {
+                return;
+            }
             throw new AccessDeniedException("У вас нет прав доступа для работы с новостями в других группах!");
         }
+
+        if (currentUser.hasAction(AccountAction.NEWS_WORK)
+                || currentUser.hasAction(AccountAction.NEWS_WORK_ALL_GROUPS)) {
+            return;
+        }
+
+        throw new AccessDeniedException("У вас нет доступа для работы с новостями");
     }
 
     public void validateCanUpdate(AppUserDetails currentUser, News news) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
+        if (currentUser.hasAction(AccountAction.UPDATE_ALL_NEWS)) {
+            return;
+        }
 
         UUID authorId = news.getAuthor().getId();
-        Integer creatoeGroupId = news.getAuthor().getAccount().getUserGroup().getId();
-        boolean sameGroup = sameGroup(currentUser, creatoeGroupId);
         boolean isAuthor = isAuthor(currentUser, authorId);
 
-        if (!isAuthor && sameGroup && !currentUser.hasAction(AccountAction.UPDATE_ALL_NEWS_CREATE_GROUP)) {
-            throw new AccessDeniedException("У вас нет прав на изменение чужих новостей");
-        }
-
-        if (!isAuthor && !sameGroup && !currentUser.hasAction(AccountAction.UPDATE_ALL_NEWS)) {
-            throw new AccessDeniedException("У вас нет прав на изменение чужих новостей");
-        }
-
-        if (!currentUser.hasAnyRole(UserRole.AMBASSADOR, UserRole.SENIOR_AMBASSADOR)) {
-            throw new AccessDeniedException("Только пользователи с ролью AMBASSADOR могут изменять новости");
-        }
-        if (!Objects.equals(news.getUserGroup().getId(), currentUser.getUserGroup().getId())) {
-            if (!newsCreator(currentUser, news) && !currentUser.hasRole(UserRole.ADMIN)) {
-                throw new AccessDeniedException("Вы не можете изменить новость к которой не имеете отношения");
+        if (isAuthor) {
+            if (currentUser.hasAction(AccountAction.NEWS_WORK)
+                    || currentUser.hasAction(AccountAction.NEWS_WORK_ALL_GROUPS)) {
+                return;
             }
-        } else {
-            if (!newsCreator(currentUser, news) && !currentUser.hasAnyRole(UserRole.ADMIN)
-                    && !currentUser.hasRole(UserRole.SENIOR_AMBASSADOR)) {
-                throw new AccessDeniedException("Вы не можете изменить новость к которой не имеете отношения");
+            throw new AccessDeniedException("У вас нет права на редактирование новости!");
+        }
+
+        Integer creatorGroupId = news.getAuthor().getAccount().getUserGroup().getId();
+        boolean sameGroupWithAuthor = sameGroupWithAuthor(currentUser, creatorGroupId);
+
+        if (sameGroupWithAuthor) {
+            if (currentUser.hasAction(AccountAction.UPDATE_ALL_NEWS_CREATE_GROUP)) {
+                return;
             }
         }
 
+        Integer newsUserGroupId = news.getUserGroup().getId();
+        boolean sameGroupWithGroupWhereNews = sameGroupWithGroupWhereNews(currentUser, newsUserGroupId);
+
+        if (sameGroupWithGroupWhereNews) {
+            if (currentUser.hasAction(AccountAction.UPDATE_ALL_NEWS_IN_GROUP)) {
+                return;
+            }
+
+            if (sameGroupWithAuthor) {
+                throw new AccessDeniedException(
+                        "У вас нет прав на обновление новостей, созданных сотрудниками вашего отдела!");
+            }
+
+            throw new AccessDeniedException("У вас нет права на изменение чужих новостей!");
+        }
+
+        throw new AccessDeniedException("У вас нет прав на изменение новостей других групп!");
     }
 
-    private boolean newsCreator(AppUserDetails currentUser, News news) {
-        return Objects.equals(currentUser.getInternalId(), news.getAuthor().getId());
+    public void validateCanDelete(AppUserDetails currentUser, News news) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.DELETE_ALL_NEWS)) {
+            return;
+        }
+
+        UUID authorId = news.getAuthor().getId();
+        boolean isAutor = isAuthor(currentUser, authorId);
+
+        if (isAutor) {
+            if (currentUser.hasAction(AccountAction.NEWS_WORK)) {
+                return;
+            }
+            if (currentUser.hasAction(AccountAction.NEWS_WORK_ALL_GROUPS)) {
+                return;
+            }
+            throw new AccessDeniedException("У вас нет прав на удаление данной новости!");
+        }
+
+        Integer creatorGroupId = news.getAuthor().getAccount().getUserGroup().getId();
+        boolean sameGroupWithAuthor = sameGroupWithAuthor(currentUser, creatorGroupId);
+
+        if (sameGroupWithAuthor) {
+            if (currentUser.hasAction(AccountAction.DELETE_ALL_NEWS_CREATE_GROUP)) {
+                return;
+            }
+        }
+
+        Integer newsUserGroupId = news.getUserGroup().getId();
+        boolean sameGroupWithGroupWhereNews = sameGroupWithGroupWhereNews(currentUser, newsUserGroupId);
+
+        if (sameGroupWithGroupWhereNews) {
+            if (currentUser.hasAction(AccountAction.DELETE_ALL_NEWS_IN_GROUP)) {
+                return;
+            }
+
+            if (sameGroupWithAuthor) {
+                throw new AccessDeniedException(
+                        "У вас нет прав на удаление новостей, созданных сотрудниками вашего отдела!");
+            }
+            throw new AccessDeniedException("У вас не прав на удаление чужих новостей в вашем отделе!");
+        }
+
+        throw new AccessDeniedException("У вас нет прав на удаление новостей других групп!");
     }
 
-    private boolean sameGroup(AppUserDetails currentUser, Integer userGroupId) {
-        return Objects.equals(currentUser.getUserGroup().getId(), userGroupId);
+    private boolean sameGroupWithAuthor(AppUserDetails currentUser, Integer authorGroupId) {
+        if (currentUser.getUserGroup() == null || authorGroupId == null) {
+            return false;
+        }
+        return Objects.equals(currentUser.getUserGroup().getId(), authorGroupId);
+    }
+
+    private boolean sameGroupWithGroupWhereNews(AppUserDetails currentUser, Integer newsUserGroupId) {
+        if (currentUser.getUserGroup() == null || newsUserGroupId == null) {
+            return false;
+        }
+        return Objects.equals(currentUser.getUserGroup().getId(), newsUserGroupId);
     }
 
     private boolean isAuthor(AppUserDetails currentUser, UUID authorId) {
