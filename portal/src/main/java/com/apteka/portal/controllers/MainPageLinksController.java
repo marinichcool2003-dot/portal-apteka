@@ -53,7 +53,7 @@ public class MainPageLinksController {
 
     @Operation(summary = "Создать ссылку")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'LINK_CHANGER')")
+    @PreAuthorize("hasAction('CREATE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     public ResponseEntity<MainPageLinkResponseDTO> create(@Valid @RequestBody MainPageLinkRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED).body(mainPageLinksService.create(dto, currentUser));
@@ -61,7 +61,7 @@ public class MainPageLinksController {
 
     @Operation(summary = "Обновить ссылку")
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LINK_CHANGER')")
+    @PreAuthorize("hasAction('UPDATE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     public ResponseEntity<MainPageLinkResponseDTO> update(@PathVariable Integer id,
             @Valid @RequestBody MainPageLinkUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(mainPageLinksService.update(id, dto, currentUser));
@@ -69,7 +69,7 @@ public class MainPageLinksController {
 
     @Operation(summary = "Удалить ссылку")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAction('DELETE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         mainPageLinksService.delete(id, currentUser);
         return ResponseEntity.noContent().build();

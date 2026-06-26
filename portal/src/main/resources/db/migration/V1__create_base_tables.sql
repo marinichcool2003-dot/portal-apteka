@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS news (
 
 CREATE TABLE IF NOT EXISTS groups_main_page_links (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
+    name VARCHAR(50) NOT NULL UNIQUE,
     description VARCHAR(100),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)

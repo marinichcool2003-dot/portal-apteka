@@ -8,6 +8,8 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import com.apteka.portal.components.servicesecurity.MainPageLinksSecurityService;
@@ -66,7 +68,7 @@ public class MainPageLinksService {
     @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#result.groupMainPageLinksResponseDTO().id()")
     @Transactional
     public MainPageLinkResponseDTO create(MainPageLinkRequestDTO dto, AppUserDetails currentUser) {
-        mainPageLinksSecurityService.validateCanCreateAndUpdate(currentUser);
+        mainPageLinksSecurityService.validateCanCreate(currentUser);
         if (!StringUtils.hasText(dto.name())) {
             throw new InvalidMainPageLinkNameException("Наименование ссылки не может быть пустым!");
         }
@@ -82,15 +84,24 @@ public class MainPageLinksService {
 
         MainPageLink savedLink = mainPageLinkRepository
                 .save(MainPageLink.builder().name(cleanName).link(cleanLink).groupMainPageLinks(group).build());
+        Integer groupmainPageLinkId = savedLink.getGroupMainPageLinks().getId();
 
-        var signal = new SseEventNames.MainPageLinkSignalDTO(savedLink.getGroupMainPageLinks().getId(), SseSignalTypes.CREATED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var signal = new SseEventNames.MainPageLinkSignalDTO(groupmainPageLinkId,
+                            SseSignalTypes.CREATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);
+                }
+            });
+        }
         return MainPageLinkResponseDTO.from(savedLink);
     }
 
     @Transactional
     public MainPageLinkResponseDTO update(Integer id, MainPageLinkUpdateRequestDTO dto, AppUserDetails currentUser) {
-        mainPageLinksSecurityService.validateCanCreateAndUpdate(currentUser);
+        mainPageLinksSecurityService.validateCanUpdate(currentUser);
         MainPageLink mainPageLink = mainPageLinkRepository.findByid(id)
                 .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка на главной странице не найдена!"));
 
@@ -117,7 +128,7 @@ public class MainPageLinksService {
         if (dto.groupMainPageLinkId() != null && dto.groupMainPageLinkId() > 0) {
             GroupMainPageLinks group = groupMainPageLinksRepository.findById(dto.groupMainPageLinkId())
                     .orElseThrow(() -> new GroupMainPageLinksNotFoundException("Группа ссылок не найдена!"));
-            
+
             cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(mainPageLink.getGroupMainPageLinks().getId());
             mainPageLink.setGroupMainPageLinks(group);
             hasChange = true;
@@ -128,33 +139,54 @@ public class MainPageLinksService {
         }
 
         MainPageLinkResponseDTO response = MainPageLinkResponseDTO.from(mainPageLink);
+        Integer groupmainPageLinkId = response.groupMainPageLinksResponseDTO().id();
+        Integer mainPageLinkId = mainPageLink.getId();
 
         if (hasChange) {
-            var cache = cacheManager.getCache(CacheNames.MAIN_PAGE_LINKS);
-            if (cache != null) {
-                cache.put(id, response);
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        var cache = cacheManager.getCache(CacheNames.MAIN_PAGE_LINKS);
+                        if (cache != null) {
+                            cache.put(id, response);
+                        }
+                        cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP)
+                                .evict(groupmainPageLinkId);
+                        var signal = new SseEventNames.EntityUpdateSignalDTO(mainPageLinkId,
+                                SseSignalTypes.UPDATED);
+                        sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);
+                    }
+                });
             }
-            cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(response.groupMainPageLinksResponseDTO().id());
         }
-
-        var signal = new SseEventNames.EntityUpdateSignalDTO(mainPageLink.getId(), SseSignalTypes.UPDATED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);
         return response;
     }
 
     @Transactional
     public void delete(Integer id, AppUserDetails currentUser) {
-        mainPageLinksSecurityService.validateCanCreateAndUpdate(currentUser);
+        mainPageLinksSecurityService.validateCanDelete(currentUser);
         MainPageLink mainPageLink = mainPageLinkRepository.findById(id)
-            .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка не найдена"));
+                .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка не найдена"));
 
         mainPageLinkRepository.delete(mainPageLink);
 
-        cacheManager.getCache(CacheNames.WORK_TYPE).evict(id);
-        cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(mainPageLink.getGroupMainPageLinks().getId());
+        Integer groupMainPageLinkId = mainPageLink.getGroupMainPageLinks().getId();
 
-        var signal = new SseEventNames.MainPageLinkSignalDTO(mainPageLink.getGroupMainPageLinks().getId(), SseSignalTypes.DELETED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cacheManager.getCache(CacheNames.WORK_TYPE).evict(id);
+                    cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP)
+                            .evict(mainPageLink.getGroupMainPageLinks().getId());
+
+                    var signal = new SseEventNames.MainPageLinkSignalDTO(groupMainPageLinkId,
+                            SseSignalTypes.DELETED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);
+                }
+            });
+        }
     }
 
     private void validateName(String name) {

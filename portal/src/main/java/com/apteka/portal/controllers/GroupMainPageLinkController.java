@@ -45,21 +45,21 @@ public class GroupMainPageLinkController {
     }
 
     @Operation(summary = "Создать группу ссылок")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LINK_CHANGER')")
+    @PreAuthorize("hasAction('CREATE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<GroupMainPageLinksResponseDTO> create(@Valid @RequestBody GroupMainPageLinksRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED).body(groupMainPageLinksService.create(dto, currentUser));
     }
 
     @Operation(summary = "Изменить группу ссылок")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LINK_CHANGER')")
+    @PreAuthorize("hasAction('UPDATE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<GroupMainPageLinksResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody GroupMainPageLinksRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(groupMainPageLinksService.update(id, dto, currentUser));
     }
 
     @Operation(summary = "Удалить группу ссылок")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAction('DELETE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         groupMainPageLinksService.delete(id, currentUser);

@@ -1,112 +1,238 @@
 package com.apteka.portal.components.servicesecurity;
 
-import java.util.Comparator;
 import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
+import com.apteka.portal.models.Account;
+import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
+import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
+import com.apteka.portal.models.UserType;
+import com.apteka.portal.models.AccountAction.LevelAction;
 
 @Component
 public class ClientSecurityService {
-    public void validateHasElevatedPrivelegesInGroup(AppUserDetails currentUser, Integer userGroupId) {
-        if (currentUser.hasRole(UserRole.ADMIN)) {
-            return;
-        }
-        if (currentUser.hasAnyRole(UserRole.BOSS, UserRole.SENIOR, UserRole.USER)
-                && Objects.equals(currentUser.getUserGroup().getId(), userGroupId)) {
-            return;
-        }
-        throw new AccessDeniedException("У вас нет прав на просмотр данных сотрудника");
-    }
-
     public void validateWhoCanSelectClients(AppUserDetails currentUser) {
-        if (currentUser.hasRole(UserRole.APTEKA)) {
-            throw new AccessDeniedException("У вас нет прав на просмотр данных сотрудника");
+        if (currentUser.getType() != UserType.CLIENT) {
+            throw new AccessDeniedException("У вас нет прав на просмотр данных сотрудников!");
         }
     }
 
-    public void validateCanCreateClient(AppUserDetails currentUser, Integer userGroupId) {
+    public void validateCanCreateClient(AppUserDetails currentUser, UserGroup userGroup) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
-        if (currentUser.hasAnyRole(UserRole.BOSS)
-                && Objects.equals(currentUser.getUserGroup().getId(), userGroupId)) {
+        if (currentUser.getType() != UserType.CLIENT) {
+            throw new AccessDeniedException("У вас нет прав на создание сотрудников!");
+        }
+        if (currentUser.hasAction(AccountAction.CREATE_CLIENT_GRAND)) {
             return;
         }
-        throw new AccessDeniedException("У вас нет права создавать сотрудников");
+        if (currentUser.hasAction(AccountAction.CREATE_CLIENT_IN_GROUP) && sameGroup(currentUser, userGroup)) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на создание сотрудников!");
     }
 
-    public void canRemoveRoles(Set<UserRole> newRoles, AppUserDetails currentUser, UserGroup targetGroup) {
-        if (newRoles == null || newRoles.isEmpty()) {
-            throw new IllegalArgumentException("Роль обязательна");
+    public void validateCanUpdateClientAccount(AppUserDetails currentUser, Account account) {
+        baseUpdateClientValidator(currentUser, account);
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
         }
 
-        UserRole maxRole = getMaxRole(currentUser);
-
-        if (maxRole == UserRole.USER) {
-            throw new AccessDeniedException("USER не может удалять роли");
+        if (currentUser.hasAction(AccountAction.UPDATE_CLIENT_GRAND)) {
+            return;
         }
 
-        for (UserRole role : newRoles) {
-            if (role.getLevel() >= maxRole.getLevel()) {
-                throw new AccessDeniedException("Нельзя удалять роль выше или равную своей");
+        if (currentUser.hasAction(AccountAction.UPDATE_CLIENT_ACCOUNT_GRAND)) {
+            return;
+        }
+
+        if (currentUser.hasAction(AccountAction.UPDATE_CLIENT_ACCOUNT_IN_GROUP)
+                && sameGroup(currentUser, account.getUserGroup())) {
+            return;
+        }
+
+        throw new AccessDeniedException("У вас нет прав на изменение чужих учетных записей аккаунта!");
+    }
+
+    public void validateCanUpdateClientDescription(AppUserDetails currentUser, Client client) {
+        Account account = client.getAccount();
+        baseUpdateClientValidator(currentUser, account);
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+
+        if (currentUser.hasAction(AccountAction.UPDATE_CLIENT_GRAND)) {
+            return;
+        }
+
+        if (currentUser.hasAction(AccountAction.UPDATE_CLIENT_DESCRIPTION_GRAND)) {
+            return;
+        }
+
+        if (currentUser.hasAction(AccountAction.UPDATE_CLIENT_DESCRIPTION_IN_GROUP)
+                && sameGroup(currentUser, account.getUserGroup())) {
+            return;
+        }
+
+        throw new AccessDeniedException("У вас нет прав на изменение чужих данных пользователя!");
+    }
+
+    public void validateCanUpdateFullClient(AppUserDetails currentUser, Account account) {
+        baseUpdateClientValidator(currentUser, account);
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+
+        if (!currentUser.hasAction(AccountAction.UPDATE_CLIENT_GRAND)) {
+            throw new AccessDeniedException("У вас нет прав на полное обновление учетной записи сотрудника!");
+        }
+    }
+
+    private void baseUpdateClientValidator(AppUserDetails currentUser, Account account) {
+        criticalAccessValidator(currentUser, account);
+        if (account.getUserRole() == UserRole.BOSS) {
+            throw new AccessDeniedException("Только администратор может изменять учетные записи начальников отдела!");
+        }
+    }
+
+    private void criticalAccessValidator(AppUserDetails currentUser, Account account) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.getType() != UserType.CLIENT) {
+            throw new AccessDeniedException("У вас нет прав на изменение сотрудников!");
+        }
+        if (account.getUserRole() == UserRole.ADMIN) {
+            throw new AccessDeniedException("Никто не может изменять учётную запись администратора!");
+        }
+        if (!account.isActive()) {
+            throw new AccessDeniedException("Вы не можете обновить удалённый аккаунт. Обратитесь к администратору!");
+        }
+    }
+
+    public void canAddActions(Set<AccountAction> actions, AppUserDetails currentUser, Account account) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+
+        if (currentUser.hasAction(AccountAction.CAN_ADD_ACCOUNT_ACTIONS_GRAND_EXTENDED)) {
+            criticalAccessValidator(currentUser, account);
+            return;
+        }
+
+        baseUpdateClientValidator(currentUser, account);
+        boolean hasActionGrand = currentUser.hasAction(AccountAction.CAN_ADD_ACCOUNT_ACTIONS_GRAND);
+        boolean hasActionInGroup = currentUser.hasAction(AccountAction.CAN_ADD_ACCOUNT_ACTIONS_IN_GROUP);
+
+        if (!hasActionGrand && !hasActionInGroup) {
+            throw new AccessDeniedException("У вас нет прав на добавление действий для аккаунтов!");
+        }
+
+        if (!hasActionGrand && hasActionInGroup) {
+            if (!sameGroup(currentUser, account.getUserGroup())) {
+                throw new AccessDeniedException(
+                        "Вы можете изменять аккаунты сотрудников только в рамках своей группы!");
             }
-            if (maxRole != UserRole.ADMIN && !sameGroup(currentUser, targetGroup)) {
-                throw new AccessDeniedException("Можно работать только в своей группе");
+        }
+
+        LevelAction maxAllowedLevel = LevelAction.LOW;
+
+        if (currentUser.hasRole(UserRole.BOSS)) {
+            maxAllowedLevel = LevelAction.MEDIUM;
+        }
+
+        for (AccountAction accountAction : actions) {
+            if (AccountAction.getLevelValue(accountAction) > maxAllowedLevel.level()) {
+                throw new AccessDeniedException(
+                        "У вас нет права присваивать данное действие (превышен уровень доступа)!");
             }
         }
     }
 
-    public void canGiveRoleToClient(Set<UserRole> newRoles, AppUserDetails currentUser, UserGroup targetGroup) {
-
-        if (newRoles == null || newRoles.isEmpty()) {
-            throw new IllegalArgumentException("Роль обязательна");
+    public void canRemoveActions(Set<AccountAction> actions, AppUserDetails currentUser, Account account) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
         }
-
-        UserRole maxRole = getMaxRole(currentUser);
-
-        if (maxRole == UserRole.USER) {
-            throw new AccessDeniedException("USER не может назначать роли");
+        if (currentUser.hasAction(AccountAction.CAN_REMOVE_ACCOUNT_ACTIONS_GRAND_EXTENDED)) {
+            criticalAccessValidator(currentUser, account);
+            return;
         }
+        baseUpdateClientValidator(currentUser, account);
+        boolean hasActionGrand = currentUser.hasAction(AccountAction.CAN_REMOVE_ACCOUNT_ACTIONS_GRAND);
+        boolean hasActionInGroup = currentUser.hasAction(AccountAction.CAN_REMOVE_ACCOUNT_ACTIONS_IN_GROUP);
 
-        if (newRoles.contains(UserRole.APTEKA)) {
-            throw new AccessDeniedException("Пользователю нельзя присвоить роль аптеки");
+        if (!hasActionGrand && !hasActionInGroup) {
+            throw new AccessDeniedException("У вас нет прав на удаление разрешенных действий сотрудникам");
         }
-
-        if (newRoles.contains(UserRole.AMBASSADOR) || newRoles.contains(UserRole.SENIOR_AMBASSADOR)) {
-            Set<UserRole> currentRoles = currentUser.getRoles(); 
-
-            boolean isAdmin = currentRoles.contains(UserRole.ADMIN);
-
-            boolean isBossFromSameGroup = currentRoles.contains(UserRole.BOSS) && sameGroup(currentUser, targetGroup);
-
-            if (!isAdmin && !isBossFromSameGroup) {
-                throw new AccessDeniedException("Вы не можете присвоить роль AMBASSADOR данному пользователю");
+        if (!hasActionGrand && hasActionInGroup) {
+            if (!sameGroup(currentUser, account.getUserGroup())) {
+                throw new AccessDeniedException(
+                        "Вы можете изменять аккаунты сотрудников только в рамках своей группы!");
             }
         }
 
-        for (UserRole role : newRoles) {
-            if (role.getLevel() >= maxRole.getLevel()) {
-                throw new AccessDeniedException("Нельзя назначать роль выше или равную своей");
+        LevelAction maxLevel = LevelAction.LOW;
+
+        if (currentUser.hasRole(UserRole.BOSS)) {
+            maxLevel = LevelAction.MEDIUM;
+        }
+
+        for (AccountAction action : actions) {
+            if (AccountAction.getLevelValue(action) > maxLevel.level()) {
+                throw new AccessDeniedException("У вас нет права удалять данное действие (превышен уровень доступа)!");
             }
-            if (maxRole != UserRole.ADMIN && !sameGroup(currentUser, targetGroup)) {
-                throw new AccessDeniedException("Можно работать только в своей группе");
+        }
+    }
+
+    public void canGiveRole(AppUserDetails currentUser, UserRole role) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.getRole().getLevel() <= role.getLevel()) {
+            throw new AccessDeniedException("Вы не можете присвоить роль выше или равную своей!");
+        }
+    }
+
+    public void canSaveDelete(AppUserDetails currentUser, Account account) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.PERMANENT_DELETE_CLIENT)) {
+            return;
+        }
+
+        boolean hasActionGrand = currentUser.hasAction(AccountAction.SAFE_DELETE_CLIENT_GRAND);
+        boolean hasActionInGroup = currentUser.hasAction(AccountAction.SAFE_DELETE_CLIENT_IN_GROUP);
+        
+        if (!hasActionGrand && !hasActionInGroup) {
+            throw new AccessDeniedException("У вас нет права удалять сотрудников!");
+        }
+
+        if (hasActionGrand && !hasActionInGroup) {
+            return;
+        }
+
+        if (!hasActionGrand && hasActionInGroup) {
+            if (!sameGroup(currentUser, account.getUserGroup())) {
+                throw new AccessDeniedException("У вас нет права на удаление сотрудника другой группы!");
             }
+        }
+    }
+
+    public void canPermanentDelete(AppUserDetails currentUser, Account account) {
+        if (!currentUser.hasRole(UserRole.ADMIN) && !currentUser.hasAction(AccountAction.PERMANENT_DELETE_CLIENT)) {
+            throw new AccessDeniedException("У вас нет права на удаление сотрудников!");
         }
     }
 
     private boolean sameGroup(AppUserDetails currentUser, UserGroup targetGroup) {
         return Objects.equals(currentUser.getUserGroup().getId(), targetGroup.getId());
-    }
-
-    private UserRole getMaxRole(AppUserDetails currentUser) {
-        return currentUser.getRoles().stream()
-                .max(Comparator.comparingInt(UserRole::getLevel))
-                .orElse(UserRole.USER);
     }
 }

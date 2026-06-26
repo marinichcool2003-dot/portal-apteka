@@ -57,7 +57,7 @@ public class Account {
     private UserRole userRole;
 
     @Builder.Default
-    @ElementCollection(targetClass = UserRole.class, fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "account_actions", joinColumns = @JoinColumn(name = "account_id"))
     @Column(name = "role", nullable = false)

@@ -90,6 +90,15 @@ public class AppUserDetails implements UserDetails {
         return role.equals(role);
     }
 
+    public boolean hasAnyRole(UserRole... roles) {
+        for (UserRole userRole : roles) {
+            if (role == userRole) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
 

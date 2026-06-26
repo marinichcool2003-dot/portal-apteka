@@ -9,6 +9,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -72,11 +73,9 @@ public class ClientService {
     private String uploadAvatarDir;
 
     @Transactional(readOnly = true)
-    public List<ClientResponseDTO> getAll(AppUserDetails currentUser) {
-        if (!currentUser.hasRole(UserRole.ADMIN)) {
-            throw new AccessDeniedException("У вас нет прав на просмотр списка всех сотрудников");
-        }
-        return clientRepository.findAll().stream()
+    public List<ClientResponseDTO> getAll(AppUserDetails currentUser, Pageable pageable, boolean isActive) {
+        clientSecurityService.validateWhoCanSelectClients(currentUser);
+        return clientRepository.findAll(pageable, isActive).stream()
                 .map(ClientResponseDTO::from).toList();
     }
 
