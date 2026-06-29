@@ -2,6 +2,7 @@ package com.apteka.portal.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -17,6 +18,7 @@ import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
 import com.apteka.portal.dtos.response.AssignedStatsDTO;
 import com.apteka.portal.dtos.response.CreatedStatsDTO;
 import com.apteka.portal.models.Task;
+import com.apteka.portal.models.TaskStatus;
 
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
 
@@ -134,5 +136,21 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			    WHERE t.id = :id
 			""")
 	Optional<Task> fetchCommentsForTask(@Param("id") Long id);
+
+	@Query("""
+			SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+			FROM Task t
+			WHERE (t.assignedClientId = :clientId AND t.status IN :statusCollection)
+			   OR (t.createdByClientId = :clientId AND t.status IN :statusCollection)
+			""")
+	boolean existsByClientIdAndStatus(UUID clientId, Set<TaskStatus> statusCollection);
+
+	@Query("""
+			SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+			FROM Task t
+			WHERE (t.assignedAptekaId = :aptekaId AND t.status IN :statusCollection)
+				OR (t.createdByAptekaId = :aptekaId AND t.status IN :statusCollection)
+			""")
+	boolean existsByAptekaIdAndStatus(UUID aptekaId, Set<TaskStatus> statusCollection);
 
 }

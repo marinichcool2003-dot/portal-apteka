@@ -11,7 +11,13 @@ public record ClientRequestDTO(
         @NotBlank(message = "Пароль обязателен!") @Size(min = 8, message = "Пароль должен быть минимум 8 символов") @Pattern(regexp = "^(?=.*[0-9])(?=.*[A-Z])(?=.*[@#$%^&+=!]).*$", message = "Пароль должен содержать хотя бы одну цифру, одну заглавную букву и один спецсимвол") String password,
         @NotBlank(message = "ФИО обязательно") @Size(min = 2, max = 150, message = "Фио должно быть от 2 до 150 символов") @Pattern(regexp = "^[а-яА-Яa-zA-Z\\s\\-]+$", message = "ФИО не может содержать цифры или спецсимволы") String fullName,
         @NotBlank(message = "Номер телефона обязателен") @Size(max = 20, message = "Номер телефона - максимум 20 символов") String phoneNumber,
-        Set<String> rolesCode,
+        @NotBlank(message = "Роль сотрудника обязательна!") String roleCode,
+        Set<String> accountActionsCode,
         String extensionNumber,
         Integer groupClientId) {
+    public ClientRequestDTO {
+        if (accountActionsCode == null) {
+            accountActionsCode = Set.of();
+        }
+    }
 }

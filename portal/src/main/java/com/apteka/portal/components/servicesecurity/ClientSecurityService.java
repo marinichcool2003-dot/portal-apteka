@@ -23,6 +23,33 @@ public class ClientSecurityService {
         }
     }
 
+    public void validateWhoCanSelectNonActiveClients(AppUserDetails currentUser, UserGroup userGroup) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_SELECT_NON_ACTIVE_CLIENT_GRAND)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_SELECT_NON_ACTIVE_CLIENT_IN_GROUP)
+                && sameGroup(currentUser, userGroup)) {
+            return;
+        }
+        throw new AccessDeniedException("Вы не можете видеть неактивных пользователей!");
+    }
+
+    public void validateWhoCanSelectClientStats(AppUserDetails currentUser, UserGroup userGroup) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_SELECT_CLIENT_STATS_GRAND)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_SELECT_CLIENT_STATS_IN_GROUP) && sameGroup(currentUser, userGroup)) {
+            return;
+        }
+        throw new AccessDeniedException("Вы не можете просматривать статистику пользователей!");
+    }
+
     public void validateCanCreateClient(AppUserDetails currentUser, UserGroup userGroup) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
@@ -195,6 +222,12 @@ public class ClientSecurityService {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
+        if (role == UserRole.ADMIN) {
+            throw new AccessDeniedException("Только администратор может создать другого администратора!");
+        }
+        if (currentUser.hasAction(AccountAction.CAN_GIVE_ROLE_CLIENT_GRAND)) {
+            return;
+        }
         if (currentUser.getRole().getLevel() <= role.getLevel()) {
             throw new AccessDeniedException("Вы не можете присвоить роль выше или равную своей!");
         }
@@ -210,7 +243,7 @@ public class ClientSecurityService {
 
         boolean hasActionGrand = currentUser.hasAction(AccountAction.SAFE_DELETE_CLIENT_GRAND);
         boolean hasActionInGroup = currentUser.hasAction(AccountAction.SAFE_DELETE_CLIENT_IN_GROUP);
-        
+
         if (!hasActionGrand && !hasActionInGroup) {
             throw new AccessDeniedException("У вас нет права удалять сотрудников!");
         }
@@ -224,6 +257,16 @@ public class ClientSecurityService {
                 throw new AccessDeniedException("У вас нет права на удаление сотрудника другой группы!");
             }
         }
+    }
+
+    public void activateAfterSafeDelete(AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE)) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет права восстанавливать пользователя после удаления!");
     }
 
     public void canPermanentDelete(AppUserDetails currentUser, Account account) {

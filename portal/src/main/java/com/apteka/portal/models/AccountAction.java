@@ -32,11 +32,19 @@ public enum AccountAction {
     UPDATE_MAIN_PAGE_LINK("UPDATE_MAIN_PAGE_LINK", "Обновление ссылок на главной странице", LevelAction.HIGH),
     DELETE_MAIN_PAGE_LINK("DELETE_MAIN_PAGE_LINK", "Удаление ссылок на главной странице", LevelAction.HIGH),
 
-    CAN_USE_BASE_CLIENT_FILTER("CAN_USE_BASE_FILTER", "Возможность использовать расширенный фильтр по группам", LevelAction.LOW),
-    CAN_USE_ALL_CLIENT_FILTER("CAN_USE_ALL_CLIENT_FILTER", "Возможность использовать полный фильтр", LevelAction.MEDIUM),
+    // CAN_USE_BASE_CLIENT_FILTER("CAN_USE_BASE_FILTER", "Возможность использовать расширенный фильтр по группам", LevelAction.LOW),
+    // CAN_USE_ALL_CLIENT_FILTER("CAN_USE_ALL_CLIENT_FILTER", "Возможность использовать полный фильтр", LevelAction.MEDIUM),
 
-    CREATE_CLIENT_IN_GROUP("CREATE_CLIENT_IN_GROUP", "Создание учетной записи сотрудника в своей группе", LevelAction.HIGH),
+    CAN_SELECT_NON_ACTIVE_CLIENT_IN_GROUP("CAN_SELECT_NON_ACTIVE_CLIENT_IN_GROUP", "Возможность видеть неактивных пользователей в своей группе", LevelAction.LOW),
+    CAN_SELECT_NON_ACTIVE_CLIENT_GRAND("CAN_SELECT_NON_ACTIVE_CLIENT_GRAND", "Возможность видеть неактивных пользователей в любой группе", LevelAction.HIGH),
+
+    CAN_SELECT_CLIENT_STATS_IN_GROUP("CAN_SELECT_CLIENT_STATS_IN_GROUP", "Возможность просматривать статистику пользователя в общей группе", LevelAction.LOW),
+    CAN_SELECT_CLIENT_STATS_GRAND("CAN_SELECT_CLIENT_STATS_GRAND", "Возможность просматривать статистику пользователя в любой группе", LevelAction.MEDIUM),
+
+    CREATE_CLIENT_IN_GROUP("CREATE_CLIENT_IN_GROUP", "Создание учетной записи сотрудника в своей группе", LevelAction.MEDIUM),
     CREATE_CLIENT_GRAND("CREATE_CLIENT", "Создание учетной записи сотрудника в любой группе", LevelAction.HIGH),
+
+    CAN_GIVE_ROLE_CLIENT_GRAND("CAN_GIVE_ROLE_CLIENT_GRAND", "Добавление роли сотруднику возможность добавить роль выше своей, (кроме ADMIN)", LevelAction.CRITICAL),
 
     CAN_ADD_ACCOUNT_ACTIONS_IN_GROUP("CAN_ADD_ACCOUNT_ACTIONS_IN_GROUP", "Возможность добавления действий для учетной записи сотруднику своей группы кроме начальников в рамках уровня действия", LevelAction.HIGH),
     CAN_ADD_ACCOUNT_ACTIONS_GRAND("CAN_ADD_ACCOUNT_ACTIONS_GRAND", "Возможность добавления действий для учетной записи любому сотруднику кроме начальников в рамках уровня действия", LevelAction.HIGH),
@@ -55,6 +63,7 @@ public enum AccountAction {
 
     SAFE_DELETE_CLIENT_IN_GROUP("SAFE_DELETE_CLIENT_IN_GROUP", "Безопасное удаление учетной записи сотрудника в общей группе", LevelAction.HIGH),
     SAFE_DELETE_CLIENT_GRAND("SAFE_DELETE_CLIENT_GRAND", "Безопасное удаление учетной записи любого сотрудника", LevelAction.CRITICAL),
+    CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE("CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE", "Возвращение учетной записи пользователя после удаления", LevelAction.CRITICAL),
     PERMANENT_DELETE_CLIENT("PERMANENT_DELETE_CLIENT", "Полное удаление учетной записи сотрудника либо безопасное по выбору", LevelAction.CRITICAL),
 
     CREATE_TASK_TO_GROUP("CREATE_TASK_TO_GROUP", "Создание задачи на любую группу сотрудников"),

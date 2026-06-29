@@ -1,5 +1,6 @@
 package com.apteka.portal.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -33,6 +34,10 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
             AND ug.id = :groupId
                 """)
     Page<Client> findByUserGroupId(@Param("groupId") Integer groupId, @Param("isActive") boolean isActive, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"account", "account.userGroup"})
+    @Query("SELECT c FROM Client c WHERE c.account.userGroup.id = :userGroupId AND c.account.isActive = :isActive")
+    List<Client> findByUserGroupId(@Param("userGroupId") Integer userGroupId, boolean isActive);
 
     @EntityGraph(attributePaths = { "account", "account.userGroup" })
     @Query(value = """

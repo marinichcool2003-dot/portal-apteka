@@ -27,12 +27,14 @@ public class AppUserDetails implements UserDetails {
     private final UserType type;
     private final UUID userId;
     private final String displayName;
+    private final Boolean isActive;
 
     public AppUserDetails(Account account) {
         this.userId = account.getId();
         this.login = account.getLogin();
         this.password = account.getPassword();
         this.userGroup = account.getUserGroup();
+        this.isActive = account.isActive();
 
         if (getUserTypeFromAccount(account) == UserType.CLIENT) {
             this.type = UserType.CLIENT;
@@ -140,6 +142,6 @@ public class AppUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return isActive;
     }
 }
