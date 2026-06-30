@@ -342,6 +342,13 @@ public class ClientService {
         return response;
     }
 
+    @Transactional
+    public ClientResponseDTO updateClientDescription(UUID id, ClientUpdateRequestDTO dto, AppUserDetails currentUser) {
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new ClientNotFoundException(id));
+        clientSecurityService.validateCanUpdateClientDescription(currentUser, client);
+    }
+
     private AccountHasChangeResponseDTO updateUserGroupInAccount(Account account, Integer userGroupId) {
         boolean hasChange = false;
         if (userGroupId != null) {
@@ -368,7 +375,7 @@ public class ClientService {
 
         AccountHasChangeResponseDTO savedClient = updateBasicClientForm(id, dto.login(), dto.password(),
                 dto.avatar());
-        Client client = savedClient.client();
+        Account account = savedClient.account();
         boolean hasChange = savedClient.hasChange();
 
         if (StringUtils.hasText(dto.fullName())) {

@@ -4,6 +4,7 @@ import java.util.Set;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record ClientRequestDTO(
@@ -13,8 +14,8 @@ public record ClientRequestDTO(
         @NotBlank(message = "Номер телефона обязателен") @Size(max = 20, message = "Номер телефона - максимум 20 символов") String phoneNumber,
         @NotBlank(message = "Роль сотрудника обязательна!") String roleCode,
         Set<String> accountActionsCode,
-        String extensionNumber,
-        Integer groupClientId) {
+        @Pattern(regexp = "^[0-9]+$", message = "внутренний телефон должен содержать только цифры") String extensionNumber,
+        @Positive(message = "Группа пользователя должна содержать только положительное число") Integer groupClientId) {
     public ClientRequestDTO {
         if (accountActionsCode == null) {
             accountActionsCode = Set.of();
