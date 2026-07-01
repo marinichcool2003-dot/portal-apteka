@@ -2,7 +2,6 @@ package com.apteka.portal.repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -12,9 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.Client;
-import com.apteka.portal.models.UserRole;
 
 public interface ClientRepository extends JpaRepository<Client, UUID> {
 
@@ -48,8 +45,6 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
             WHERE acc.isActive = :isActive
             AND (:login IS NULL OR acc.login = :login)
             AND (:phoneNumber IS NULL OR acc.phoneNumber = :phoneNumber)
-            AND (:userRoleCode IS NULL OR acc.userRole = :userRoleCode)
-            AND (COALESCE(:actionsCodes, NULL) IS NULL OR act IN :actionsCodes)
             AND (:groupId IS NULL OR ug.id = :groupId)
             AND (:fullName IS NULL OR c.fullName = :fullName)
             AND (:extensionNumber IS NULL OR c.extensionNumber = :extensionNumber)
@@ -60,13 +55,6 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
             WHERE acc.isActive = :isActive
             AND (:login IS NULL OR acc.login = :login)
             AND (:phoneNumber IS NULL OR acc.phoneNumber = :phoneNumber)
-            AND (:userRoleCode IS NULL OR acc.userRole = :userRoleCode)
-            AND (
-                COALESCE(:actionsCodes, NULL) IS NULL
-                OR EXISTS (
-                    SELECT 1 FROM acc.actions a WHERE a IN :actionsCodes
-                )
-            )
             AND (:groupId IS NULL OR ug.id = :groupId)
             AND (:fullName IS NULL OR c.fullName = :fullName)
             AND (:extensionNumber IS NULL OR c.extensionNumber = :extensionNumber)
@@ -75,8 +63,6 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
             Pageable pageable,
             @Param("login") String login,
             @Param("phoneNumber") String phoneNumber,
-            @Param("userRoleCode") UserRole userRoleCode,
-            @Param("actionsCodes") Set<AccountAction> actionsCodes,
             @Param("groupId") Integer groupId,
             @Param("isActive") boolean isActive,
             @Param("fullName") String fullName,

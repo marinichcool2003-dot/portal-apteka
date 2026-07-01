@@ -6,6 +6,7 @@ import java.util.Set;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
+import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.models.Account;
 import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
@@ -30,6 +31,9 @@ public class ClientSecurityService {
         if (currentUser.hasAction(AccountAction.CAN_SELECT_NON_ACTIVE_CLIENT_GRAND)) {
             return;
         }
+        if (userGroup == null) {
+            throw new AccessDeniedException("Вы не можете видеть неактивных пользователей!");
+        }
         if (currentUser.hasAction(AccountAction.CAN_SELECT_NON_ACTIVE_CLIENT_IN_GROUP)
                 && sameGroup(currentUser, userGroup)) {
             return;
@@ -44,7 +48,8 @@ public class ClientSecurityService {
         if (currentUser.hasAction(AccountAction.CAN_SELECT_CLIENT_STATS_GRAND)) {
             return;
         }
-        if (currentUser.hasAction(AccountAction.CAN_SELECT_CLIENT_STATS_IN_GROUP) && sameGroup(currentUser, userGroup)) {
+        if (currentUser.hasAction(AccountAction.CAN_SELECT_CLIENT_STATS_IN_GROUP)
+                && sameGroup(currentUser, userGroup)) {
             return;
         }
         throw new AccessDeniedException("Вы не можете просматривать статистику пользователей!");
@@ -145,6 +150,13 @@ public class ClientSecurityService {
     }
 
     public void canAddActions(Set<AccountAction> actions, AppUserDetails currentUser, Account account) {
+
+        for (AccountAction accountAction : actions) {
+            if (account.getActions().contains(accountAction)) {
+                throw new AccessDeniedException("У пользователя уже есть право на действие: " + accountAction);
+            }
+        }
+
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
@@ -184,6 +196,11 @@ public class ClientSecurityService {
     }
 
     public void canRemoveActions(Set<AccountAction> actions, AppUserDetails currentUser, Account account) {
+        for (AccountAction accountAction : actions) {
+            if (!account.getActions().contains(accountAction)) {
+                throw new AccessDeniedException("У пользователя нет действия: " + accountAction);
+            }
+        }
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
@@ -241,6 +258,14 @@ public class ClientSecurityService {
             return;
         }
 
+        if (!account.isActive()) {
+            throw new AccessDeniedException("Аккаунт уже не активен!");
+        }
+
+        if (Objects.equals(currentUser.getInternalId(), account.getId())) {
+            throw new SelfDeleteException("Вы не можете удалить сами себя!");
+        }
+
         boolean hasActionGrand = currentUser.hasAction(AccountAction.SAFE_DELETE_CLIENT_GRAND);
         boolean hasActionInGroup = currentUser.hasAction(AccountAction.SAFE_DELETE_CLIENT_IN_GROUP);
 
@@ -259,7 +284,10 @@ public class ClientSecurityService {
         }
     }
 
-    public void activateAfterSafeDelete(AppUserDetails currentUser) {
+    public void activateAfterSafeDelete(AppUserDetails currentUser, Account account) {
+        if (account.isActive()) {
+            throw new AccessDeniedException("Пользователь уже активен");
+        }
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
@@ -272,6 +300,9 @@ public class ClientSecurityService {
     public void canPermanentDelete(AppUserDetails currentUser, Account account) {
         if (!currentUser.hasRole(UserRole.ADMIN) && !currentUser.hasAction(AccountAction.PERMANENT_DELETE_CLIENT)) {
             throw new AccessDeniedException("У вас нет права на удаление сотрудников!");
+        }
+        if (Objects.equals(currentUser.getInternalId(), account.getId())) {
+            throw new SelfDeleteException("Вы не можете удалить сами себя!");
         }
     }
 

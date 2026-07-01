@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
-import com.apteka.portal.dtos.request.NewsRequestDTO;
+import com.apteka.portal.dtos.request.news.NewsRequestDTO;
 import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.News;

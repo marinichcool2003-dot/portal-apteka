@@ -9,7 +9,7 @@ import java.util.UUID;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
-import com.apteka.portal.dtos.request.TaskRequestDTO;
+import com.apteka.portal.dtos.request.task.TaskRequestDTO;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.WorkTypeNotFoundException;

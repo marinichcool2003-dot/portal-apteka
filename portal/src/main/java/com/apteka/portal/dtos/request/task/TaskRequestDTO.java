@@ -1,4 +1,4 @@
-package com.apteka.portal.dtos.request;
+package com.apteka.portal.dtos.request.task;
 
 import java.util.UUID;
 

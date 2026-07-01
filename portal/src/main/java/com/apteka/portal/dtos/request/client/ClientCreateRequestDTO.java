@@ -1,4 +1,4 @@
-package com.apteka.portal.dtos.request;
+package com.apteka.portal.dtos.request.client;
 
 import java.util.Set;
 
@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-public record ClientRequestDTO(
+public record ClientCreateRequestDTO(
         @NotBlank(message = "Логин не может быть пустым") @Pattern(regexp = ".*@farmp.ru$", message = "Логин должен содержать домен") String login,
         @NotBlank(message = "Пароль обязателен!") @Size(min = 8, message = "Пароль должен быть минимум 8 символов") @Pattern(regexp = "^(?=.*[0-9])(?=.*[A-Z])(?=.*[@#$%^&+=!]).*$", message = "Пароль должен содержать хотя бы одну цифру, одну заглавную букву и один спецсимвол") String password,
         @NotBlank(message = "ФИО обязательно") @Size(min = 2, max = 150, message = "Фио должно быть от 2 до 150 символов") @Pattern(regexp = "^[а-яА-Яa-zA-Z\\s\\-]+$", message = "ФИО не может содержать цифры или спецсимволы") String fullName,
@@ -16,7 +16,7 @@ public record ClientRequestDTO(
         Set<String> accountActionsCode,
         @Pattern(regexp = "^[0-9]+$", message = "внутренний телефон должен содержать только цифры") String extensionNumber,
         @Positive(message = "Группа пользователя должна содержать только положительное число") Integer groupClientId) {
-    public ClientRequestDTO {
+    public ClientCreateRequestDTO {
         if (accountActionsCode == null) {
             accountActionsCode = Set.of();
         }

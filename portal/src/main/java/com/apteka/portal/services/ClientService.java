@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +22,11 @@ import org.springframework.web.multipart.MultipartFile;
 import com.apteka.portal.components.AvatarClientService;
 import com.apteka.portal.components.servicesecurity.ClientSecurityService;
 import com.apteka.portal.dtos.request.AccountUpdateRequestDTO;
-import com.apteka.portal.dtos.request.ClientRequestDTO;
-import com.apteka.portal.dtos.request.ClientUpdateRequestDTO;
-import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
+import com.apteka.portal.dtos.request.client.ClientCreateRequestDTO;
+import com.apteka.portal.dtos.request.client.ClientFilterRequestDTO;
+import com.apteka.portal.dtos.request.client.ClientUpdateFullRequestDTO;
+import com.apteka.portal.dtos.request.client.ClientUpdatePersonalProfileRequestDTO;
+import com.apteka.portal.dtos.request.client.ClientUpdateDescriptionRequestDTO;
 import com.apteka.portal.components.validators.FullNameValidator;
 import com.apteka.portal.components.validators.LoginValidator;
 import com.apteka.portal.components.validators.PasswordValidator;
@@ -36,12 +37,10 @@ import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.dtos.response.CreatedStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
-import com.apteka.portal.dtos.response.AccountHasChangeResponseDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.DublicateClientLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
-import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.exceptions.UserHaveActiveTasksException;
 import com.apteka.portal.models.Account;
 import com.apteka.portal.models.AccountAction;
@@ -81,22 +80,31 @@ public class ClientService {
     @Value("${app.default.avatars.upload.dir}")
     private String uploadAvatarDir;
 
+    @Value("${app.default.avatars.upload.picture.name}")
+    private String uploadAvatarPictureName;
+
     @Transactional(readOnly = true)
-    public List<ClientResponseDTO> getAll(AppUserDetails currentUser, Pageable pageable, Boolean isActive) {
+    public Page<ClientResponseDTO> getAll(AppUserDetails currentUser, Pageable pageable, Boolean isActive) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
         if (Boolean.FALSE.equals(isActive)) {
             clientSecurityService.validateWhoCanSelectNonActiveClients(currentUser, null);
         }
 
-        return clientRepository.findAll(pageable, isActive).stream()
-                .map(ClientResponseDTO::from).toList();
+        return clientRepository.findAll(pageable, isActive)
+                .map(ClientResponseDTO::from);
     }
 
     @Transactional(readOnly = true)
     public ClientResponseDTO getOne(UUID id, AppUserDetails currentUser) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
-        Client client = clientRepository.findById(id)
+        Client client = clientRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
+        Account account = client.getAccount();
+        Boolean isActive = account.isActive();
+        UserGroup userGroup = account.getUserGroup();
+        if (!isActive) {
+            clientSecurityService.validateWhoCanSelectNonActiveClients(currentUser, userGroup);
+        }
         return ClientResponseDTO.from(client);
     }
 
@@ -167,7 +175,21 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponseDTO create(ClientRequestDTO dto, AppUserDetails currentUser) throws IOException {
+    public Page<ClientResponseDTO> filter(ClientFilterRequestDTO dto, AppUserDetails currentUser, Pageable pageable) {
+        clientSecurityService.validateWhoCanSelectClients(currentUser);
+        return clientRepository.filter(
+                pageable,
+                dto.login(),
+                dto.phoneNumber(),
+                dto.groupId(),
+                true,
+                dto.fullName(),
+                dto.extensionNumber())
+                .map(ClientResponseDTO::from);
+    }
+
+    @Transactional
+    public ClientResponseDTO create(ClientCreateRequestDTO dto, AppUserDetails currentUser) throws IOException {
 
         UserGroup userGroup = userGroupRepository.findById(dto.groupClientId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.groupClientId()));
@@ -193,7 +215,7 @@ public class ClientService {
         Client newClient = Client.builder()
                 .fullName(normalizedName)
                 .extensionNumber(cleanExtensionNumber)
-                .avatarURL(uploadAvatarDir + "/default.png")
+                .avatarURL(uploadAvatarDir.concat(uploadAvatarPictureName))
                 .createdBy(currentUser.getDisplayName())
                 .build();
 
@@ -224,41 +246,312 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponseDTO updateYourself(ClientUpdateRequestDTO dto, AppUserDetails currentUser)
-            throws IOException {
+    public ClientResponseDTO updateAccount(UUID id, AccountUpdateRequestDTO dto, AppUserDetails currentUser) {
+        UpdateAccountResponseWithOldLoginDTO responseDTO = updateAccountInner(id, dto, currentUser);
+        Account account = responseDTO.accountResponseDTO().account();
+        String oldLogin = responseDTO.oldLogin();
+        boolean hasChange = responseDTO.accountResponseDTO().hasChange();
+        boolean needsLogout = responseDTO.accountResponseDTO().needsLogout();
+        boolean onlyForCurrentUser = responseDTO.accountResponseDTO().isOnlyForCurrent();
 
-        AccountHasChangeResponseDTO savedClient = updateBasicClientForm(currentUser.getInternalId(), dto.login(),
-                dto.password(),
-                dto.avatar());
-        Account account = savedClient.account();
         Client client = account.getClient();
 
-        if (!savedClient.hasChange()) {
-            return ClientResponseDTO.from(client);
+        if (hasChange || onlyForCurrentUser) {
+            client.setUpdatedBy(currentUser.getDisplayName());
+
+            if (needsLogout) {
+                authService.invalidateAllSession(oldLogin);
+            }
         }
 
-        client.setUpdatedBy(currentUser.getDisplayName());
-        String clientIdString = client.getId().toString();
         ClientResponseDTO response = ClientResponseDTO.from(client);
 
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    sseController.sendNotification(clientIdString, SseEventNames.REFRESH_CLIENTS, response);
-                }
-            });
+        if (hasChange || onlyForCurrentUser) {
+            String clientIdString = client.getId().toString();
+
+            final boolean isOnlyForCurrent = onlyForCurrentUser;
+
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        if (isOnlyForCurrent) {
+                            sseController.sendNotification(clientIdString, SseEventNames.REFRESH_CLIENTS, response);
+                        } else {
+                            var signal = new SseEventNames.EntityUpdateSignalDTO(clientIdString,
+                                    SseSignalTypes.UPDATED);
+                            sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                        }
+                    }
+                });
+            }
         }
 
         return response;
     }
 
     @Transactional
-    public ClientResponseDTO updateAccount(UUID id, AccountUpdateRequestDTO dto, AppUserDetails currentUser) {
+    public ClientResponseDTO updateClientDescription(UUID id, ClientUpdateDescriptionRequestDTO dto, AppUserDetails currentUser) {
+        UpdateClientResponseDTO responseDTO = updateClientDescriptionInner(id, dto, currentUser);
+        Client client = responseDTO.client();
+        boolean hasChange = responseDTO.hasChange();
+
+        ClientResponseDTO response = ClientResponseDTO.from(client);
+
+        if (hasChange) {
+            String clientIdString = client.getId().toString();
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        var signal = new SseEventNames.EntityUpdateSignalDTO(clientIdString,
+                                SseSignalTypes.UPDATED);
+                        sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                    }
+                });
+            }
+        }
+        return response;
+    }
+
+    @Transactional
+    public ClientResponseDTO updatePersonalProfile(ClientUpdatePersonalProfileRequestDTO dto,
+            AppUserDetails currentUser) throws IOException {
+        ClientInnerResponseDTO responseDTO = updateProfile(currentUser.getInternalId(), dto, currentUser);
+
+        boolean hasChange = responseDTO.hasChange();
+        boolean onlyForCurrentUser = responseDTO.isOnlyForCurrent();
+        boolean needsLogout = responseDTO.needsLogout();
+        Client client = responseDTO.client();
+        String oldLogin = responseDTO.oldLogin();
+
+        ClientResponseDTO response = ClientResponseDTO.from(client);
+
+        if (hasChange || onlyForCurrentUser) {
+            client.setUpdatedBy(currentUser.getDisplayName());
+
+            if (needsLogout) {
+                authService.invalidateAllSession(oldLogin);
+            }
+            String clientIdString = client.getId().toString();
+
+            final boolean isOnlyForCurrent = onlyForCurrentUser;
+
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        if (isOnlyForCurrent) {
+                            sseController.sendNotification(clientIdString, SseEventNames.REFRESH_CLIENTS, response);
+                        } else {
+                            var signal = new SseEventNames.EntityUpdateSignalDTO(clientIdString,
+                                    SseSignalTypes.UPDATED);
+                            sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                        }
+                    }
+                });
+            }
+        }
+
+        return response;
+    }
+
+    @Transactional
+    public ClientResponseDTO updateFullClient(UUID id, ClientUpdateFullRequestDTO dto, AppUserDetails currentUser)
+            throws IOException {
+
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ClientNotFoundException(id));
+
+        clientSecurityService.validateCanUpdateFullClient(currentUser, account);
+
+        ClientInnerResponseDTO responseDTO = updateProfile(id, new ClientUpdatePersonalProfileRequestDTO(
+                dto.accountUpdateRequestDTO(),
+                dto.clientUpdateRequestDTO(), dto.avatar()),
+                currentUser);
+
+        boolean hasChange = responseDTO.hasChange();
+        boolean onlyForCurrentUser = responseDTO.isOnlyForCurrent();
+        boolean needsLogout = responseDTO.needsLogout();
+        Client client = responseDTO.client();
+        account = client.getAccount();
+        String oldLogin = responseDTO.oldLogin();
+
+        if (dto.userGroupId() != null) {
+            UpdateAccountResponseDTO groupResult = updateUserGroup(account, dto.userGroupId(), hasChange, needsLogout,
+                    onlyForCurrentUser);
+
+            hasChange = groupResult.hasChange();
+            needsLogout = groupResult.needsLogout();
+            onlyForCurrentUser = groupResult.isOnlyForCurrent();
+
+            client.setAccount(groupResult.account());
+        }
+
+        ClientResponseDTO response = ClientResponseDTO.from(client);
+
+        if (hasChange || onlyForCurrentUser) {
+            client.setUpdatedBy(currentUser.getDisplayName());
+
+            if (needsLogout) {
+                authService.invalidateAllSession(oldLogin);
+            }
+            String clientIdString = client.getId().toString();
+
+            final boolean isOnlyForCurrent = onlyForCurrentUser;
+
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        if (isOnlyForCurrent) {
+                            sseController.sendNotification(clientIdString, SseEventNames.REFRESH_CLIENTS, response);
+                        } else {
+                            var signal = new SseEventNames.EntityUpdateSignalDTO(clientIdString,
+                                    SseSignalTypes.UPDATED);
+                            sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                        }
+                    }
+                });
+            }
+        }
+
+        return response;
+    }
+
+    @Transactional
+    public void addActionsToClient(UUID id, Set<AccountAction> actions, AppUserDetails currentUser) {
+        Client client = clientRepository.findByIdWithAccount(id)
+                .orElseThrow(() -> new ClientNotFoundException(id));
+
+        Account account = client.getAccount();
+
+        clientSecurityService.canAddActions(actions, currentUser, account);
+
+        Set<AccountAction> accountActions = account.getActions();
+        accountActions.addAll(actions);
+        client.setAccount(account);
+
+        ClientResponseDTO response = ClientResponseDTO.from(client);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sseController.sendNotification(id.toString(), SseEventNames.REFRESH_CLIENTS, response);
+                }
+            });
+        }
+    }
+
+    @Transactional
+    public void removeActionsClient(UUID id, Set<AccountAction> actions, AppUserDetails currentUser) {
+        Client client = clientRepository.findByIdWithAccount(id)
+                .orElseThrow(() -> new ClientNotFoundException(id));
+
+        Account account = client.getAccount();
+
+        clientSecurityService.canRemoveActions(actions, currentUser, account);
+
+        Set<AccountAction> accountActions = account.getActions();
+        accountActions.removeAll(actions);
+        client.setAccount(account);
+
+        ClientResponseDTO response = ClientResponseDTO.from(client);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sseController.sendNotification(id.toString(), SseEventNames.REFRESH_CLIENTS, response);
+                }
+            });
+        }
+    }
+
+    @Transactional
+    public void selfDelete(UUID id, AppUserDetails currentUser) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ClientNotFoundException(id));
+        clientSecurityService.canSaveDelete(currentUser, account);
+
+        Integer userGroupId = account.getUserGroup().getId();
+        account.setActive(false);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var signal = new SseEventNames.AppUserDetailsSignalDTO(userGroupId,
+                            SseSignalTypes.UPDATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                }
+            });
+        }
+    }
+
+    @Transactional
+    public void activateAfterSafeDelete(UUID id, AppUserDetails currentUser) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ClientNotFoundException(id));
+        clientSecurityService.activateAfterSafeDelete(currentUser, account);
+
+        Integer userGroupId = account.getUserGroup().getId();
+        account.setActive(true);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var signal = new SseEventNames.AppUserDetailsSignalDTO(userGroupId,
+                            SseSignalTypes.UPDATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                }
+            });
+        }
+    }
+
+    @Transactional
+    public void permanentDelete(UUID id, AppUserDetails currentUser) {
+        Client client = clientRepository.findByIdWithAccount(id)
+                .orElseThrow(() -> new ClientNotFoundException(id));
+        Account account = client.getAccount();
+        clientSecurityService.canPermanentDelete(currentUser, account);
+
+        Integer userGroupId = account.getUserGroup().getId();
+        clientRepository.delete(client);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var signal = new SseEventNames.AppUserDetailsSignalDTO(userGroupId,
+                            SseSignalTypes.DELETED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                }
+            });
+        }
+    }
+
+    private record ClientInnerResponseDTO(Client client, boolean hasChange, boolean needsLogout,
+            boolean isOnlyForCurrent, String oldLogin) {
+    }
+
+    private record UpdateAccountResponseWithOldLoginDTO(UpdateAccountResponseDTO accountResponseDTO, String oldLogin) {
+    }
+
+    private record UpdateAccountResponseDTO(Account account, boolean hasChange, boolean needsLogout,
+            boolean isOnlyForCurrent) {
+    }
+
+    private record UpdateClientResponseDTO(Client client, boolean hasChange) {
+    }
+
+    private UpdateAccountResponseWithOldLoginDTO updateAccountInner(UUID id, AccountUpdateRequestDTO dto,
+            AppUserDetails currentUser) {
         Account account = accountRepository.findByIdWithUserGroup(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.validateCanUpdateClientAccount(currentUser, account);
-        Client client = account.getClient();
 
         String oldLogin = account.getLogin();
 
@@ -284,20 +577,6 @@ public class ClientService {
             }
         }
 
-        if (dto.groupId() != null) {
-            UUID accountId = account.getId();
-            boolean haveActiveTasks = taskRepository.existsByClientIdAndStatus(accountId,
-                    Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
-            if (haveActiveTasks) {
-                throw new UserHaveActiveTasksException(accountId);
-            }
-            UserGroup userGroup = userGroupRepository.findById(dto.groupId())
-                    .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
-            account.setUserGroup(userGroup);
-            hasChange = true;
-            needsLogout = true;
-        }
-
         if (StringUtils.hasText(dto.password())) {
             passwordValidator.validatePassword(dto.password(), true);
             if (passwordEncoder.matches(dto.password(), account.getPassword())) {
@@ -308,167 +587,80 @@ public class ClientService {
             onlyForCurrentUser = true;
         }
 
-        if (hasChange || onlyForCurrentUser) {
-            client.setUpdatedBy(currentUser.getDisplayName());
-
-            if (needsLogout) {
-                authService.invalidateAllSession(oldLogin);
-            }
-        }
-
-        ClientResponseDTO response = ClientResponseDTO.from(client);
-
-        if (hasChange || onlyForCurrentUser) {
-            String clientIdString = client.getId().toString();
-
-            final boolean isOnlyForCurrent = onlyForCurrentUser; 
-
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        if (isOnlyForCurrent) {
-                            sseController.sendNotification(clientIdString, SseEventNames.REFRESH_CLIENTS, response);
-                        } else {
-                            var signal = new SseEventNames.EntityUpdateSignalDTO(clientIdString,
-                                    SseSignalTypes.UPDATED);
-                            sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
-                        }
-                    }
-                });
-            }
-        }
-
-        return response;
+        return new UpdateAccountResponseWithOldLoginDTO(
+                new UpdateAccountResponseDTO(account, hasChange, needsLogout, onlyForCurrentUser), oldLogin);
     }
 
-    @Transactional
-    public ClientResponseDTO updateClientDescription(UUID id, ClientUpdateRequestDTO dto, AppUserDetails currentUser) {
+    private ClientInnerResponseDTO updateProfile(UUID id, ClientUpdatePersonalProfileRequestDTO dto,
+            AppUserDetails currentUser)
+            throws IOException {
+
+        UpdateAccountResponseWithOldLoginDTO accountResponseDTO = updateAccountInner(id,
+                dto.accountUpdateRequestDTO(), currentUser);
+        UpdateClientResponseDTO clientResponseDTO = updateClientDescriptionInner(id,
+                dto.clientUpdateRequestDTO(), currentUser);
+
+        Account account = accountResponseDTO.accountResponseDTO().account();
+        String oldLogin = accountResponseDTO.oldLogin();
+        boolean hasChange = accountResponseDTO.accountResponseDTO().hasChange() || clientResponseDTO.hasChange();
+        boolean needsLogout = accountResponseDTO.accountResponseDTO().needsLogout();
+        boolean onlyForCurrentUser = accountResponseDTO.accountResponseDTO().isOnlyForCurrent();
+
+        Client client = clientResponseDTO.client();
+        client.setAccount(account);
+
+        if (dto.avatar() != null && !dto.avatar().isEmpty()) {
+            updateAvatar(client, dto.avatar());
+            hasChange = true;
+        }
+
+        return new ClientInnerResponseDTO(client, hasChange, needsLogout, onlyForCurrentUser, oldLogin);
+    }
+
+    private UpdateAccountResponseDTO updateUserGroup(Account account, Integer userGroupId, boolean hasChange,
+            boolean needsLogout, boolean isOnlyForCurrent) {
+        UUID accountId = account.getId();
+        boolean haveActiveTasks = taskRepository.existsByClientIdAndStatus(accountId,
+                Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
+        if (haveActiveTasks) {
+            throw new UserHaveActiveTasksException(accountId);
+        }
+        UserGroup userGroup = userGroupRepository.findById(userGroupId)
+                .orElseThrow(() -> new GroupUserNotFoundException(userGroupId));
+        if (!Objects.equals(account.getUserGroup().getId(), userGroup.getId())) {
+            account.setUserGroup(userGroup);
+            hasChange = true;
+            needsLogout = true;
+            isOnlyForCurrent = false;
+            return new UpdateAccountResponseDTO(account, hasChange, needsLogout, isOnlyForCurrent);
+        }
+        return new UpdateAccountResponseDTO(account, hasChange, needsLogout, isOnlyForCurrent);
+    }
+
+    private UpdateClientResponseDTO updateClientDescriptionInner(UUID id, ClientUpdateDescriptionRequestDTO dto,
+            AppUserDetails currentUser) {
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.validateCanUpdateClientDescription(currentUser, client);
-    }
 
-    private AccountHasChangeResponseDTO updateUserGroupInAccount(Account account, Integer userGroupId) {
         boolean hasChange = false;
-        if (userGroupId != null) {
-            UUID accountId = account.getId();
-            boolean haveActiveTasks = taskRepository.existsByClientIdAndStatus(accountId,
-                    Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
-            if (haveActiveTasks) {
-                throw new UserHaveActiveTasksException(accountId);
+
+        if (dto.extensionNumber() != null) {
+            String cleanExtensionNumber = phoneNumberValidator.getCleanExtensionNumber(dto.extensionNumber());
+            if (Objects.equals(cleanExtensionNumber, client.getExtensionNumber())) {
+                client.setExtensionNumber(cleanExtensionNumber);
+                hasChange = true;
             }
-            UserGroup userGroup = userGroupRepository.findById(userGroupId)
-                    .orElseThrow(() -> new GroupUserNotFoundException(userGroupId));
-            account.setUserGroup(userGroup);
-            hasChange = true;
         }
-        return new AccountHasChangeResponseDTO(account, hasChange);
-    }
-
-    @Transactional
-    public ClientResponseDTO fullUpdate(UUID id, FullClientUpdateRequestDTO dto, AppUserDetails currentUser)
-            throws IOException {
-        if (!currentUser.hasRole(UserRole.ADMIN)) {
-            throw new AccessDeniedException("Только администратор может полностью изменять сотрудника");
-        }
-
-        AccountHasChangeResponseDTO savedClient = updateBasicClientForm(id, dto.login(), dto.password(),
-                dto.avatar());
-        Account account = savedClient.account();
-        boolean hasChange = savedClient.hasChange();
-
-        if (StringUtils.hasText(dto.fullName())) {
+        if (dto.fullName() != null) {
             String cleanFullName = fullNameValidator.getCleanFullName(dto.fullName());
-            if (!Objects.equals(cleanFullName, client.getFullName())) {
+            if (Objects.equals(cleanFullName, client.getFullName())) {
                 client.setFullName(cleanFullName);
                 hasChange = true;
             }
         }
 
-        if (dto.groupClientId() != null && dto.groupClientId() > 0
-                && !Objects.equals(client.getAccount().getUserGroup().getId(), dto.groupClientId())) {
-            List<AssignedStatsDTO> stats = taskRepository.getClientAssignedStatsBatch(List.of(client.getId()));
-            AssignedStatsDTO thisClientStats = stats.stream()
-                    .findFirst()
-                    .orElse(new AssignedStatsDTO(client.getId(), 0L, 0L, 0L, 0L, 0L));
-            if (thisClientStats.openCount() + thisClientStats.processedCount() > 0) {
-                throw new AccessDeniedException("У пользователя еще имеются открытые задачи");
-            }
-            UserGroup group = userGroupRepository.findById(dto.groupClientId())
-                    .orElseThrow(() -> new GroupUserNotFoundException(dto.groupClientId()));
-            client.getAccount().setUserGroup(group);
-            hasChange = true;
-        }
-
-        if (hasChange) {
-            client.setUpdatedBy(currentUser.getDisplayName());
-            var signal = new SseEventNames.EntityUpdateSignalDTO(client.getId(), SseSignalTypes.UPDATED);
-            sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
-        }
-        return ClientResponseDTO.from(client);
-    }
-
-    @Transactional
-    public void delete(UUID id, AppUserDetails currentUser) {
-        if (!currentUser.hasRole(UserRole.ADMIN)) {
-            throw new AccessDeniedException("Только администратор может удалять сотрудников");
-        }
-        if (Objects.equals(currentUser.getInternalId(), id)) {
-            throw new SelfDeleteException("Вы не можете удалить самого себя!");
-        }
-        Client client = clientRepository.findByIdWithAccount(id)
-                .orElseThrow(() -> new ClientNotFoundException(id));
-
-        clientRepository.delete(client);
-        var signal = new SseEventNames.AppUserDetailsSignalDTO(client.getAccount().getUserGroup().getId(),
-                SseSignalTypes.DELETED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
-    }
-
-    private AccountHasChangeResponseDTO updateBasicClientForm(UUID id, String login, String password,
-            MultipartFile avatar)
-            throws IOException {
-        Client upClient = clientRepository.findByIdWithAccount(id)
-                .orElseThrow(() -> new ClientNotFoundException(id));
-        Account account = upClient.getAccount();
-
-        String oldUserName = upClient.getAccount().getLogin();
-        boolean needsLogout = false;
-        boolean hasChange = false;
-
-        if (avatar != null && !avatar.isEmpty()) {
-            if (!Objects.equals(avatar.getOriginalFilename(), upClient.getAvatarURL())) {
-                updateAvatar(upClient, avatar);
-                hasChange = true;
-            }
-        }
-
-        if (StringUtils.hasText(login)) {
-            String cleanLogin = loginValidator.getCleanLogin(login);
-            if (!Objects.equals(cleanLogin, account.getLogin())) {
-                validateLogin(cleanLogin);
-                account.setLogin(cleanLogin);
-                needsLogout = true;
-                hasChange = true;
-            }
-        }
-
-        if (StringUtils.hasText(password)) {
-            passwordValidator.validatePassword(password, true);
-            if (passwordEncoder.matches(password, account.getPassword())) {
-                throw new AlreadyHaveThisPasswordException();
-            }
-            account.setPassword(passwordEncoder.encode(password));
-            needsLogout = true;
-            hasChange = true;
-        }
-
-        if (needsLogout) {
-            authService.invalidateAllSession(oldUserName);
-        }
-
-        return new AccountHasChangeResponseDTO(account, hasChange);
+        return new UpdateClientResponseDTO(client, hasChange);
     }
 
     private void updateAvatar(Client client, MultipartFile avatar) throws IOException {

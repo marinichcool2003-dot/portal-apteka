@@ -1,4 +1,6 @@
-package com.apteka.portal.dtos.request;
+package com.apteka.portal.dtos.request.apteka;
+
+import com.apteka.portal.dtos.request.AptekaUpdateRequestDTO;
 
 import jakarta.validation.constraints.Positive;
 

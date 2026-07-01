@@ -78,10 +78,18 @@ CREATE TABLE IF NOT EXISTS account_actions (
 CREATE TABLE IF NOT EXISTS apteka (
     id UUID PRIMARY KEY,
     number INT NOT NULL,
-    adress VARCHAR(255),
+    adress BIGINT REFERENCES adress(id),
     created_by VARCHAR(50),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS adress(
+    id BIGSERIAL PRIMARY KEY,
+    city VARCHAR(100),
+    street VARCHAR(150),
+    house VARCHAR(20),
+    fias_id UUID
 );
 
 CREATE TABLE IF NOT EXISTS client (
