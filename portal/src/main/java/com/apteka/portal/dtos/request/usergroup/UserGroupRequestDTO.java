@@ -1,4 +1,6 @@
-package com.apteka.portal.dtos.request;
+package com.apteka.portal.dtos.request.usergroup;
+
+import java.util.Set;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -17,5 +19,7 @@ public record UserGroupRequestDTO(
         String internalNumber,
 
         @Pattern(regexp = "^[0-9]{1,20}$")
-        String extensionNumber
-) {}
+        String extensionNumber,
+
+        Set<Integer> visibleGroups
+) implements UserGroupRequestInterface {}

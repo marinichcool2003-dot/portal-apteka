@@ -3,7 +3,7 @@
 -- =========================================================================
 
 -- Связи аккаунтов и профилей
-ALTER TABLE account ADD CONSTRAINT fk_account_group_user FOREIGN KEY (group_id) REFERENCES group_user(id);
+ALTER TABLE account ADD CONSTRAINT fk_account_group_user FOREIGN KEY (group_id) REFERENCES group_user(id) ON DELETE SET NULL;
 ALTER TABLE apteka ADD CONSTRAINT fk_apteka_account FOREIGN KEY (id) REFERENCES account(id) ON DELETE CASCADE;
 ALTER TABLE client ADD CONSTRAINT fk_client_account FOREIGN KEY (id) REFERENCES account(id) ON DELETE CASCADE;
 ALTER TABLE account_actions ADD CONSTRAINT fk_account_actions_account FOREIGN KEY (account_id) REFERENCES account(id) ON DELETE CASCADE;
@@ -33,3 +33,6 @@ ALTER TABLE news ADD CONSTRAINT fk_news_author FOREIGN KEY (author_id) REFERENCE
 ALTER TABLE news ADD CONSTRAINT fk_news_group_user FOREIGN KEY (group_user_id) REFERENCES group_user(id) ON DELETE CASCADE;
 ALTER TABLE news ADD CONSTRAINT check_news_text_length CHECK(LENGTH(news_text) <= 2000 AND LENGTH(news_text) >= 10);
 ALTER TABLE main_page_links ADD CONSTRAINT fk_main_page_links_group FOREIGN KEY (group_link_id) REFERENCES groups_main_page_links(id) ON DELETE CASCADE;
+
+-- Аптека и адрес
+ALTER TABLE apteka ADD CONSTRAINT fk_apteka_address FOREIGN KEY (address_id) REFERENCES address(id) ON DELETE SET NULL;

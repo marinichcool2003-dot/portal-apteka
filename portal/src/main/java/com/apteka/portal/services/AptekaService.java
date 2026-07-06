@@ -14,12 +14,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.StringUtils;
 
 import com.apteka.portal.components.servicesecurity.AptekaSecurityService;
-import com.apteka.portal.components.validators.AdressValidator;
 import com.apteka.portal.components.validators.LoginValidator;
 import com.apteka.portal.components.validators.PasswordValidator;
 import com.apteka.portal.components.validators.PhoneNumberValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.AptekaUpdateRequestDTO;
+import com.apteka.portal.dtos.request.apteka.AdressRequestDTO;
 import com.apteka.portal.dtos.request.apteka.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.apteka.AptekaRequestDTO;
 import com.apteka.portal.dtos.request.apteka.AptekaUpdateDescriptionRequestDTO;
@@ -32,6 +32,7 @@ import com.apteka.portal.exceptions.DublicateAptekaLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
 import com.apteka.portal.models.Account;
+import com.apteka.portal.models.Adress;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.SseEventNames;
@@ -53,7 +54,6 @@ public class AptekaService {
     private final AuthService authService;
     private final LoginValidator loginValidator;
     private final PhoneNumberValidator phoneNumberValidator;
-    private final AdressValidator adressValidator;
     private final AptekaSecurityService aptekaSecurityService;
     private final AccountRepository accountRepository;
 
@@ -91,12 +91,18 @@ public class AptekaService {
         UserGroup userGroup = userGroupRepository.findById(dto.groupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
         validateAptekaNumberInGroup(dto.number(), dto.groupId());
-        String cleanAdress = adressValidator.getCleanAdress(dto.adress());
         String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
+
+        Adress address = Adress.builder()
+            .city(dto.adressRequestDTO().city())
+            .street(dto.adressRequestDTO().street())
+            .house(dto.adressRequestDTO().house())
+            .fiasId(dto.adressRequestDTO().fiasId())
+            .build();
 
         Apteka apteka = Apteka.builder()
                 .number(dto.number())
-                .adress(cleanAdress)
+                .address(address)
                 .createdBy(currentUser.getDisplayName())
                 .build();
 
@@ -339,11 +345,30 @@ public class AptekaService {
 
         boolean hasChange = false;
 
-        if (StringUtils.hasText(dto.adress())) {
-            String cleanAdress = adressValidator.getCleanAdress(dto.adress());
-            if (!Objects.equals(cleanAdress, apteka.getAdress())) {
-                apteka.setAdress(cleanAdress);
+        AdressRequestDTO adressRequestDTO = dto.adressRequestDTO();
+        Adress adress = apteka.getAddress();
+
+        if (StringUtils.hasText(adressRequestDTO.city())) {
+            if (!Objects.equals(adressRequestDTO.city(), adress.getCity())) {
+                adress.setCity(adressRequestDTO.city());
                 hasChange = true;
+            }
+        }
+        if (StringUtils.hasText(adressRequestDTO.street())) {
+            if (!Objects.equals(adressRequestDTO.street(), adress.getStreet())) {
+                adress.setStreet(adressRequestDTO.street());
+                hasChange = true;
+            }
+        }
+        if (StringUtils.hasText(adressRequestDTO.house())) {
+            if (!Objects.equals(adressRequestDTO.house(), adress.getHouse())) {
+                adress.setHouse(adressRequestDTO.house());
+                hasChange = true;
+            }
+        }
+        if (adressRequestDTO.fiasId() != null) {
+            if (!Objects.equals(adressRequestDTO.fiasId(), adress.getFiasId())) {
+                adress.setFiasId(adressRequestDTO.fiasId());
             }
         }
 

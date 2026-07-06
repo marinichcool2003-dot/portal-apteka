@@ -2,20 +2,19 @@ package com.apteka.portal.controllers;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
-import javax.crypto.SecretKey;
-import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,12 +23,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.apteka.portal.docs.BadRequestApiResponse;
-import com.apteka.portal.docs.ConflictApiResponse;
-import com.apteka.portal.docs.ForbiddenApiResponse;
-import com.apteka.portal.docs.InternalServerErrorApiResponse;
-import com.apteka.portal.docs.NotFoundApiResponse;
-import com.apteka.portal.docs.UnauthorizedApiResponse;
 import com.apteka.portal.dtos.response.ClientResponseDTO;
 import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
@@ -37,19 +30,15 @@ import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.ClientService;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import com.apteka.portal.dtos.request.AccountUpdateRequestDTO;
-import com.apteka.portal.dtos.request.FullClientUpdateRequestDTO;
 import com.apteka.portal.dtos.request.client.ClientCreateRequestDTO;
 import com.apteka.portal.dtos.request.client.ClientFilterRequestDTO;
 import com.apteka.portal.dtos.request.client.ClientUpdateDescriptionRequestDTO;
 import com.apteka.portal.dtos.request.client.ClientUpdateFullRequestDTO;
 import com.apteka.portal.dtos.request.client.ClientUpdatePersonalProfileRequestDTO;
-import com.apteka.portal.dtos.request.client.ClientUpdateRequestDTO;
-
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -58,12 +47,7 @@ import lombok.RequiredArgsConstructor;
 @PreAuthorize("@appSecurity.isClient()")
 @Tag(name = "Пользователи")
 public class ClientController {
-    private final SecretKey jwtKey;
     private final ClientService clientService;
-
-    ClientController(SecretKey jwtKey) {
-        this.jwtKey = jwtKey;
-    }
 
     @Operation(summary = "Получить список сотрудников")
     @GetMapping
@@ -158,47 +142,47 @@ public class ClientController {
         return ResponseEntity.ok(clientService.updateFullClient(id, dto, currentUser));
     }
 
-    @Operation(summary = "Добавить роль (Только для ADMIN или BOSS)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
-    @PutMapping("/add-role/{id}")
-    public ResponseEntity<ClientResponseDTO> addRole(@PathVariable UUID id, @RequestParam String role,
+    @Operation(summary = "Добавить действия сотруднику")
+    @PreAuthorize("hasAnyAction('CAN_ADD_ACCOUNT_ACTIONS_IN_GROUP', 'CAN_ADD_ACCOUNT_ACTIONS_GRAND', 'CAN_ADD_ACCOUNT_ACTIONS_GRAND_EXTENDED') or hasRole('ADMIN')")
+    @PutMapping("/add-actions/{id}")
+    public ResponseEntity<ClientResponseDTO> addRole(@PathVariable UUID id, @RequestBody Set<String> actionsCode,
             @AuthenticationPrincipal AppUserDetails currentUser) {
-        return ResponseEntity.ok(clientService.addRole(id, role, currentUser));
+
+        clientService.addActionsToClient(id, actionsCode, currentUser);
+        return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Добавить роль (Только для ADMIN или BOSS)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
-    @PutMapping("/remove-role/{id}")
-    public ResponseEntity<ClientResponseDTO> removeRole(@PathVariable UUID id, @RequestParam String role,
+    @Operation(summary = "Добавить действия сотруднику")
+    @PreAuthorize("hasAnyAction('CAN_REMOVE_ACCOUNT_ACTIONS_IN_GROUP', 'CAN_REMOVE_ACCOUNT_ACTIONS_GRAND', 'CAN_REMOVE_ACCOUNT_ACTIONS_GRAND_EXTENDED') or hasRole('ADMIN')")
+    @PutMapping("/remove-actions/{id}")
+    public ResponseEntity<ClientResponseDTO> removeRole(@PathVariable UUID id, @RequestBody Set<String> actionsCode,
             @AuthenticationPrincipal AppUserDetails currentUser) {
-        return ResponseEntity.ok(clientService.removeRole(id, role, currentUser));
+
+        clientService.removeActionsClient(id, actionsCode, currentUser);
+        return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Обновить собственный профиль")
-    @PutMapping(value = "/update-yourself", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ClientResponseDTO> updateYourself(@AuthenticationPrincipal AppUserDetails currentUser,
-            @Valid @ModelAttribute ClientUpdateRequestDTO dto) throws IOException {
-        return ResponseEntity.ok(clientService.updateYourself(dto, currentUser));
+    @Operation(summary = "Безопасное удаление сотрудника")
+    @PreAuthorize("hasAnyAction('SAFE_DELETE_CLIENT_IN_GROUP', 'SAFE_DELETE_CLIENT_GRAND', 'PERMANENT_DELETE_CLIENT') or hasRole('ADMIN')")
+    @PatchMapping("/safe-delete/{id}")
+    public ResponseEntity<Void> safeDelete(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
+        clientService.selfDelete(id, currentUser);
+        return ResponseEntity.noContent().build();
+    } 
+
+    @Operation(summary = "Восстановление сотрудника после удаления")
+    @PreAuthorize("hasAnyAction('CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE') or hasRole('ADMIN')")
+    @PatchMapping("/restore-after-safe-delete/{id}")
+    public ResponseEntity<Void> restore(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
+        clientService.restoreAfterSafeDelete(id, currentUser);
+        return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Полное обновление сотрудника")
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping(value = "/full-update/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ClientResponseDTO> fullUpdate(
-            @PathVariable UUID id,
-
-            @Valid @ParameterObject @ModelAttribute FullClientUpdateRequestDTO dto,
-
-            @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
-
-        return ResponseEntity.ok(clientService.fullUpdate(id, dto, currentUser));
-    }
-
-    @Operation(summary = "Удалить сотрудника")
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}")
+    @Operation(summary = "Перманентное удаление сотрудника")
+    @PreAuthorize("hasAnyAction('PERMANENT_DELETE_CLIENT') or hasRole('ADMIN')")
+    @DeleteMapping("/permanent-delete/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
-        clientService.delete(id, currentUser);
+        clientService.permanentDelete(id, currentUser);
         return ResponseEntity.noContent().build();
     }
 }

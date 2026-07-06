@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
-public class AvatarClientService {
+public class AvatarService {
 
     @Value("${app.default.avatars.upload.dir}")
     private String uploadDir;
@@ -21,7 +21,7 @@ public class AvatarClientService {
 
     private final long maxFileSize = 2 * 1024 * 1024;
 
-    public String uploadAvatar(MultipartFile file, UUID clientId) throws IOException {
+    public String uploadClientAvatar(MultipartFile file, UUID clientId) throws IOException {
         validateFile(file);
 
         String extension = getExtension(file.getOriginalFilename());
@@ -30,14 +30,44 @@ public class AvatarClientService {
 
         Files.createDirectories(path.getParent());
 
-        deleteAvatarIfExists(clientId);
+        deleteClientAvatarIfExists(clientId);
 
         Files.write(path, file.getBytes());
 
         return "/avatars/" + fileName;
     }
 
-    public void deleteAvatarIfExists(UUID clientId) {
+    public String uploadUserGroupAvatar(MultipartFile file, Integer userGroupId) throws IOException {
+        validateFile(file);
+
+        String extension = getExtension(file.getOriginalFilename());
+        String fileName = "user_group" + userGroupId + extension;
+        Path path = Paths.get(uploadDir).resolve(fileName).toAbsolutePath();
+
+        Files.createDirectories(path.getParent());
+
+        deleteUserGroupAvatarIfExists(userGroupId);
+
+        Files.write(path, file.getBytes());
+
+        return "/avatars/" + fileName;
+    }
+
+    public void deleteUserGroupAvatarIfExists(Integer userGroupId) {
+        try (var files = Files.list(Paths.get(uploadDir).toAbsolutePath())) {
+            files.filter(p -> p.getFileName().toString().startsWith("user_group" + userGroupId.toString()))
+                    .forEach(p -> {
+                        try {
+                            Files.delete(p);
+                        } catch (IOException ignored) {
+                        }
+                    });
+        } catch (IOException e) {
+
+        }
+    }
+
+    public void deleteClientAvatarIfExists(UUID clientId) {
         try (var files = Files.list(Paths.get(uploadDir).toAbsolutePath())) {
             files.filter(p -> p.getFileName().toString().startsWith(clientId.toString()))
                     .forEach(p -> {

@@ -6,8 +6,8 @@ import jakarta.validation.constraints.Positive;
 
 public record AptekaUpdateDescriptionRequestDTO(
         @Positive Integer number,
-        String adress) {
+        AdressRequestDTO adressRequestDTO) {
     public static AptekaUpdateDescriptionRequestDTO from(AptekaUpdateRequestDTO dto) {
-        return new AptekaUpdateDescriptionRequestDTO(dto.number(), dto.adress());
+        return new AptekaUpdateDescriptionRequestDTO(dto.number(), dto.adressRequestDTO());
     }
 }

@@ -1,13 +1,21 @@
 package com.apteka.portal.services;
 
+import java.util.Collection;
 import java.util.Date;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+
+import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
+import com.apteka.portal.models.UserRole;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +38,8 @@ public class JwtService {
         return Jwts.builder()
                 .setSubject(user.getUsername())
                 .claim(CLAIM_USER_ID, userId)
-                .claim("roles", user.getRoles())
+                .claim("role", user.getRole())
+                .claim("actions", user.getActions())
                 .claim("type", user.getType())
                 .claim("userGroupId", user.getUserGroup().getId())
                 .setIssuedAt(new Date())
@@ -62,5 +71,27 @@ public class JwtService {
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public Integer extractUserGroupId(String token) {
+        return extractClaim(token, claims -> claims.get("userGroupId", Integer.class));
+    }
+
+    public UserRole extractUserRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", UserRole.class));
+    }
+
+    public Set<AccountAction> extractAccountActions(String token) {
+        return extractClaim(token, claims -> {
+            Collection<?> rawActions = claims.get("actions", Collection.class);
+            if(rawActions == null) {
+                return Set.of();
+            }
+            return rawActions.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .map(AccountAction::fromCode)
+                    .collect(Collectors.toSet());
+        });
     }
 }

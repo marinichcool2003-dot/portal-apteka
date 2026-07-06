@@ -66,6 +66,12 @@ public enum AccountAction {
     CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE("CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE", "Возвращение учетной записи пользователя после удаления", LevelAction.CRITICAL),
     PERMANENT_DELETE_CLIENT("PERMANENT_DELETE_CLIENT", "Полное удаление учетной записи сотрудника либо безопасное по выбору", LevelAction.CRITICAL),
 
+    CAN_CREATE_USER_GROUP("CAN_CREATE_USER_GROUP", "Возможность создавать отделы", LevelAction.HIGH),
+    CAN_UPDATE_SELF_USER_GROUP("CAN_UPDATE_SELF_USER_GROUP", "Возможность обновлять собственную группу", LevelAction.HIGH),
+    CAN_UPDATE_USER_GROUP("CAN_UPDATE_USER_GROUP", "Возможность обновлять любую группу", LevelAction.HIGH),
+    SAFE_DELETE_USER_GROUP("SAFE_DELETE_USER_GROUP", "Безопасное удаление группы пользователей", LevelAction.HIGH),
+    PERMANENT_DELETE_USER_GROUP("PERMANENT_DELETE_USER_GROUP", "Полное удаление группы пользователей", LevelAction.CRITICAL),
+
     CREATE_TASK_TO_GROUP("CREATE_TASK_TO_GROUP", "Создание задачи на любую группу сотрудников"),
     CREATE_TASK_GRAND("CREATE_TASK_GRAND", "Создание задачи на любую группу сотрудников и на любого сотрудника из любого отдела"),
     UPDATE_TASK_ASSIGNER_IN_GROUP("UPDATE_TASK_ASSIGNER_IN_GROUP", "Изменение исполнителя задачи любого сотрудника в своей группе"),

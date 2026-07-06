@@ -19,7 +19,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.apteka.portal.components.AvatarClientService;
+import com.apteka.portal.components.AvatarService;
 import com.apteka.portal.components.servicesecurity.ClientSecurityService;
 import com.apteka.portal.dtos.request.AccountUpdateRequestDTO;
 import com.apteka.portal.dtos.request.client.ClientCreateRequestDTO;
@@ -64,7 +64,7 @@ public class ClientService {
 
     private final AuthService authService;
     private final ClientRepository clientRepository;
-    private final AvatarClientService avatarClientService;
+    private final AvatarService avatarClientService;
     private final PasswordEncoder passwordEncoder;
     private final UserGroupRepository userGroupRepository;
     private final TaskRepository taskRepository;
@@ -80,7 +80,7 @@ public class ClientService {
     @Value("${app.default.avatars.upload.dir}")
     private String uploadAvatarDir;
 
-    @Value("${app.default.avatars.upload.picture.name}")
+    @Value("${app.default.avatars.upload.picture.user}")
     private String uploadAvatarPictureName;
 
     @Transactional(readOnly = true)
@@ -291,7 +291,8 @@ public class ClientService {
     }
 
     @Transactional
-    public ClientResponseDTO updateClientDescription(UUID id, ClientUpdateDescriptionRequestDTO dto, AppUserDetails currentUser) {
+    public ClientResponseDTO updateClientDescription(UUID id, ClientUpdateDescriptionRequestDTO dto,
+            AppUserDetails currentUser) {
         UpdateClientResponseDTO responseDTO = updateClientDescriptionInner(id, dto, currentUser);
         Client client = responseDTO.client();
         boolean hasChange = responseDTO.hasChange();
@@ -333,20 +334,25 @@ public class ClientService {
             if (needsLogout) {
                 authService.invalidateAllSession(oldLogin);
             }
-            String clientIdString = client.getId().toString();
+            UUID clientId = client.getId();
+            String clientIdString = clientId.toString();
 
             final boolean isOnlyForCurrent = onlyForCurrentUser;
 
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
-                    public void afterCommit() {
-                        if (isOnlyForCurrent) {
-                            sseController.sendNotification(clientIdString, SseEventNames.REFRESH_CLIENTS, response);
-                        } else {
-                            var signal = new SseEventNames.EntityUpdateSignalDTO(clientIdString,
-                                    SseSignalTypes.UPDATED);
-                            sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                    public void afterCompletion(int status) {
+                        if (status == STATUS_ROLLED_BACK) {
+                            avatarClientService.deleteClientAvatarIfExists(clientId);
+                        } else if (status == STATUS_COMMITTED) {
+                            if (isOnlyForCurrent) {
+                                sseController.sendNotification(clientIdString, SseEventNames.REFRESH_CLIENTS, response);
+                            } else {
+                                var signal = new SseEventNames.EntityUpdateSignalDTO(clientIdString,
+                                        SseSignalTypes.UPDATED);
+                                sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                            }
                         }
                     }
                 });
@@ -403,13 +409,17 @@ public class ClientService {
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
-                    public void afterCommit() {
-                        if (isOnlyForCurrent) {
-                            sseController.sendNotification(clientIdString, SseEventNames.REFRESH_CLIENTS, response);
-                        } else {
-                            var signal = new SseEventNames.EntityUpdateSignalDTO(clientIdString,
-                                    SseSignalTypes.UPDATED);
-                            sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                    public void afterCompletion(int status) {
+                        if (status == STATUS_ROLLED_BACK) {
+                            avatarClientService.deleteClientAvatarIfExists(id);
+                        } else if (status == STATUS_COMMITTED) {
+                            if (isOnlyForCurrent) {
+                                sseController.sendNotification(clientIdString, SseEventNames.REFRESH_CLIENTS, response);
+                            } else {
+                                var signal = new SseEventNames.EntityUpdateSignalDTO(clientIdString,
+                                        SseSignalTypes.UPDATED);
+                                sseController.broadcastNotification(SseEventNames.REFRESH_CLIENTS, signal);
+                            }
                         }
                     }
                 });
@@ -420,11 +430,13 @@ public class ClientService {
     }
 
     @Transactional
-    public void addActionsToClient(UUID id, Set<AccountAction> actions, AppUserDetails currentUser) {
+    public void addActionsToClient(UUID id, Set<String> actionsCode, AppUserDetails currentUser) {
         Client client = clientRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
 
         Account account = client.getAccount();
+
+        Set<AccountAction> actions = getAllActionsFromCode(actionsCode);
 
         clientSecurityService.canAddActions(actions, currentUser, account);
 
@@ -445,11 +457,13 @@ public class ClientService {
     }
 
     @Transactional
-    public void removeActionsClient(UUID id, Set<AccountAction> actions, AppUserDetails currentUser) {
+    public void removeActionsClient(UUID id, Set<String> actionsCode, AppUserDetails currentUser) {
         Client client = clientRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
 
         Account account = client.getAccount();
+
+        Set<AccountAction> actions = getAllActionsFromCode(actionsCode);
 
         clientSecurityService.canRemoveActions(actions, currentUser, account);
 
@@ -491,7 +505,7 @@ public class ClientService {
     }
 
     @Transactional
-    public void activateAfterSafeDelete(UUID id, AppUserDetails currentUser) {
+    public void restoreAfterSafeDelete(UUID id, AppUserDetails currentUser) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.activateAfterSafeDelete(currentUser, account);
@@ -520,6 +534,7 @@ public class ClientService {
 
         Integer userGroupId = account.getUserGroup().getId();
         clientRepository.delete(client);
+        avatarClientService.deleteClientAvatarIfExists(id);
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -663,8 +678,14 @@ public class ClientService {
         return new UpdateClientResponseDTO(client, hasChange);
     }
 
+    private Set<AccountAction> getAllActionsFromCode(Set<String> actionsCode) {
+        return actionsCode.stream()
+                .map(AccountAction::fromCode)
+                .collect(Collectors.toSet());
+    }
+
     private void updateAvatar(Client client, MultipartFile avatar) throws IOException {
-        String avatarURL = avatarClientService.uploadAvatar(avatar, client.getId());
+        String avatarURL = avatarClientService.uploadClientAvatar(avatar, client.getId());
         client.setAvatarURL(avatarURL);
     }
 

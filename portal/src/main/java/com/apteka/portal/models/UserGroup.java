@@ -1,12 +1,16 @@
 package com.apteka.portal.models;
 
 import java.time.Instant;
+import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -47,4 +51,15 @@ public class UserGroup {
 
     @Column(name = "updated_by")
     private String updatedBy;
+
+    @ManyToMany
+    @JoinTable(
+        name = "group_group_visibility", 
+        joinColumns = @JoinColumn(name = "first_group_id"), 
+        inverseJoinColumns = @JoinColumn(name = "second_group_id")
+    )
+    private Set<UserGroup> visibleGroups;
+
+    @Column(name = "is_active")
+    private boolean isActive;
 }

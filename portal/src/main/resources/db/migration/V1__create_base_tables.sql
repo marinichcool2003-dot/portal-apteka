@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS group_user (
 );
 
 CREATE TABLE IF NOT EXISTS group_group_visibility (
-    first_group_id SERIAL NOT NULL REFERENCES group_user(id),
-    second_group_id SERIAL NOT NULL REFERENCES group_user(id),
+    first_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
+    second_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
     PRIMARY KEY(first_group_id, second_group_id)
 );
 
@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS group_task (
     user_group_id INT NOT NULL,
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),
-    is_active BOOLEAN DEFAULT true
+    is_active BOOLEAN DEFAULT true,
+    is_internal BOOLEAN DEFAULT true
 );
 
 CREATE TABLE IF NOT EXISTS work_type (
@@ -78,13 +79,13 @@ CREATE TABLE IF NOT EXISTS account_actions (
 CREATE TABLE IF NOT EXISTS apteka (
     id UUID PRIMARY KEY,
     number INT NOT NULL,
-    adress BIGINT REFERENCES adress(id),
+    address_id BIGINT,
     created_by VARCHAR(50),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)
 );
 
-CREATE TABLE IF NOT EXISTS adress(
+CREATE TABLE IF NOT EXISTS address(
     id BIGSERIAL PRIMARY KEY,
     city VARCHAR(100),
     street VARCHAR(150),

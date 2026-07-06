@@ -7,4 +7,7 @@ public class GroupUserNotFoundException extends RuntimeException{
     public GroupUserNotFoundException(){
         super("Группа с ID не найдена!");
     }
+    public GroupUserNotFoundException(String message) {
+        super(message);
+    }
 }

@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
@@ -36,9 +37,6 @@ public class Apteka {
     @Column(name = "number", nullable = false)
     private Integer number;
 
-    @Column(name = "adress")
-    private String adress;
-
     @OneToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @MapsId
     @JoinColumn(name = "id")
@@ -47,6 +45,10 @@ public class Apteka {
     public Set<UserRole> getRoles() {
         return Set.of(UserRole.APTEKA);
     }
+
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "address_id")
+    private Adress address;
 
     @Column(name = "created_by", length = 50)
     private String createdBy;

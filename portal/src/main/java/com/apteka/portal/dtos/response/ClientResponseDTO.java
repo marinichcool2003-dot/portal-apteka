@@ -9,6 +9,8 @@ import com.apteka.portal.models.UserRole;
 public record ClientResponseDTO(
         UUID id,
         String login,
+        String phoneNumber,
+        String extensionNumber,
         String fullName,
         UserRole role,
         String avatarURL,
@@ -17,6 +19,8 @@ public record ClientResponseDTO(
         return new ClientResponseDTO(
                 client.getId(),
                 client.getAccount().getLogin(),
+                client.getAccount().getPhoneNumber(),
+                client.getExtensionNumber(),
                 client.getFullName(),
                 client.getAccount().getUserRole(),
                 client.getAvatarURL(),
