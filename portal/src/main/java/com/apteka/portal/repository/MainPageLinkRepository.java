@@ -16,6 +16,9 @@ public interface MainPageLinkRepository extends JpaRepository<MainPageLink, Inte
     List<MainPageLink> findAll();
 
     @EntityGraph(attributePaths = "groupMainPageLinks")
+    List<MainPageLink> findByActive(boolean active);
+
+    @EntityGraph(attributePaths = "groupMainPageLinks")
     List<MainPageLink> findByGroupMainPageLinksId(Integer groupMainPageLinksId);
 
     boolean existsByName(String name);

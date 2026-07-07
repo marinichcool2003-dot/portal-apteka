@@ -49,4 +49,12 @@ public class MainPageLink {
 
     @Column(name = "updated_by")
     private String updatedBy;
+
+    @Column(name = "is_active")
+    private boolean isActive;
+
+    public boolean isActive() {
+        return groupMainPageLinks.isActive()
+            && this.isActive;
+    }
 }

@@ -1,30 +1,59 @@
 package com.apteka.portal.components.servicesecurity;
 
-
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
 import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
+import com.apteka.portal.models.MainPageLink;
 import com.apteka.portal.models.UserRole;
 
 @Component
 public class MainPageLinksSecurityService {
-    public void validateCanCreate(AppUserDetails currentUser) {
-        if (!currentUser.hasRole(UserRole.ADMIN) && !currentUser.hasAction(AccountAction.CREATE_MAIN_PAGE_LINK)) {
-            throw new AccessDeniedException("У вас не прав на создание ссылок на главной странице!");
+
+    public void validateCanSelectNonActive(AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.)) {
+            
         }
     }
 
-    public void validateCanUpdate(AppUserDetails currentUser) {
-        if (!currentUser.hasRole(UserRole.ADMIN) && !currentUser.hasAction(AccountAction.UPDATE_MAIN_PAGE_LINK)) {
-            throw new AccessDeniedException("У вас не прав на обновление ссылок на главной странице!");
+    public void validateCanSafeDelete(AppUserDetails currentUser, MainPageLink mainPageLink) {
+        if (!mainPageLink.isActive()) {
+            throw new AccessDeniedException("Ссылка уже неактивна!");
         }
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAnyAction(AccountAction.PERMANENT_DELETE_MAIN_PAGE_LINK,
+                AccountAction.SAFE_DELETE_MAIN_PAGE_LINK)) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на удаление группы ссылок");
     }
 
-    public void validateCanDelete(AppUserDetails currentUser) {
-        if (!currentUser.hasRole(UserRole.ADMIN) && !currentUser.hasAction(AccountAction.DELETE_MAIN_PAGE_LINK)) {
-            throw new AccessDeniedException("У вас не прав на удаление ссылок на главной странице!");
+    public void validateRestoreAfterSafeDelete(AppUserDetails currentUser, MainPageLink mainPageLink) {
+        if (mainPageLink.isActive()) {
+            throw new AccessDeniedException("Ссылка уже активна!");
         }
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_ACTIVATE_MAIN_PAGE_LINK_AFTER_SAFE_DELETE)) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав восстанавливать группы ссылок!");
+    }
+
+    public void validateCanPermanentDelete(AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.PERMANENT_DELETE_MAIN_PAGE_LINK)) {
+            return;
+        }
+        throw new AccessDeniedException("у вас не прав на безвозвратное удаление группы ссылок!");
     }
 }

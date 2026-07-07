@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS work_type (
     wiki_link VARCHAR(2048),
     group_task_id INT NOT NULL,
     updated_at TIMESTAMPTZ,
-    updated_by VARCHAR(50)
+    updated_by VARCHAR(50),
+    is_active BOOLEAN DEFAULT true
 );
 
 -- =========================================================================
@@ -154,7 +155,8 @@ CREATE TABLE IF NOT EXISTS groups_main_page_links (
     name VARCHAR(50) NOT NULL UNIQUE,
     description VARCHAR(100),
     updated_at TIMESTAMPTZ,
-    updated_by VARCHAR(50)
+    updated_by VARCHAR(50),
+    is_active BOOLEAN DEFAULT true
 );
 
 CREATE TABLE IF NOT EXISTS main_page_links (
@@ -163,5 +165,6 @@ CREATE TABLE IF NOT EXISTS main_page_links (
     link VARCHAR(2048) NOT NULL,
     group_link_id INT NOT NULL,
     updated_at TIMESTAMPTZ,
-    updated_by VARCHAR(50)
+    updated_by VARCHAR(50),
+    is_active BOOLEAN DEFAULT true
 );

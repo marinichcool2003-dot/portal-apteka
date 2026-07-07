@@ -34,15 +34,10 @@ public class MainPageLinksController {
     private final MainPageLinksService mainPageLinksService;
 
     @Operation(summary = "Получить ссылки по группе")
+    @PreAuthorize(s)
     @GetMapping("/by-group/{groupId}")
     public ResponseEntity<List<MainPageLinkResponseDTO>> getByGroup(@PathVariable Integer groupId) {
         return ResponseEntity.ok(mainPageLinksService.getByGroup(groupId));
-    }
-
-    @Operation(summary = "Получить ссылку по id")
-    @GetMapping("/{id}")
-    public ResponseEntity<MainPageLinkResponseDTO> getOne(@PathVariable Integer id) {
-        return ResponseEntity.ok(mainPageLinksService.getOne(id));
     }
 
     @Operation(summary = "Получить все ссылки")

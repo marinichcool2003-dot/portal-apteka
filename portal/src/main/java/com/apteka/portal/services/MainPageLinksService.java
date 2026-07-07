@@ -45,30 +45,24 @@ public class MainPageLinksService {
 
     private final SseController sseController;
 
-    @Cacheable(value = CacheNames.MAIN_PAGE_LINKS_BY_GROUP, key = "#groupId")
     @Transactional(readOnly = true)
     public List<MainPageLinkResponseDTO> getByGroup(Integer groupId) {
         return mainPageLinkRepository.findByGroupMainPageLinksId(groupId)
                 .stream().map(MainPageLinkResponseDTO::from).toList();
     }
 
-    @Cacheable(value = CacheNames.MAIN_PAGE_LINKS, key = "#id")
+    @Cacheable(value = CacheNames.MAIN_PAGE_LINKS, sync = true)
     @Transactional(readOnly = true)
-    public MainPageLinkResponseDTO getOne(Integer id) {
-        return MainPageLinkResponseDTO.from(mainPageLinkRepository.findById(id)
-                .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка на главной странице не найдена!")));
+    public List<MainPageLinkResponseDTO> getAll(Boolean isActive) {
+        if (Boolean.FALSE.equals(isActive)) {
+            
+        }
+        return mainPageLinkRepository.findByActive(isActive).stream().map(MainPageLinkResponseDTO::from).toList();
     }
 
-    @Cacheable(value = CacheNames.MAIN_PAGE_LINKS)
-    @Transactional(readOnly = true)
-    public List<MainPageLinkResponseDTO> getAll() {
-        return mainPageLinkRepository.findAll().stream().map(MainPageLinkResponseDTO::from).toList();
-    }
-
-    @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#result.groupMainPageLinksResponseDTO().id()")
+    @CacheEvict(value = CacheNames.MAIN_PAGE_LINKS, allEntries = true)
     @Transactional
     public MainPageLinkResponseDTO create(MainPageLinkRequestDTO dto, AppUserDetails currentUser) {
-        mainPageLinksSecurityService.validateCanCreate(currentUser);
         if (!StringUtils.hasText(dto.name())) {
             throw new InvalidMainPageLinkNameException("Наименование ссылки не может быть пустым!");
         }
@@ -99,9 +93,9 @@ public class MainPageLinksService {
         return MainPageLinkResponseDTO.from(savedLink);
     }
 
+    @CacheEvict(value = CacheNames.MAIN_PAGE_LINKS, allEntries = true)
     @Transactional
     public MainPageLinkResponseDTO update(Integer id, MainPageLinkUpdateRequestDTO dto, AppUserDetails currentUser) {
-        mainPageLinksSecurityService.validateCanUpdate(currentUser);
         MainPageLink mainPageLink = mainPageLinkRepository.findByid(id)
                 .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка на главной странице не найдена!"));
 
@@ -129,7 +123,7 @@ public class MainPageLinksService {
             GroupMainPageLinks group = groupMainPageLinksRepository.findById(dto.groupMainPageLinkId())
                     .orElseThrow(() -> new GroupMainPageLinksNotFoundException("Группа ссылок не найдена!"));
 
-            cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(mainPageLink.getGroupMainPageLinks().getId());
+            cacheManager.getCache(CacheNames.MAIN_PAGE_LINKS).evict(mainPageLink.getGroupMainPageLinks().getId());
             mainPageLink.setGroupMainPageLinks(group);
             hasChange = true;
         }
@@ -139,7 +133,6 @@ public class MainPageLinksService {
         }
 
         MainPageLinkResponseDTO response = MainPageLinkResponseDTO.from(mainPageLink);
-        Integer groupmainPageLinkId = response.groupMainPageLinksResponseDTO().id();
         Integer mainPageLinkId = mainPageLink.getId();
 
         if (hasChange) {
@@ -147,12 +140,6 @@ public class MainPageLinksService {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        var cache = cacheManager.getCache(CacheNames.MAIN_PAGE_LINKS);
-                        if (cache != null) {
-                            cache.put(id, response);
-                        }
-                        cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP)
-                                .evict(groupmainPageLinkId);
                         var signal = new SseEventNames.EntityUpdateSignalDTO(mainPageLinkId,
                                 SseSignalTypes.UPDATED);
                         sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);
@@ -163,9 +150,54 @@ public class MainPageLinksService {
         return response;
     }
 
+    @CacheEvict(value = CacheNames.MAIN_PAGE_LINKS, allEntries = true)
+    @Transactional
+    public void selfDelete(Integer id, AppUserDetails currentUser) {
+        MainPageLink deletedLink = mainPageLinkRepository.findById(id)
+                .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка на главной странице не найдена!"));
+        mainPageLinksSecurityService.validateCanSafeDelete(currentUser, deletedLink);
+
+        deletedLink.setActive(false);
+        Integer mainPageLinkId = deletedLink.getId();
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var signal = new SseEventNames.EntityUpdateSignalDTO(mainPageLinkId,
+                            SseSignalTypes.UPDATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);
+                }
+            });
+        }
+    }
+
+    @CacheEvict(value = CacheNames.MAIN_PAGE_LINKS, allEntries = true)
+    @Transactional
+    public void restore(Integer id, AppUserDetails currentUser) {
+        MainPageLink restoredLink = mainPageLinkRepository.findById(id)
+                .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка на главной странице не найдена!"));
+        mainPageLinksSecurityService.validateCanSafeDelete(currentUser, restoredLink);
+
+        restoredLink.setActive(true);
+        Integer mainPageLinkId = restoredLink.getId();
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var signal = new SseEventNames.EntityUpdateSignalDTO(mainPageLinkId,
+                            SseSignalTypes.UPDATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);
+                }
+            });
+        }
+    }
+
+    @CacheEvict(value = CacheNames.MAIN_PAGE_LINKS, allEntries = true)
     @Transactional
     public void delete(Integer id, AppUserDetails currentUser) {
-        mainPageLinksSecurityService.validateCanDelete(currentUser);
+        mainPageLinksSecurityService.validateCanPermanentDelete(currentUser);
         MainPageLink mainPageLink = mainPageLinkRepository.findById(id)
                 .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка не найдена"));
 
@@ -177,10 +209,6 @@ public class MainPageLinksService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    cacheManager.getCache(CacheNames.WORK_TYPE).evict(id);
-                    cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP)
-                            .evict(mainPageLink.getGroupMainPageLinks().getId());
-
                     var signal = new SseEventNames.MainPageLinkSignalDTO(groupMainPageLinkId,
                             SseSignalTypes.DELETED);
                     sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS, signal);

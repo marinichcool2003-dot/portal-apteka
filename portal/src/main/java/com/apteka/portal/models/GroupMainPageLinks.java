@@ -38,4 +38,7 @@ public class GroupMainPageLinks {
 
     @Column(name = "updated_by")
     private String updatedBy;
+
+    @Column(name = "is_active")
+    private boolean isActive;
 }

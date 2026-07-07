@@ -3,6 +3,7 @@ package com.apteka.portal.models;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -36,18 +37,21 @@ public class AppUserDetails implements UserDetails {
         this.userGroup = account.getUserGroup();
         this.isActive = account.isActive();
 
-        if (getUserTypeFromAccount(account) == UserType.CLIENT) {
-            this.type = UserType.CLIENT;
+        UserType currentType = getUserTypeFromAccount(account);
+        this.type = currentType;
+
+        if (currentType == UserType.CLIENT) {
             Client client = account.getClient();
             this.role = account.getUserRole();
             this.actions = account.getActions();
             this.displayName = client.getFullName();
-        } else if (getUserTypeFromAccount(account) == UserType.APTEKA) {
-            this.type = UserType.APTEKA;
+        } else if (currentType == UserType.APTEKA) {
             Apteka apteka = account.getApteka();
-            this.displayName = account.getUserGroup().getName() + " " + apteka.getNumber();
+            String groupName = Optional.ofNullable(account.getUserGroup())
+                .map(UserGroup::getName).orElse("БЕЗ ГРУППЫ");
+            this.displayName = groupName + " " + apteka.getNumber();
             this.role = UserRole.APTEKA;
-            this.actions = null;
+            this.actions = Set.of();
         } else {
             throw new AccessDeniedException("Не удалось идентифицировать тип пользователя!");
         }
@@ -76,10 +80,13 @@ public class AppUserDetails implements UserDetails {
     }
 
     public boolean hasAction(AccountAction action) {
-        return actions.contains(action);
+        return actions != null && actions.contains(action);
     }
 
     public boolean hasAnyAction(AccountAction... checkedActions) {
+        if (actions == null) {
+            return false;
+        }
         for (AccountAction action : checkedActions) {
             if (actions.contains(action)) {
                 return true;
@@ -89,7 +96,7 @@ public class AppUserDetails implements UserDetails {
     }
 
     public boolean hasRole(UserRole role) {
-        return role.equals(role);
+        return this.role == role;
     }
 
     public boolean hasAnyRole(UserRole... roles) {
@@ -106,12 +113,18 @@ public class AppUserDetails implements UserDetails {
 
         List<GrantedAuthority> result = new ArrayList<>();
 
-        result.add(new SimpleGrantedAuthority("GROUP_" + userGroup.getName()));
-
-        result.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
-
-        actions.forEach(a -> result.add(new SimpleGrantedAuthority("ACTION_" + a.name())));
-
+        if (userGroup != null) {
+            result.add(new SimpleGrantedAuthority("GROUP_" + userGroup.getName()));
+        }
+        
+        if (role != null) {
+            result.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        }
+        
+        if (actions != null) {
+            actions.forEach(a -> result.add(new SimpleGrantedAuthority("ACTION_" + a.name())));
+        }
+        
         return result;
     }
 
@@ -142,6 +155,8 @@ public class AppUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return isActive;
+        return Boolean.TRUE.equals(isActive) 
+                && userGroup != null 
+                &&  Boolean.TRUE.equals(userGroup.isActive());
     }
 }

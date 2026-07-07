@@ -7,7 +7,8 @@ public record UserGroupResponseDTO(
     String name,
     String phoneNumber,
     String internalNumber,
-    String extensionNumber
+    String extensionNumber,
+    Boolean isActive
 ) {
     public static UserGroupResponseDTO from(UserGroup userGroup) {
         return new UserGroupResponseDTO(
@@ -15,6 +16,7 @@ public record UserGroupResponseDTO(
             userGroup.getName(),
             userGroup.getPhoneNumber(),
             userGroup.getInternalNumber(),
-            userGroup.getExtensionNumber());
+            userGroup.getExtensionNumber(),
+            userGroup.isActive());
     }
 }

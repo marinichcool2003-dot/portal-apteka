@@ -22,14 +22,14 @@ public class UserGroupSecurityService {
     private final TaskRepository taskRepository;
     private final AccountRepository accountRepository;
 
-    public void validateCanCreate(AppUserDetails currentUser) {
+    public void canSelectNonActive(AppUserDetails currentUser) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
-        if (currentUser.hasAction(AccountAction.CAN_CREATE_USER_GROUP)) {
+        if (currentUser.hasAction(AccountAction.CAN_SELECT_NON_ACTIVE_GROUPS)) {
             return;
         }
-        throw new AccessDeniedException("У вас нет прав на создание группы пользователей");
+        throw new AccessDeniedException("Вы не можете просматривать удалённые группы");
     }
 
     public void validateCanUpdateUserGroup(AppUserDetails currentUser, UserGroup userGroup) {
@@ -64,6 +64,19 @@ public class UserGroupSecurityService {
             return;
         }
         throw new AccessDeniedException("У вас нет прав на удаление данной группы!");
+    }
+
+    public void validateCanRestoreAfterSaafeDelete(AppUserDetails currentUser, UserGroup userGroup) {
+        if (userGroup.isActive()) {
+            throw new AccessDeniedException("Группа не удалена!");
+        }
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_ACTIVATE_USER_GROUP_AFTER_SAFE_DELETE)) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на восстановление удалённой группы!");
     }
 
     public void validateCanPermanentDelete(AppUserDetails currentUser, UserGroup userGroup, boolean confirm) {

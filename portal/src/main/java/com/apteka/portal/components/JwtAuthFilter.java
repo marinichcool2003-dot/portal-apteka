@@ -46,14 +46,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (accessToken != null) {
             try {
                 String username = jwtService.extractUsername(accessToken);
+
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                    if (!userDetails.isEnabled()) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"error\": \"Аккаунт или группа пользователя деактивированы\"}");
+                        return;
+                    }
+
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails,
                             null, userDetails.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             } catch (JwtException e) {
                 logger.error("Ошибка валидации JWT токена: " + e.getMessage());
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\": \"Неверный или просроченный токен доступа\"}");
+                return;
             }
         }
 

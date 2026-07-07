@@ -12,6 +12,7 @@ import com.apteka.portal.dtos.response.UserGroupResponseDTO;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -56,20 +57,50 @@ public class UserGroupService {
     @Value("${app.default.avatars.upload.picture.group}")
     private String uploadAvatarPictureName;
 
-    @Cacheable(value = CacheNames.USER_GROUPS_LIST, sync = true)
+    @Cacheable(value = CacheNames.USER_GROUPS_LIST, key = "#isActive", condition = "#isActive == true", sync = true)
     @Transactional(readOnly = true)
-    public List<UserGroupResponseDTO> getAll() {
-        return userGroupRepository.findAll().stream()
+    public List<UserGroupResponseDTO> findByActive(AppUserDetails currentUser, Boolean isActive) {
+        if (Boolean.FALSE.equals(isActive)) {
+            userGroupSecurityService.canSelectNonActive(currentUser);
+        }
+        return userGroupRepository.findByActive(isActive).stream()
                 .map(UserGroupResponseDTO::from)
                 .toList();
     }
 
-    @Cacheable(value = CacheNames.USER_GROUP, key = "#id", sync = true)
+    @Cacheable(value = CacheNames.USER_GROUP, key = "#id", unless = "!#result.isActive", sync = true)
     @Transactional(readOnly = true)
-    public UserGroupResponseDTO getOne(Integer id) {
-        UserGroup group = userGroupRepository.findById(id)
+    public UserGroupResponseDTO getOne(Integer id, AppUserDetails currentUser, Boolean isActive) {
+        Integer currentUserGroupId = Optional.ofNullable(currentUser.getUserGroup())
+                .map(UserGroup::getId)
+                .orElseThrow(() -> new GroupUserNotFoundException("Группа текущего пользователя не привязана!"));
+
+        if (!currentUserGroupId.equals(id)) {
+            if (Boolean.FALSE.equals(isActive)) {
+                userGroupSecurityService.canSelectNonActive(currentUser);
+            }
+            boolean isVisible = userGroupRepository.isGroupVisibleToAnother(currentUserGroupId, id, isActive);
+            if (!isVisible) {
+                throw new GroupUserNotFoundException("У вас нет прав на просмотр этой группы или она не существует");
+            }
+        }
+        UserGroup group = userGroupRepository.findByIdAndCache(id)
                 .orElseThrow(() -> new GroupUserNotFoundException(id));
+
+        if (!group.isActive()) {
+            userGroupSecurityService.canSelectNonActive(currentUser);
+        }
+
         return UserGroupResponseDTO.from(group);
+    }
+
+    @Cacheable(value = CacheNames.USER_GROUPS_LIST, key = "#currentUser.userGroup != null ? #currentUser.userGroup.id : 'anonymous'", sync = true)
+    public List<UserGroupResponseDTO> getWithVisible(AppUserDetails currentUser) {
+        Integer userGroupId = Optional.ofNullable(currentUser.getUserGroup()).map(UserGroup::getId)
+                .orElseThrow(() -> new GroupUserNotFoundException(
+                        "Группа пользователя не найдена или не привязана к конкретному пользователю!"));
+        return userGroupRepository.findVisibleGroupsIncludingSelf(userGroupId).stream()
+                .map(UserGroupResponseDTO::from).toList();
     }
 
     @Caching(evict = {
@@ -77,7 +108,6 @@ public class UserGroupService {
     })
     @Transactional
     public UserGroupResponseDTO create(UserGroupRequestDTO dto, AppUserDetails currentUser) throws IOException {
-        userGroupSecurityService.validateCanCreate(currentUser);
         if (!StringUtils.hasText(dto.name()))
             throw new InvalidGroupUserException("Группа пользователя не может быть пустой!");
         String cleanName = typeNameValidator.getCleanName(dto.name());
@@ -129,7 +159,7 @@ public class UserGroupService {
 
         UserGroup upGroup = userGroupRepository.findById(id)
                 .orElseThrow(() -> new GroupUserNotFoundException(id));
-        
+
         userGroupSecurityService.validateCanUpdateUserGroup(currentUser, upGroup);
 
         boolean hasChange = false;
@@ -160,7 +190,7 @@ public class UserGroupService {
         }
 
         if (StringUtils.hasText(dto.extensionNumber())) {
-            String cleanExtensionNumber = phoneNumberValidator.getCleanInternalNumber(dto.internalNumber());
+            String cleanExtensionNumber = phoneNumberValidator.getCleanExtensionNumber(dto.extensionNumber());
             if (!Objects.equals(cleanExtensionNumber, upGroup.getExtensionNumber())) {
                 upGroup.setExtensionNumber(cleanExtensionNumber);
                 hasChange = true;
@@ -193,7 +223,11 @@ public class UserGroupService {
                         } else if (status == STATUS_COMMITTED) {
                             var cache = cacheManager.getCache(CacheNames.USER_GROUP);
                             if (cache != null) {
-                                cache.put(id, response);
+                                if (response.isActive()) {
+                                    cache.put(id, response);
+                                } else {
+                                    cache.evict(id);
+                                }
                             }
                             var signal = new SseEventNames.EntityUpdateSignalDTO(id, SseSignalTypes.UPDATED);
                             sseController.broadcastNotification(SseEventNames.REFRESH_USER_GROUPS, signal);
@@ -219,6 +253,49 @@ public class UserGroupService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
+                    var userGroupCache = cacheManager.getCache(CacheNames.USER_GROUP);
+                    if (userGroupCache != null) {
+                        userGroupCache.evict(id);
+                    }
+
+                    var userGroupsListCache = cacheManager.getCache(CacheNames.USER_GROUPS_LIST);
+                    if (userGroupsListCache != null) {
+                        userGroupsListCache.clear();
+                    }
+
+                    var cache = cacheManager.getCache(CacheNames.GROUP_USER_STATUS);
+                    if (cache != null) {
+                        cache.evict(id);
+                    }
+                    var signal = new SseEventNames.EntityUpdateSignalDTO(id, SseSignalTypes.UPDATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_USER_GROUPS, signal);
+                }
+            });
+        }
+    }
+
+    @Transactional
+    public void restoreAfterSafeDelete(Integer id, AppUserDetails currentUser) {
+        UserGroup restoreGroup = userGroupRepository.findById(id)
+                .orElseThrow(() -> new GroupUserNotFoundException(id));
+        userGroupSecurityService.validateCanRestoreAfterSaafeDelete(currentUser, restoreGroup);
+
+        restoreGroup.setActive(true);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var userGroupCache = cacheManager.getCache(CacheNames.USER_GROUP);
+                    if (userGroupCache != null) {
+                        UserGroup restored = userGroupRepository.findById(id).orElse(null);
+                        if (restored != null && restored.isActive()) {
+                            userGroupCache.put(id, UserGroupResponseDTO.from(restored));
+                        }
+                    }
+                    var userGroupsListCache = cacheManager.getCache(CacheNames.USER_GROUPS_LIST);
+                    if (userGroupsListCache != null) {
+                        userGroupsListCache.clear();
+                    }
                     var cache = cacheManager.getCache(CacheNames.GROUP_USER_STATUS);
                     if (cache != null) {
                         cache.evict(id);
