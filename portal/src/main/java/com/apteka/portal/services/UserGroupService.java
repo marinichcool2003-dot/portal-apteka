@@ -7,7 +7,7 @@ import com.apteka.portal.components.validators.TypeNameValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.usergroup.UserGroupRequestDTO;
 import com.apteka.portal.dtos.request.usergroup.UserGroupUpdateRequestDTO;
-import com.apteka.portal.dtos.response.UserGroupResponseDTO;
+import com.apteka.portal.dtos.response.usergroup.UserGroupResponseDTO;
 
 import java.io.IOException;
 import java.util.List;
@@ -57,7 +57,7 @@ public class UserGroupService {
     @Value("${app.default.avatars.upload.picture.group}")
     private String uploadAvatarPictureName;
 
-    @Cacheable(value = CacheNames.USER_GROUPS_LIST, key = "#isActive", condition = "#isActive == true", sync = true)
+    @Cacheable(value = CacheNames.USER_GROUPS_LIST, key = "'active_only'", condition = "#isActive == true", sync = true)
     @Transactional(readOnly = true)
     public List<UserGroupResponseDTO> findByActive(AppUserDetails currentUser, Boolean isActive) {
         if (Boolean.FALSE.equals(isActive)) {

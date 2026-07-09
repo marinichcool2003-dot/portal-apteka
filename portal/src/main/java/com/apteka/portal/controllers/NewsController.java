@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.apteka.portal.dtos.request.NewsUpdateRequestDTO;
 import com.apteka.portal.dtos.request.news.NewsRequestDTO;
-import com.apteka.portal.dtos.response.NewsResponseDTO;
+import com.apteka.portal.dtos.request.news.NewsUpdateRequestDTO;
+import com.apteka.portal.dtos.response.news.NewsResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.NewsService;
 

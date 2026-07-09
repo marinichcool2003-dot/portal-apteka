@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.apteka.portal.dtos.response.ClientResponseDTO;
-import com.apteka.portal.dtos.response.ClientWithStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
+import com.apteka.portal.dtos.response.client.ClientResponseDTO;
+import com.apteka.portal.dtos.response.client.ClientWithStatsDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.ClientService;
 

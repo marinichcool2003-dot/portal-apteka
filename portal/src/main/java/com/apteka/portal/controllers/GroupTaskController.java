@@ -21,7 +21,7 @@ import com.apteka.portal.docs.ForbiddenApiResponse;
 import com.apteka.portal.docs.InternalServerErrorApiResponse;
 import com.apteka.portal.docs.NotFoundApiResponse;
 import com.apteka.portal.docs.UnauthorizedApiResponse;
-import com.apteka.portal.dtos.request.GroupTaskRequestDTO;
+import com.apteka.portal.dtos.request.grouptask.GroupTaskRequestDTO;
 import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.GroupTaskService;

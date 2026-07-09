@@ -11,9 +11,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import com.apteka.portal.components.servicesecurity.NewsSecurityService;
 import com.apteka.portal.controllers.SseController;
-import com.apteka.portal.dtos.request.NewsUpdateRequestDTO;
 import com.apteka.portal.dtos.request.news.NewsRequestDTO;
-import com.apteka.portal.dtos.response.NewsResponseDTO;
+import com.apteka.portal.dtos.request.news.NewsUpdateRequestDTO;
+import com.apteka.portal.dtos.response.news.NewsResponseDTO;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidNewsTextException;

@@ -1,9 +1,10 @@
-package com.apteka.portal.dtos.response;
+package com.apteka.portal.dtos.response.apteka;
 
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import com.apteka.portal.dtos.response.usergroup.UserGroupShortResponseDTO;
 import com.apteka.portal.models.Account;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.UserRole;
@@ -11,7 +12,7 @@ import com.apteka.portal.models.UserRole;
 public record AptekaResponseDTO(
     UUID id,
     String login,
-    String adress,
+    AdressResponseDTO adress,
     Set<UserRole> roles,
     UserGroupShortResponseDTO userGroup,
     Integer number,
@@ -22,8 +23,8 @@ public record AptekaResponseDTO(
     public static AptekaResponseDTO from(Apteka apteka){
         return new AptekaResponseDTO(
             apteka.getId(),
-            apteka.getAccount().getLogin(), 
-            apteka.getAdress(),
+            apteka.getAccount().getLogin(),
+            Optional.ofNullable(apteka.getAddress()).map(AdressResponseDTO::from).orElse(null),
             apteka.getRoles(),
             Optional.ofNullable(apteka.getAccount().getUserGroup())
                 .map(group -> new UserGroupShortResponseDTO(group.getId(), group.getName()))

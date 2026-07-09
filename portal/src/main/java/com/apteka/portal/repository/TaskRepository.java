@@ -153,4 +153,22 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			""")
 	boolean existsByAptekaIdAndStatus(UUID aptekaId, Set<TaskStatus> statusCollection);
 
+
+	@Query("""
+			SELECT 1 FROM Task t
+			JOIN t.workType wt
+			JOIN wt.groupTask gt
+			WHERE gt.id = :groupTaskId
+			AND t.status IN ('OPEN', 'PROCESSED')
+			""")
+	boolean existsByGroupTaskAndStatusActive(Integer groupTaskId);
+
+		@Query("""
+			SELECT 1 FROM Task t
+			JOIN t.workType wt
+			JOIN wt.groupTask gt
+			WHERE gt.id = :groupTaskId
+			AND t.status IN ('DENIED', 'CLOSED')
+			""")
+	boolean existsByGroupTaskAndStatusNonActive(Integer groupTaskId);
 }

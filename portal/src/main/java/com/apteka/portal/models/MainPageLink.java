@@ -52,9 +52,4 @@ public class MainPageLink {
 
     @Column(name = "is_active")
     private boolean isActive;
-
-    public boolean isActive() {
-        return groupMainPageLinks.isActive()
-            && this.isActive;
-    }
 }

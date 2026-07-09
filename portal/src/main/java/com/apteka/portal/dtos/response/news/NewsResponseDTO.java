@@ -1,8 +1,9 @@
-package com.apteka.portal.dtos.response;
+package com.apteka.portal.dtos.response.news;
 
 import java.time.Instant;
 import java.util.Optional;
 
+import com.apteka.portal.dtos.response.usergroup.UserGroupShortResponseDTO;
 import com.apteka.portal.models.News;
 import com.apteka.portal.models.UserGroup;
 

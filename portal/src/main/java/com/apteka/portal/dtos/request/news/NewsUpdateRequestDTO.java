@@ -1,4 +1,4 @@
-package com.apteka.portal.dtos.request;
+package com.apteka.portal.dtos.request.news;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

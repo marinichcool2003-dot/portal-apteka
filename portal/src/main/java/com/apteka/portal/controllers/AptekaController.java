@@ -20,13 +20,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.apteka.portal.dtos.response.AptekaResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.dtos.request.AccountUpdateRequestDTO;
 import com.apteka.portal.dtos.request.AptekaUpdateRequestDTO;
 import com.apteka.portal.dtos.request.apteka.AptekaFilterRequestDTO;
 import com.apteka.portal.dtos.request.apteka.AptekaRequestDTO;
 import com.apteka.portal.dtos.request.apteka.AptekaUpdateDescriptionRequestDTO;
+import com.apteka.portal.dtos.response.apteka.AptekaResponseDTO;
 import com.apteka.portal.services.AptekaService;
 
 import io.swagger.v3.oas.annotations.Operation;

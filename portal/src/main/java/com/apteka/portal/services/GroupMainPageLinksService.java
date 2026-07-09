@@ -3,10 +3,6 @@ package com.apteka.portal.services;
 import java.util.List;
 import java.util.Objects;
 
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -16,14 +12,14 @@ import org.springframework.util.StringUtils;
 import com.apteka.portal.components.servicesecurity.MainPageLinksSecurityService;
 import com.apteka.portal.components.validators.TypeNameValidator;
 import com.apteka.portal.controllers.SseController;
-import com.apteka.portal.dtos.request.GroupMainPageLinksRequestDTO;
-import com.apteka.portal.dtos.response.GroupMainPageLinksResponseDTO;
+import com.apteka.portal.dtos.request.mainpagelinks.GroupMainPageLinkUpdateRequestDTO;
+import com.apteka.portal.dtos.request.mainpagelinks.GroupMainPageLinksRequestDTO;
+import com.apteka.portal.dtos.response.mainpagelink.GroupMainPageLinksResponseDTO;
 import com.apteka.portal.exceptions.GroupMainPageLinksAlreadyExistsException;
 import com.apteka.portal.exceptions.GroupMainPageLinksNotFoundException;
 import com.apteka.portal.exceptions.InvalidGroupMainPageLinksDescriptionException;
 import com.apteka.portal.exceptions.InvalidGroupMainPageLinksNameException;
 import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.GroupMainPageLinks;
 import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
@@ -37,29 +33,20 @@ public class GroupMainPageLinksService {
     private final GroupMainPageLinksRepository groupMainPageLinksRepository;
     private final TypeNameValidator typeNameValidator;
     private final MainPageLinksSecurityService groupMainPageLinksSecurityService;
-    private final CacheManager cacheManager;
 
     private final SseController sseController;
 
-    @Cacheable(value = CacheNames.GROUPS_MAIN_PAGE_LINKS)
-    @Transactional(readOnly = true)
-    public List<GroupMainPageLinksResponseDTO> getAll() {
-        return groupMainPageLinksRepository.findAll()
-                .stream().map(GroupMainPageLinksResponseDTO::from).toList();
-    }
-
-    @Cacheable(value = CacheNames.GROUPS_MAIN_PAGE_LINKS, key = "#id")
-    @Transactional(readOnly = true)
-    public GroupMainPageLinksResponseDTO getOne(Integer id) {
-        return GroupMainPageLinksResponseDTO.from(groupMainPageLinksRepository.findById(id)
-                .orElseThrow(() -> new GroupMainPageLinksNotFoundException("Группа ссылок не найдена")));
-    }
-
-    @CacheEvict(value = CacheNames.GROUPS_MAIN_PAGE_LINKS, allEntries = true)
     @Transactional
-    public GroupMainPageLinksResponseDTO create(GroupMainPageLinksRequestDTO dto, AppUserDetails currentUser) {
-        groupMainPageLinksSecurityService.validateCanCreate(currentUser);
+    public List<GroupMainPageLinksResponseDTO> getAll(Boolean isActive, AppUserDetails currentUser) {
+        if (Boolean.FALSE.equals(isActive)) {
+            groupMainPageLinksSecurityService.validateCanSelectNonActive(currentUser);
+        }
+        return groupMainPageLinksRepository.findByActive(isActive).stream()
+                .map(GroupMainPageLinksResponseDTO::from).toList();
+    }
 
+    @Transactional
+    public GroupMainPageLinksResponseDTO create(GroupMainPageLinksRequestDTO dto) {
         if (!StringUtils.hasText(dto.name())) {
             throw new InvalidGroupMainPageLinksNameException("Наименование группы ссылок не может быть пустым!");
         }
@@ -80,7 +67,7 @@ public class GroupMainPageLinksService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_MAIN_PAGE_LINKS,
+                    sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS,
                             SseSignalTypes.CREATED);
                 }
             });
@@ -90,11 +77,14 @@ public class GroupMainPageLinksService {
     }
 
     @Transactional
-    public GroupMainPageLinksResponseDTO update(Integer id, GroupMainPageLinksRequestDTO dto,
+    public GroupMainPageLinksResponseDTO update(Integer id, GroupMainPageLinkUpdateRequestDTO dto,
             AppUserDetails currentUser) {
-        groupMainPageLinksSecurityService.validateCanUpdate(currentUser);
         GroupMainPageLinks groupMainPageLinks = groupMainPageLinksRepository.findById(id)
                 .orElseThrow(() -> new GroupMainPageLinksNotFoundException("Группа ссылок не найдена"));
+
+        if (!groupMainPageLinks.isActive()) {
+            groupMainPageLinksSecurityService.validateCanSelectNonActive(currentUser);
+        }
 
         boolean hasChange = false;
 
@@ -127,12 +117,8 @@ public class GroupMainPageLinksService {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        var cache = cacheManager.getCache(CacheNames.GROUPS_MAIN_PAGE_LINKS);
-                        if (cache != null) {
-                            cache.put(id, response);
-                        }
-                        var signal = new SseEventNames.EntityUpdateSignalDTO(id, SseSignalTypes.UPDATED);
-                        sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_MAIN_PAGE_LINKS, signal);
+                        sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS,
+                                SseSignalTypes.UPDATED);
                     }
                 });
             }
@@ -141,13 +127,42 @@ public class GroupMainPageLinksService {
         return response;
     }
 
-    @Caching(evict = {
-            @CacheEvict(value = CacheNames.GROUPS_MAIN_PAGE_LINKS, key = "#id"),
-            @CacheEvict(value = CacheNames.GROUPS_MAIN_PAGE_LINKS, allEntries = true)
-    })
     @Transactional
-    public void delete(Integer id, AppUserDetails currentUser) {
-        groupMainPageLinksSecurityService.validateCanDelete(currentUser);
+    public void safeDelete(Integer id) {
+        GroupMainPageLinks group = groupMainPageLinksRepository.findById(id)
+                .orElseThrow(() -> new GroupMainPageLinksNotFoundException("Группа не найдена!"));
+
+        group.setActive(false);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS,
+                            SseSignalTypes.UPDATED);
+                }
+            });
+        }
+    }
+
+    @Transactional
+    public void restore(Integer id) {
+        GroupMainPageLinks group = groupMainPageLinksRepository.findById(id)
+                .orElseThrow(() -> new GroupMainPageLinksNotFoundException("Группа не найдена!"));
+        group.setActive(true);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS,
+                            SseSignalTypes.UPDATED);
+                }
+            });
+        }
+
+    }
+
+    @Transactional
+    public void permanentDelete(Integer id) {
         if (!groupMainPageLinksRepository.existsById(id)) {
             throw new GroupMainPageLinksNotFoundException("Группа ссылок не найдена");
         }
@@ -157,7 +172,7 @@ public class GroupMainPageLinksService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_MAIN_PAGE_LINKS,
+                    sseController.broadcastNotification(SseEventNames.REFRESH_MAIN_PAGE_LINKS,
                             SseSignalTypes.DELETED);
                 }
             });

@@ -34,17 +34,18 @@ CREATE TABLE IF NOT EXISTS group_user (
 CREATE TABLE IF NOT EXISTS group_group_visibility (
     first_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
     second_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
-    PRIMARY KEY(first_group_id, second_group_id)
+    UNIQUE(first_group_id, second_group_id)
 );
 
 CREATE TABLE IF NOT EXISTS group_task (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) UNIQUE NOT NULL,
-    user_group_id INT NOT NULL,
+    creator_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
+    executor_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),
     is_active BOOLEAN DEFAULT true,
-    is_internal BOOLEAN DEFAULT true
+    UNIQUE(name, creator_group_id, executor_group_id)
 );
 
 CREATE TABLE IF NOT EXISTS work_type (
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS work_type (
     name VARCHAR(255) NOT NULL,
     priority task_priority NOT NULL DEFAULT 'LOW',
     wiki_link VARCHAR(2048),
+    comment_for_creator VARCHAR(1024),
     group_task_id INT NOT NULL,
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),

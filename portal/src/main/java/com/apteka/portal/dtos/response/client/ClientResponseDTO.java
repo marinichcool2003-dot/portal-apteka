@@ -1,8 +1,9 @@
-package com.apteka.portal.dtos.response;
+package com.apteka.portal.dtos.response.client;
 
 import java.util.Optional;
 import java.util.UUID;
 
+import com.apteka.portal.dtos.response.usergroup.UserGroupShortResponseDTO;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserRole;
 

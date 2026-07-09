@@ -61,11 +61,16 @@ public enum AccountAction {
     CAN_SELECT_NON_ACTIVE_GROUPS("CAN_SELECT_NON_ACTIVE_GROUPS", "Возможность просматривать все неактивные группы", LevelAction.HIGH),
     CAN_SELECT_ALL_ACTIVE_GROUPS("CAN_SELECT_ALL_ACTIVE_GROUPS", "Возможность просматривать все активные группы", LevelAction.MEDIUM),
     CAN_CREATE_USER_GROUP("CAN_CREATE_USER_GROUP", "Возможность создавать отделы", LevelAction.HIGH),
-    CAN_UPDATE_SELF_USER_GROUP("CAN_UPDATE_SELF_USER_GROUP", "Возможность обновлять собственную группу", LevelAction.MEDIUM),
-    CAN_UPDATE_USER_GROUP("CAN_UPDATE_USER_GROUP", "Возможность обновлять любую группу", LevelAction.HIGH),
+    CAN_UPDATE_SELF_USER_GROUP("CAN_UPDATE_SELF_USER_GROUP", "Возможность обновлять собственную группу", LevelAction.HIGH),
+    CAN_UPDATE_USER_GROUP("CAN_UPDATE_USER_GROUP", "Возможность обновлять любую группу", LevelAction.CRITICAL),
     SAFE_DELETE_USER_GROUP("SAFE_DELETE_USER_GROUP", "Безопасное удаление группы пользователей", LevelAction.HIGH),
     CAN_ACTIVATE_USER_GROUP_AFTER_SAFE_DELETE("CAN_ACTIVATE_USER_GROUP_AFTER_SAFE_DELETE", "Восстановление группы пользователей после безопасного удаления", LevelAction.HIGH),
     PERMANENT_DELETE_USER_GROUP("PERMANENT_DELETE_USER_GROUP", "Полное удаление группы пользователей", LevelAction.CRITICAL),
+
+    BASE_WORK_WITH_GROUP_TASK("BASE_WORK_WITH_GROUP_TASK","Базовая работа с типами задач (Включает (просмотр, создание, безопасное удаление, безопасное изменение, просмотр удалённых) всё в рамках своей группы)", LevelAction.MEDIUM),
+    GRAND_WORK_WITH_GROUP_TASK("GRAND_WORK_WITH_GROUP_TASK","Расширенная работа с типами задач (Включает то же что и базовая только для всех групп)", LevelAction.MEDIUM),
+    NON_SAFE_UPDATE("NON_SAFE_UPDATE","Включает небезопасное обновление", LevelAction.CRITICAL),
+    CAN_PERMANENT_DELETE("CAN_PERMANENT_DELETE", "Возможность перманентного удаления", LevelAction.CRITICAL),
 
     CREATE_TASK_TO_GROUP("CREATE_TASK_TO_GROUP", "Создание задачи на любую группу сотрудников"),
     CREATE_TASK_GRAND("CREATE_TASK_GRAND", "Создание задачи на любую группу сотрудников и на любого сотрудника из любого отдела"),

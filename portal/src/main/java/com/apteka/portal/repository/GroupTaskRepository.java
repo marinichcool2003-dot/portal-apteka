@@ -5,15 +5,33 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import com.apteka.portal.models.GroupTask;
 
 public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
-    @EntityGraph(attributePaths = {"userGroup"})
-    Optional<GroupTask> findByNameAndUserGroupId(String name, Integer userGroupId);
+    @Query("""
+            SELECT EXISTS(
+                SELECT 1
+                FROM GroupTask gt
+                WHERE gt.name = :name
+                    AND gt.executorGroup.id = :executorGroupId
+                    AND gt.Active = true
+            )
+            """)
+    boolean existsByNameAndExecutorGroupIdAndActive(String name, Integer executorGroupId);
 
-    @EntityGraph(attributePaths = {"userGroup"})
-    List<GroupTask> findByUserGroupId(Integer userGroupId);
+    @Override
+    @EntityGraph(attributePaths = { "creatorGroup", "executorGroup" })
+    Optional<GroupTask> findById(Integer id);
 
-    boolean existsByNameAndUserGroupId(String name, Integer userGroupId);
+    @Query("""
+            SELECT gt FROM GroupTask gt
+            WHERE gt.creatorGroup.id = :creatorGroupId
+            AND gt.executorGroup.id = :executorGroupId
+            AND gt.Active =: isActive
+            """)
+    List<GroupTask> findByGroupsAndActive(Integer creatorGroupId, Integer executorGroupId, boolean isActive);
+
+    boolean existsByNameAndCreatorGroupIdAndExecutorGroupId(String name, Integer creatorGroupId, Integer executorGroupId);
 }

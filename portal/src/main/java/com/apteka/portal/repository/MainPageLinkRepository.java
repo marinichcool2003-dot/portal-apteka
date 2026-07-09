@@ -9,8 +9,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.apteka.portal.models.MainPageLink;
 
 public interface MainPageLinkRepository extends JpaRepository<MainPageLink, Integer>{
+    @Override
     @EntityGraph(attributePaths = "groupMainPageLinks")
-    Optional<MainPageLink> findByid(Integer id);
+    Optional<MainPageLink> findById(Integer id);
 
     @EntityGraph(attributePaths = "groupMainPageLinks")
     List<MainPageLink> findAll();
@@ -19,7 +20,7 @@ public interface MainPageLinkRepository extends JpaRepository<MainPageLink, Inte
     List<MainPageLink> findByActive(boolean active);
 
     @EntityGraph(attributePaths = "groupMainPageLinks")
-    List<MainPageLink> findByGroupMainPageLinksId(Integer groupMainPageLinksId);
+    List<MainPageLink> findByGroupMainPageLinksIdAndActive(Integer groupMainPageLinksId, Boolean isActive);
 
     boolean existsByName(String name);
     boolean existsByLink(String link);

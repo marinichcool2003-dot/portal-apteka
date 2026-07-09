@@ -1,6 +1,8 @@
 package com.apteka.portal.controllers;
 
 import com.apteka.portal.dtos.request.usergroup.UserGroupUpdateRequestDTO;
+import com.apteka.portal.dtos.response.usergroup.UserGroupResponseDTO;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -20,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.apteka.portal.dtos.request.usergroup.UserGroupRequestDTO;
-import com.apteka.portal.dtos.response.UserGroupResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.UserGroupService;
 

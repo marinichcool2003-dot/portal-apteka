@@ -1,4 +1,4 @@
-package com.apteka.portal.dtos.response;
+package com.apteka.portal.dtos.response.mainpagelink;
 
 import com.apteka.portal.models.GroupMainPageLinks;
 

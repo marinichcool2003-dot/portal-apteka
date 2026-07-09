@@ -29,7 +29,7 @@ public final class SseEventNames {
     //СИГНАЛЫ ДЛЯ ВСТАВКИ/УДАЛЕНИЯ
     public record AppUserDetailsSignalDTO(Integer userGroupId, String action) {
     }
-    public record GroupTaskSignalDTO(Integer userGroupId, String action) {
+    public record GroupTaskSignalDTO(Integer creatorGroupId, Integer executorGroupId, String action) {
     }
     public record WorkTypeSignalDTO(Integer groupTaskId, String action) { 
     }

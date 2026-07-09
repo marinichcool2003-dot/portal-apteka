@@ -1,4 +1,4 @@
-package com.apteka.portal.dtos.response;
+package com.apteka.portal.dtos.response.usergroup;
 
 import com.apteka.portal.models.UserGroup;
 
@@ -8,6 +8,7 @@ public record UserGroupResponseDTO(
     String phoneNumber,
     String internalNumber,
     String extensionNumber,
+    String avatarUrl,
     Boolean isActive
 ) {
     public static UserGroupResponseDTO from(UserGroup userGroup) {
@@ -17,6 +18,7 @@ public record UserGroupResponseDTO(
             userGroup.getPhoneNumber(),
             userGroup.getInternalNumber(),
             userGroup.getExtensionNumber(),
+            userGroup.getAvatarUrl(),
             userGroup.isActive());
     }
 }

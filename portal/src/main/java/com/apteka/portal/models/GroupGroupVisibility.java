@@ -1,7 +1,5 @@
 package com.apteka.portal.models;
 
-import java.time.Instant;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -19,36 +17,25 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "group_task", 
-    uniqueConstraints = @UniqueConstraint(columnNames = {"name", "creator_group_id", "executor_group_id"}))
+@Table(name = "group_group_visibility",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"first_group_id", "second_group_id"})
+)
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
 @Builder
-public class GroupTask {
+public class GroupGroupVisibility {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
 
-    @Column(name = "name", nullable = false)
-    private String name;
-
-    @Column(name = "updated_at")
-    private Instant updatedAt;
-
-    @Column(name = "updated_by")
-    private String updatedBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "first_group_id", nullable = false)
+    private UserGroup firstGroup;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "creator_group_id", nullable = false)
-    private UserGroup creatorGroup;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "executor_group_id", nullable = false)
-    private UserGroup executorGroup;
-    
-    @Column(name = "is_active")
-    private boolean isActive;
+    @JoinColumn(name = "second_group_id", nullable = false)
+    private UserGroup secondGroup;
 }
