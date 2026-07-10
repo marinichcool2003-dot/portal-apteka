@@ -46,11 +46,17 @@ public class WorkType {
     @Column(name = "wiki_link")
     private String wikiLink;
 
+    @Column(name = "comment_for_creator", length = 1024)
+    private String commentForCreator;
+
     @Column(name = "updated_at")
     private Instant updatedAt;
 
     @Column(name = "updated_by")
     private String updatedBy;
+
+    @Column(name = "is_active")
+    private String isActive;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_task_id")

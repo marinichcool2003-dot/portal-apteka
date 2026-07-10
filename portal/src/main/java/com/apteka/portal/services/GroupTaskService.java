@@ -6,7 +6,6 @@ import java.util.Objects;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -27,7 +26,6 @@ import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.UserGroup;
-import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.GroupTaskRepository;
 import com.apteka.portal.repository.UserGroupRepository;
 
@@ -36,7 +34,6 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class GroupTaskService {
-
     private final GroupTaskRepository groupTaskRepository;
     private final UserGroupRepository userGroupRepository;
     private final GroupTaskSecurityService groupTaskSecurityService;
@@ -109,71 +106,143 @@ public class GroupTaskService {
     }
 
     @Transactional
-    public GroupTaskResponseDTO update(Integer id, GroupTaskUpdateRequestDTO dto, AppUserDetails currentUser) {
+    public GroupTaskResponseDTO update(Integer id, GroupTaskUpdateRequestDTO dto, AppUserDetails currentUser,
+            Boolean confirm) {
         GroupTask upGroup = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
-        boolean isSafeChange = true;
+        String oldCacheKey = upGroup.getCreatorGroup().getId() + ":" + upGroup.getExecutorGroup().getId();
 
-        
+        boolean nameChange = false;
+        boolean groupsChange = false;
 
-        groupTaskSecurityService.validateGroupTaskUpdate(currentUser, upGroup, false);
+        if (dto.creatorGroupId() != null && !Objects.equals(dto.creatorGroupId(), upGroup.getCreatorGroup().getId())) {
+            UserGroup creatorGroup = userGroupRepository.findById(dto.creatorGroupId())
+                    .orElseThrow(() -> new GroupUserNotFoundException(dto.creatorGroupId()));
+            upGroup.setCreatorGroup(creatorGroup);
+            groupsChange = true;
+        }
 
-        boolean hasChange = false;
+        if (dto.executorGroupId() != null
+                && !Objects.equals(dto.executorGroupId(), upGroup.getExecutorGroup().getId())) {
+            UserGroup executorGroup = userGroupRepository.findById(dto.executorGroupId())
+                    .orElseThrow(() -> new GroupUserNotFoundException(dto.executorGroupId()));
+            upGroup.setExecutorGroup(executorGroup);
+            groupsChange = true;
+        }
 
         if (dto.name() != null) {
             String cleanName = typeNameValidator.getCleanName(dto.name());
             if (!Objects.equals(cleanName, upGroup.getName())) {
-                validateGroupTaskName(cleanName, upGroup.getUserGroup().getId());
+                validateGroupTaskName(cleanName, upGroup.getCreatorGroup().getId(), upGroup.getExecutorGroup().getId());
                 upGroup.setName(cleanName);
-                hasChange = true;
+                nameChange = true;
             }
         }
 
-        if (dto.userGroupId() != null && dto.userGroupId() > 0) {
-            if (!currentUser.hasRole(UserRole.ADMIN)) {
-                throw new AccessDeniedException("Только администратор может переместить тип задачи на другую группу!");
-            }
-            UserGroup userGroup = userGroupRepository.findById(dto.userGroupId())
-                    .orElseThrow(() -> new GroupUserNotFoundException(dto.userGroupId()));
-            cacheManager.getCache(CacheNames.GROUP_TASKS_BY_GROUP).evict(upGroup.getUserGroup().getId());
-            upGroup.setUserGroup(userGroup);
-            hasChange = true;
-        }
+        boolean hasChange = nameChange || groupsChange;
 
         if (hasChange) {
+            boolean isConfirmed = Boolean.TRUE.equals(confirm);
+            groupTaskSecurityService.validateGroupTaskUpdate(currentUser, upGroup, nameChange, groupsChange,
+                    isConfirmed);
             upGroup.setUpdatedBy(currentUser.getDisplayName());
+
+            upGroup = groupTaskRepository.save(upGroup);
         }
 
         GroupTaskResponseDTO response = GroupTaskResponseDTO.from(upGroup);
 
-        if (hasChange) {
-            var cache = cacheManager.getCache(CacheNames.GROUP_TASK);
-            if (cache != null) {
-                cache.put(id, response);
-            }
+        if (hasChange && TransactionSynchronizationManager.isSynchronizationActive()) {
+            final GroupTaskResponseDTO finalResponse = response;
+            final String newCacheKey = upGroup.getCreatorGroup().getId() + ":" + upGroup.getExecutorGroup().getId();
+            final Integer groupTaskId = upGroup.getId();
 
-            cacheManager.getCache(CacheNames.GROUP_TASKS_BY_GROUP).evict(response.userGroup().id());
-            var signal = new SseEventNames.EntityUpdateSignalDTO(upGroup.getId(), SseSignalTypes.UPDATED);
-            sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var cache = cacheManager.getCache(CacheNames.GROUP_TASK);
+                    if (cache != null) {
+                        if (!oldCacheKey.equals(newCacheKey)) {
+                            cache.evict(oldCacheKey);
+                        }
+                        cache.put(newCacheKey, finalResponse);
+                    }
+                    var signal = new SseEventNames.EntityUpdateSignalDTO(groupTaskId, SseSignalTypes.UPDATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
+                }
+            });
         }
 
         return response;
     }
 
     @Transactional
-    public void delete(Integer id, AppUserDetails currentUser) {
+    public void safeDelete(Integer id, AppUserDetails currentUser) {
+        GroupTask deletedGroup = groupTaskRepository.findById(id)
+                .orElseThrow(() -> new GroupTaskNotFoundException(id));
+        groupTaskSecurityService.validateCanWorkGroupTask(currentUser, deletedGroup.getCreatorGroup());
+        if (isActive(deletedGroup.getCreatorGroup(), deletedGroup.getExecutorGroup(), deletedGroup)) {
+            deletedGroup.setActive(false);
+            Integer groupTaskId = deletedGroup.getId();
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        var signal = new SseEventNames.EntityUpdateSignalDTO(groupTaskId, SseSignalTypes.UPDATED);
+                        sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
+                    }
+                });
+            }
+        }
+    }
+
+    @Transactional
+    public void restore(Integer id, AppUserDetails currentUser) {
+        GroupTask restoredGroup = groupTaskRepository.findById(id)
+                .orElseThrow(() -> new GroupTaskNotFoundException(id));
+        groupTaskSecurityService.validateCanWorkGroupTask(currentUser, restoredGroup.getCreatorGroup());
+
+        if (!isActive(restoredGroup.getCreatorGroup(), restoredGroup.getExecutorGroup(), restoredGroup)) {
+            restoredGroup.setActive(true);
+            Integer groupTaskId = restoredGroup.getId();
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        var signal = new SseEventNames.EntityUpdateSignalDTO(groupTaskId, SseSignalTypes.UPDATED);
+                        sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
+                    }
+                });
+            }
+        }
+    }
+
+    @Transactional
+    public void permanentDelete(Integer id, AppUserDetails currentUser, Boolean confirm) {
         GroupTask deletedGroupTask = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
-        groupTaskSecurityService.validateCanUpdateOrDelete(currentUser);
+        groupTaskSecurityService.validateCanPermanentDelete(deletedGroupTask, confirm);
         groupTaskRepository.deleteById(id);
 
-        cacheManager.getCache(CacheNames.GROUP_TASK).evict(id);
-        cacheManager.getCache(CacheNames.GROUP_TASKS_BY_GROUP).evict(deletedGroupTask.getUserGroup().getId());
-        cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(id);
+        String cachekey = deletedGroupTask.getCreatorGroup().getId().toString() + ':' +
+                deletedGroupTask.getExecutorGroup().getId().toString();
 
-        var signal = new SseEventNames.GroupTaskSignalDTO(deletedGroupTask.getUserGroup().getId(),
-                SseSignalTypes.DELETED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cacheManager.getCache(CacheNames.GROUP_TASK).evict(id);
+                    cacheManager.getCache(CacheNames.GROUP_TASKS_BY_GROUP)
+                            .evict(cachekey);
+                    cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(id);
+
+                    var signal = new SseEventNames.GroupTaskSignalDTO(deletedGroupTask.getCreatorGroup().getId(),
+                            deletedGroupTask.getExecutorGroup().getId(),
+                            SseSignalTypes.DELETED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
+                }
+            });
+        }
     }
 
     private void validateGroupTaskName(String cleanName, Integer creatorGroupId, Integer executorGroupId) {

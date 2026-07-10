@@ -39,32 +39,19 @@ import lombok.RequiredArgsConstructor;
 public class GroupTaskController {
     private final GroupTaskService groupTaskService;
 
-    @Operation(summary = "Получить список групп задач по группе пользователей")
-    @ApiResponse(responseCode = "200", description = "Список групп задач успешно получен")
-    @NotFoundApiResponse
-    @InternalServerErrorApiResponse
+    @Operation(summary = "Получить список групп задач по группам пользователей")
     @GetMapping("/by-user-group/{userGroupId}")
     public ResponseEntity<List<GroupTaskResponseDTO>> getByUserGroup(@PathVariable Integer userGroupId) {
-        return ResponseEntity.ok(groupTaskService.getByUserGroup(userGroupId));
+        return ResponseEntity.ok(groupTaskService.getByGroups(userGroupId));
     }
 
     @Operation(summary = "Получить группу задач по ID")
-    @ApiResponse(responseCode = "200", description = "Группа задач успешно получена")
-    @NotFoundApiResponse
-    @InternalServerErrorApiResponse
     @GetMapping("/{id}")
     public ResponseEntity<GroupTaskResponseDTO> getOne(@PathVariable Integer id) {
         return ResponseEntity.ok(groupTaskService.getOne(id));
     }
 
     @Operation(summary = "Создать группу задач")
-    @ApiResponse(responseCode = "201", description = "Группа задач успешно создана")
-    @BadRequestApiResponse
-    @UnauthorizedApiResponse
-    @ForbiddenApiResponse
-    @NotFoundApiResponse
-    @ConflictApiResponse
-    @InternalServerErrorApiResponse
     @PreAuthorize("@appSecurity.isClient() and hasAnyRole('ADMIN', 'BOSS')")
     @PostMapping
     public ResponseEntity<GroupTaskResponseDTO> create(@Valid @RequestBody GroupTaskRequestDTO dto,
@@ -74,13 +61,6 @@ public class GroupTaskController {
     }
 
     @Operation(summary = "Обновить группу задач")
-    @ApiResponse(responseCode = "200", description = "Группа задач успешно обновлена")
-    @BadRequestApiResponse
-    @UnauthorizedApiResponse
-    @ForbiddenApiResponse
-    @NotFoundApiResponse
-    @ConflictApiResponse
-    @InternalServerErrorApiResponse
     @PreAuthorize("@appSecurity.isClient() and hasAnyRole('ADMIN', 'BOSS')")
     @PutMapping("/{id}")
     public ResponseEntity<GroupTaskResponseDTO> update(@PathVariable Integer id,
@@ -89,11 +69,6 @@ public class GroupTaskController {
     }
 
     @Operation(summary = "Удалить группу задач")
-    @ApiResponse(responseCode = "204", description = "Группа задач успешно удалена")
-    @UnauthorizedApiResponse
-    @ForbiddenApiResponse
-    @NotFoundApiResponse
-    @InternalServerErrorApiResponse
     @PreAuthorize("@appSecurity.isClient() and hasAnyRole('ADMIN', 'BOSS')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {

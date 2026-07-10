@@ -37,41 +37,53 @@ public class GroupTaskSecurityService {
         throw new AccessDeniedException("У вас нет доступа работать с типами задач в данной группе!");
     }
 
-    public void validateGroupTaskUpdate(AppUserDetails currentUser, GroupTask groupTask, boolean isSafeChange) {
+    public void validateGroupTaskUpdate(AppUserDetails currentUser,
+            GroupTask groupTask,
+            boolean nameChanged,
+            boolean groupsChanged,
+            boolean confirm) {
+
         Integer groupTaskId = groupTask.getId();
-        boolean existsActive = taskRepository.existsByGroupTaskAndStatusActive(groupTaskId);
 
-        if (isSafeChange) {
-            boolean existsNonActive = taskRepository.existsByGroupTaskAndStatusNonActive(groupTaskId);
-            if (existsActive || existsNonActive) {
-                throw new AccessDeniedException("По данному типу задач имеются задачи!");
-            }
-        } else {
-            if (existsActive) {
-                throw new AccessDeniedException(
-                        "По данному типу задач имеются активные задачи (необходимо либо закрыть либо отклонить)!");
-            }
-        }
+        boolean isSuperUser = currentUser.hasRole(UserRole.ADMIN)
+                || currentUser.hasAction(AccountAction.NON_SAFE_UPDATE);
 
-        if (currentUser.hasRole(UserRole.ADMIN)) {
+        if (isSuperUser) {
+
+            if ((groupsChanged || nameChanged) && !confirm) {
+                throw new AccessDeniedException("Для выполнения данной операции требуется подтверждение (confirm)!");
+            }
             return;
         }
 
-        if (isSafeChange) {
-            if (currentUser.hasAction(AccountAction.GRAND_WORK_WITH_GROUP_TASK)) {
-                return;
+        if (groupsChanged) {
+            boolean hasActive = taskRepository.existsByGroupTaskAndStatusActive(groupTaskId);
+            boolean hasNonActive = taskRepository.existsByGroupTaskAndStatusNonActive(groupTaskId);
+            boolean hasWorkTypes = workTypeRepository.existsByGroupTaskIdActive(groupTaskId);
+
+            if (hasActive || hasNonActive || hasWorkTypes) {
+                throw new AccessDeniedException(
+                        "Невозможно изменить группы: по данному типу задач уже есть связанные заявки или виды работ!");
             }
-            if (currentUser.hasAction(AccountAction.BASE_WORK_WITH_GROUP_TASK)
-                    && sameGroup(currentUser, groupTask.getCreatorGroup())) {
-                return;
-            }
-            throw new AccessDeniedException("У вас нет прав на изменение типа задач данной группы!");
-        } else {
-            if (currentUser.hasAction(AccountAction.NON_SAFE_UPDATE)) {
-                return;
-            }
-            throw new AccessDeniedException("У вас нет прав на небезопасное изменение типа задач!");
         }
+
+        if (nameChanged) {
+            if (taskRepository.existsByGroupTaskAndStatusActive(groupTaskId)) {
+                throw new AccessDeniedException(
+                        "Невозможно изменить имя: по данному типу задач имеются активные заявки!");
+            }
+        }
+
+        if (currentUser.hasAction(AccountAction.GRAND_WORK_WITH_GROUP_TASK)) {
+            return;
+        }
+
+        if (currentUser.hasAction(AccountAction.BASE_WORK_WITH_GROUP_TASK)
+                && sameGroup(currentUser, groupTask.getCreatorGroup())) {
+            return;
+        }
+
+        throw new AccessDeniedException("У вас нет прав на изменение типа задач данной группы!");
     }
 
     public void validateCanPermanentDelete(GroupTask groupTask, Boolean confirm) {
@@ -82,10 +94,11 @@ public class GroupTaskSecurityService {
                     "По данному типу задач имеются активные задачи (необходимо либо закрыть либо отклонить)!");
         }
         boolean existsNonActive = taskRepository.existsByGroupTaskAndStatusNonActive(groupTaskId);
-        boolean existsWorkType = workTypeRepository.existsByGroupTaskId(groupTaskId);
+        boolean existsWorkType = workTypeRepository.existsByGroupTaskIdActive(groupTaskId);
         if (!confirm) {
             if (existsNonActive) {
-                throw new AccessDeniedException("По данному типу задач имеются завершенные задачи (Необходимо подтверждение)");
+                throw new AccessDeniedException(
+                        "По данному типу задач имеются завершенные задачи (Необходимо подтверждение)");
             }
             if (existsWorkType) {
                 throw new AccessDeniedException("По данному типу задач имеются виды работ! (Необходимо подтверждение)");
@@ -94,8 +107,8 @@ public class GroupTaskSecurityService {
     }
 
     public void validateGroupVisibility(Integer firstUserGroupId, Integer secondUserGroupId) {
-        boolean visibilityExists = visibilityRepository.
-                existsRelationBidirectional(firstUserGroupId, secondUserGroupId);
+        boolean visibilityExists = visibilityRepository.existsRelationBidirectional(firstUserGroupId,
+                secondUserGroupId);
         if (!visibilityExists) {
             throw new AccessDeniedException("Вы не можете взаимодействовать с данной группой!");
         }

@@ -1,6 +1,7 @@
 package com.apteka.portal.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import com.apteka.portal.models.WorkType;
 
@@ -13,7 +14,12 @@ public interface WorkTypeRepository extends JpaRepository<WorkType, Integer>{
 
     boolean existsByNameAndGroupTaskId(String name, Integer groupTaskId);
 
-    boolean existsByGroupTaskId(Integer groupTaskId);
+    @Query("""
+            SELECT 1 FROM WorkType w 
+            WHERE w.groupTask.id = :groupTaskId
+            AND w.isActive = true
+            """)
+    boolean existsByGroupTaskIdActive(Integer groupTaskId);
 
     List<WorkType> findByGroupTaskId(Integer groupTaskId);
 }
