@@ -6,6 +6,7 @@ import java.util.Set;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
+import com.apteka.portal.components.validators.IsActiveValidator;
 import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.models.Account;
 import com.apteka.portal.models.AccountAction;
@@ -16,8 +17,14 @@ import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.UserType;
 import com.apteka.portal.models.AccountAction.LevelAction;
 
+import lombok.AllArgsConstructor;
+
 @Component
+@AllArgsConstructor
 public class ClientSecurityService {
+
+    private final IsActiveValidator isActiveValidator;
+
     public void validateWhoCanSelectClients(AppUserDetails currentUser) {
         if (currentUser.getType() != UserType.CLIENT) {
             throw new AccessDeniedException("У вас нет прав на просмотр данных сотрудников!");
@@ -144,7 +151,7 @@ public class ClientSecurityService {
         if (account.getUserRole() == UserRole.ADMIN) {
             throw new AccessDeniedException("Никто не может изменять учётную запись администратора!");
         }
-        if (!account.isActive()) {
+        if (!isActiveValidator.isAccountActive(account)) {
             throw new AccessDeniedException("Вы не можете обновить удалённый аккаунт. Обратитесь к администратору!");
         }
     }
@@ -258,7 +265,7 @@ public class ClientSecurityService {
             return;
         }
 
-        if (!account.isActive()) {
+        if (!isActiveValidator.isAccountActive(account)) {
             throw new AccessDeniedException("Аккаунт уже не активен!");
         }
 
@@ -285,7 +292,7 @@ public class ClientSecurityService {
     }
 
     public void activateAfterSafeDelete(AppUserDetails currentUser, Account account) {
-        if (account.isActive()) {
+        if (isActiveValidator.isAccountActive(account)) {
             throw new AccessDeniedException("Пользователь уже активен");
         }
         if (currentUser.hasRole(UserRole.ADMIN)) {

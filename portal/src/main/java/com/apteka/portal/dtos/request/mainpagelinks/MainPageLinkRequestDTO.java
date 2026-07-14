@@ -1,5 +1,7 @@
 package com.apteka.portal.dtos.request.mainpagelinks;
 
+import org.hibernate.validator.constraints.URL;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -12,6 +14,7 @@ public record MainPageLinkRequestDTO(
 
     @NotBlank(message = "Ссылка не может быть пустой!")
     @Size(max = 1000, message = "Ссылка не может содержать более 1000 символов!")
+    @URL(protocol = "https", message = "Некорректный формат ссылки!")
     String link,
 
     @NotNull(message = "Идентификатор группы ссылок может быть пустым!")

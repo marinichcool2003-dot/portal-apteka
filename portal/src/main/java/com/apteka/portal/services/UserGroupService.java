@@ -278,7 +278,7 @@ public class UserGroupService {
     public void restoreAfterSafeDelete(Integer id, AppUserDetails currentUser) {
         UserGroup restoreGroup = userGroupRepository.findById(id)
                 .orElseThrow(() -> new GroupUserNotFoundException(id));
-        userGroupSecurityService.validateCanRestoreAfterSaafeDelete(currentUser, restoreGroup);
+        userGroupSecurityService.validateCanRestoreAfterSafeDelete(currentUser, restoreGroup);
 
         restoreGroup.setActive(true);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {

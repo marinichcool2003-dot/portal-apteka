@@ -4,12 +4,14 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record WorkTypeUpdateRequestDTO(
-        String name,
+		String name,
 
-        @Positive(message = "Тип работ должен быть больше нуля!") Integer groupTaskId,
+		@Positive(message = "Тип работ должен быть больше нуля!") Integer groupTaskId,
 
-        String priorityCode,
+		String priorityCode,
 
-        @Size(max = 2048, message = "Ссылка слишком длинная!") String wiki_link) {
+		@Size(max = 1024, message = "Комментарий слишком длинный!") String commentForCreator,
+
+		@Size(max = 2048, message = "Ссылка слишком длинная!") String wiki_link) {
 
 }

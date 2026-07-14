@@ -68,9 +68,14 @@ public enum AccountAction {
     PERMANENT_DELETE_USER_GROUP("PERMANENT_DELETE_USER_GROUP", "Полное удаление группы пользователей", LevelAction.CRITICAL),
 
     BASE_WORK_WITH_GROUP_TASK("BASE_WORK_WITH_GROUP_TASK","Базовая работа с типами задач (Включает (просмотр, создание, безопасное удаление, безопасное изменение, просмотр удалённых) всё в рамках своей группы)", LevelAction.MEDIUM),
-    GRAND_WORK_WITH_GROUP_TASK("GRAND_WORK_WITH_GROUP_TASK","Расширенная работа с типами задач (Включает то же что и базовая только для всех групп)", LevelAction.MEDIUM),
-    NON_SAFE_UPDATE("NON_SAFE_UPDATE","Включает небезопасное обновление", LevelAction.CRITICAL),
-    CAN_PERMANENT_DELETE("CAN_PERMANENT_DELETE", "Возможность перманентного удаления", LevelAction.CRITICAL),
+    GRAND_WORK_WITH_GROUP_TASK("GRAND_WORK_WITH_GROUP_TASK","Расширенная работа с типами задач (Включает то же что и базовая только для всех групп)", LevelAction.HIGH),
+    NON_SAFE_UPDATE_GROUP_TASK("NON_SAFE_UPDATE","Включает небезопасное обновление", LevelAction.CRITICAL),
+    CAN_PERMANENT_DELETE_GROUP_TASK("CAN_PERMANENT_DELETE_GROUP_TASK", "Возможность перманентного удаления", LevelAction.CRITICAL),
+
+    BASE_WORK_WITH_WORK_TYPE("BASE_WORK_WITH_WORK_TYPE","Базовая работа с видами работ (Включает (просмотр, создание, безопасное удаление, безопасное изменение, просмотр удалённых) всё в рамках своей группы)", LevelAction.MEDIUM),
+    GRAND_WORK_WITH_WORK_TYPE("GRAND_WORK_WITH_WORK_TYPE","Расширенная работа с видами работ (Включает то же что и базовая только для всех групп)", LevelAction.HIGH),
+    NON_SAFE_UPDATE_WORK_TYPE("NON_SAFE_UPDATE_WORK_TYPE","Включает небезопасное обновление", LevelAction.CRITICAL),
+    CAN_PERMANENT_DELETE_WORK_TYPE("CAN_PERMANENT_DELETE_WORK_TYPE", "Возможность перманентного удаления", LevelAction.CRITICAL),
 
     CREATE_TASK_TO_GROUP("CREATE_TASK_TO_GROUP", "Создание задачи на любую группу сотрудников"),
     CREATE_TASK_GRAND("CREATE_TASK_GRAND", "Создание задачи на любую группу сотрудников и на любого сотрудника из любого отдела"),

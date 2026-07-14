@@ -3,7 +3,6 @@ package com.apteka.portal.controllers;
 import com.apteka.portal.services.WorkTypeService;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
@@ -15,19 +14,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.apteka.portal.docs.BadRequestApiResponse;
-import com.apteka.portal.docs.ConflictApiResponse;
-import com.apteka.portal.docs.ForbiddenApiResponse;
-import com.apteka.portal.docs.InternalServerErrorApiResponse;
-import com.apteka.portal.docs.NotFoundApiResponse;
-import com.apteka.portal.docs.UnauthorizedApiResponse;
 import com.apteka.portal.dtos.request.WorkTypeRequestDTO;
 import com.apteka.portal.dtos.request.WorkTypeUpdateRequestDTO;
 import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
@@ -44,63 +39,61 @@ public class WorkTypeController {
     private final WorkTypeService workTypeService;
 
     @Operation(summary = "Получить список видов работ по группе задач")
-    @ApiResponse(responseCode = "200", description = "Список видов работ успешно получен")
-    @NotFoundApiResponse
-    @UnauthorizedApiResponse
-    @ForbiddenApiResponse
-    @InternalServerErrorApiResponse
     @GetMapping("/by-group-task/{groupTaskId}")
-    public ResponseEntity<List<WorkTypeResponseDTO>> getByGroupTask(@PathVariable Integer groupTaskId) {
-        return ResponseEntity.ok(workTypeService.getByGroupTask(groupTaskId));
+    public ResponseEntity<List<WorkTypeResponseDTO>> getByGroupTask(@PathVariable Integer groupTaskId,
+            @AuthenticationPrincipal AppUserDetails currentUser,
+            @RequestParam(defaultValue = "true") Boolean isActive) {
+        return ResponseEntity.ok(workTypeService.getByGroupTask(groupTaskId, currentUser, isActive));
     }
 
     @Operation(summary = "Получить вид работы по ID")
-    @ApiResponse(responseCode = "200", description = "Вид работы успешно получен")
-    @NotFoundApiResponse
-    @UnauthorizedApiResponse
-    @ForbiddenApiResponse
-    @InternalServerErrorApiResponse
     @GetMapping("/{id}")
-    public ResponseEntity<WorkTypeResponseDTO> getOne(@PathVariable Integer id) {
-        return ResponseEntity.ok(workTypeService.getOne(id));
+    public ResponseEntity<WorkTypeResponseDTO> getOne(@PathVariable Integer id,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(workTypeService.getOne(id, currentUser));
     }
 
     @Operation(summary = "Создать новый вид работы")
-    @ApiResponse(responseCode = "201", description = "Вид работы успешно создан")
-    @BadRequestApiResponse
-    @UnauthorizedApiResponse
-    @ForbiddenApiResponse
-    @NotFoundApiResponse
-    @ConflictApiResponse
-    @InternalServerErrorApiResponse
+    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE') or hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<WorkTypeResponseDTO> create(@Valid @RequestBody WorkTypeRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<WorkTypeResponseDTO> create(@Valid @RequestBody WorkTypeRequestDTO dto,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(workTypeService.create(dto, currentUser));
-    }
-    
-    @Operation(summary = "Обновить вид работы")
-    @ApiResponse(responseCode = "200", description = "Вид работы успешно обновлен")
-    @BadRequestApiResponse
-    @UnauthorizedApiResponse
-    @ForbiddenApiResponse
-    @NotFoundApiResponse
-    @ConflictApiResponse
-    @InternalServerErrorApiResponse
-    @PutMapping("/{id}")
-    public ResponseEntity<WorkTypeResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody WorkTypeUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
-        return ResponseEntity.ok().body(workTypeService.update(id, dto, currentUser));
+                .body(workTypeService.create(dto, currentUser));
     }
 
-    @Operation(summary = "Удалить вид работы")
-    @ApiResponse(responseCode = "204", description = "Вид работы успешно удален")
-    @UnauthorizedApiResponse
-    @ForbiddenApiResponse
-    @NotFoundApiResponse
-    @InternalServerErrorApiResponse
+    @Operation(summary = "Обновить вид работы")
+    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE', 'NON_SAFE_UPDATE_WORK_TYPE') or hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public ResponseEntity<WorkTypeResponseDTO> update(@PathVariable Integer id,
+            @Valid @RequestBody WorkTypeUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser,
+            @RequestParam(defaultValue = "false") Boolean confirm) {
+        return ResponseEntity.ok().body(workTypeService.update(id, dto, currentUser, confirm));
+    }
+
+    @Operation(summary = "Безопасно удалить вид работы")
+    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE') or hasRole('ADMIN')")
+    @PatchMapping("/safe-delete/{id}")
+    public ResponseEntity<Void> safeDelete(@PathVariable Integer id,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
+        workTypeService.safeDelete(id, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Восстановить вид работы")
+    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE') or hasRole('ADMIN')")
+    @PatchMapping("/restore/{id}")
+    public ResponseEntity<Void> restore(@PathVariable Integer id,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
+        workTypeService.restore(id, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Безвозвратно удалить вид работы")
+    @PreAuthorize("hasAction('CAN_PERMANENT_DELETE_WORK_TYPE') or hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
-        workTypeService.delete(id, currentUser);
+    public ResponseEntity<Void> permanentDelete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser, @RequestParam(defaultValue = "false") Boolean confirm) {
+        workTypeService.permanentDelete(id, currentUser, confirm);
         return ResponseEntity.noContent().build();
     }
 }

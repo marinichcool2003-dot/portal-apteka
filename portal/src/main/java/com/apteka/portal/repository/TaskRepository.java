@@ -153,7 +153,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			""")
 	boolean existsByAptekaIdAndStatus(UUID aptekaId, Set<TaskStatus> statusCollection);
 
-
 	@Query("""
 			SELECT 1 FROM Task t
 			JOIN t.workType wt
@@ -163,7 +162,7 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			""")
 	boolean existsByGroupTaskAndStatusActive(Integer groupTaskId);
 
-		@Query("""
+	@Query("""
 			SELECT 1 FROM Task t
 			JOIN t.workType wt
 			JOIN wt.groupTask gt
@@ -172,11 +171,19 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			""")
 	boolean existsByGroupTaskAndStatusNonActive(Integer groupTaskId);
 
-	// @Query("""
-	// 		SELECT 1 FROM Task t
-	// 		JOIN t.workType wt
-	// 		JOIN wt.groupTask gt
-	// 		WHERE gt.id = :groupTaskId
-	// 		""")
-	// boolean existsByGroupTaskId(Integer groupTaskId);
+	@Query("""
+			SELECT 1 FROM Task t
+			JOIN t.workType wt
+			WHERE wt.id = :workTypeId
+			AND t.status IN ('OPEN', 'PROCESSED')
+			""")
+	boolean existsByWorkTypeAndStatusActive(Integer workTypeId);
+
+	@Query("""
+			SELECT 1 FROM Task t
+			JOIN t.workType wt
+			WHERE wt.id = :workTypeId
+			AND t.status IN ('DENIED', 'CLOSED')
+			""")
+	boolean existsByWorkTypeAndStatusNonActive(Integer workTypeId);
 }

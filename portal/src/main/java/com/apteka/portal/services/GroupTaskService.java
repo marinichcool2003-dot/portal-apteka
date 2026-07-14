@@ -12,6 +12,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.apteka.portal.components.servicesecurity.GroupTaskSecurityService;
+import com.apteka.portal.components.validators.IsActiveValidator;
 import com.apteka.portal.components.validators.TypeNameValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.grouptask.GroupTaskRequestDTO;
@@ -39,6 +40,7 @@ public class GroupTaskService {
     private final GroupTaskSecurityService groupTaskSecurityService;
     private final CacheManager cacheManager;
     private final TypeNameValidator typeNameValidator;
+    private final IsActiveValidator isActiveValidator;
 
     private final SseController sseController;
 
@@ -46,11 +48,12 @@ public class GroupTaskService {
     @Transactional(readOnly = true)
     public List<GroupTaskResponseDTO> getByGroups(Integer creatorGroupId, Integer executorGroupId, Boolean isActive,
             AppUserDetails currentUser) {
-        if (Boolean.FALSE.equals(isActive)) {
-
-        }
-        boolean creatorGroupExists = userGroupRepository.existsById(creatorGroupId);
+        
+        UserGroup creatorGroup = userGroupRepository.findById(creatorGroupId).orElseThrow(() -> new GroupTaskNotFoundException(creatorGroupId));
+        creatorGroup.setExtensionNumber(null);
+        boolean creatorGroupExists = creatorGroup != null ? true : false;
         boolean executorGroupExists = userGroupRepository.existsById(executorGroupId);
+
         if (!(creatorGroupExists && executorGroupExists)) {
             throw new GroupUserNotFoundException("Группа не найдена!");
         }
@@ -60,11 +63,14 @@ public class GroupTaskService {
 
     }
 
-    @Cacheable(value = CacheNames.GROUP_TASK, key = "#id", sync = true)
+    @Cacheable(value = CacheNames.GROUP_TASK, key = "#id", condition = "#isActive == true", sync = true)
     @Transactional(readOnly = true)
     public GroupTaskResponseDTO getOne(Integer id, AppUserDetails currentUser) {
         GroupTask groupTask = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
+        if (!isActiveValidator.isGroupTaskActive(groupTask)) {
+            groupTaskSecurityService.validateCanWorkGroupTask(currentUser, groupTask.getCreatorGroup());
+        }
         return GroupTaskResponseDTO.from(groupTask);
     }
 
@@ -181,7 +187,7 @@ public class GroupTaskService {
         GroupTask deletedGroup = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
         groupTaskSecurityService.validateCanWorkGroupTask(currentUser, deletedGroup.getCreatorGroup());
-        if (isActive(deletedGroup.getCreatorGroup(), deletedGroup.getExecutorGroup(), deletedGroup)) {
+        if (isActiveValidator.isGroupTaskActive(deletedGroup)) {
             deletedGroup.setActive(false);
             Integer groupTaskId = deletedGroup.getId();
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -202,7 +208,7 @@ public class GroupTaskService {
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
         groupTaskSecurityService.validateCanWorkGroupTask(currentUser, restoredGroup.getCreatorGroup());
 
-        if (!isActive(restoredGroup.getCreatorGroup(), restoredGroup.getExecutorGroup(), restoredGroup)) {
+        if (!isActiveValidator.isGroupTaskActive(restoredGroup)) {
             restoredGroup.setActive(true);
             Integer groupTaskId = restoredGroup.getId();
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -251,8 +257,4 @@ public class GroupTaskService {
             throw new DublicateGroupTaskException(cleanName);
         }
     }
-
-    private boolean isActive(UserGroup creatorGroup, UserGroup executorGroup, GroupTask groupTask) {
-        return creatorGroup.isActive() && executorGroup.isActive() && groupTask.isActive();
-    };
 }

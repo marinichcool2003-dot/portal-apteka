@@ -10,7 +10,7 @@ import java.util.Optional;
 
 
 public interface WorkTypeRepository extends JpaRepository<WorkType, Integer>{
-    Optional<WorkType> findByName(String name);
+    Optional<WorkType> findByNameAndIsActive(String name, boolean isActive);
 
     boolean existsByNameAndGroupTaskId(String name, Integer groupTaskId);
 
@@ -21,5 +21,13 @@ public interface WorkTypeRepository extends JpaRepository<WorkType, Integer>{
             """)
     boolean existsByGroupTaskIdActive(Integer groupTaskId);
 
-    List<WorkType> findByGroupTaskId(Integer groupTaskId);
+    @Query("""
+            SELECT w FROM WorkType w
+            JOIN FETCH w.groupTask gt
+            JOIN FETCH gt.creatorGroup ug
+            WHERE w.id = :id
+            """)
+    Optional<WorkType> findByIdWithGroupTaskAndCreatorGroup(Integer id);
+
+    List<WorkType> findByGroupTaskIdAndActive(Integer groupTaskId, Boolean isActive);
 }

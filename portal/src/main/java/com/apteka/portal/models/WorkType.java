@@ -43,7 +43,7 @@ public class WorkType {
     @Column(name = "priority", nullable = false)
     private TaskPriority priority;
 
-    @Column(name = "wiki_link")
+    @Column(name = "wiki_link", length = 2048)
     private String wikiLink;
 
     @Column(name = "comment_for_creator", length = 1024)
@@ -52,11 +52,11 @@ public class WorkType {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    @Column(name = "updated_by")
+    @Column(name = "updated_by", length = 50)
     private String updatedBy;
 
     @Column(name = "is_active")
-    private String isActive;
+    private boolean isActive;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_task_id")

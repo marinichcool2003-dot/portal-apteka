@@ -1,5 +1,7 @@
 package com.apteka.portal.dtos.request;
 
+import org.hibernate.validator.constraints.URL;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -15,6 +17,10 @@ public record WorkTypeRequestDTO(
 
     String priorityCode,
 
+    @Size(max = 1024, message = "Комментарий слишком длинный!")
+    String commentForCreator,
+
+    @URL(protocol = "https", host = "wiki.farmp.ru", message = "Некорректный формат ссылки! Ссылка должна вести только на wiki.farmp.ru и использовать https")
     @Size(max = 2048, message = "Ссылка слишком длинная!")
     String wiki_link
 ) {}

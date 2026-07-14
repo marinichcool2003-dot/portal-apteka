@@ -112,10 +112,6 @@ public class AppUserDetails implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
 
         List<GrantedAuthority> result = new ArrayList<>();
-
-        if (userGroup != null) {
-            result.add(new SimpleGrantedAuthority("GROUP_" + userGroup.getName()));
-        }
         
         if (role != null) {
             result.add(new SimpleGrantedAuthority("ROLE_" + role.name()));

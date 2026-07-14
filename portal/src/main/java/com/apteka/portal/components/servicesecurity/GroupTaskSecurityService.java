@@ -46,7 +46,7 @@ public class GroupTaskSecurityService {
         Integer groupTaskId = groupTask.getId();
 
         boolean isSuperUser = currentUser.hasRole(UserRole.ADMIN)
-                || currentUser.hasAction(AccountAction.NON_SAFE_UPDATE);
+                || currentUser.hasAction(AccountAction.NON_SAFE_UPDATE_GROUP_TASK);
 
         if (isSuperUser) {
 

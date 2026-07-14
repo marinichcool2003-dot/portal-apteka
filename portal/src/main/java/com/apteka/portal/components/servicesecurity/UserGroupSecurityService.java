@@ -5,6 +5,7 @@ import java.util.Objects;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
+import com.apteka.portal.components.validators.IsActiveValidator;
 import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
 import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
@@ -18,7 +19,7 @@ import lombok.AllArgsConstructor;
 @Component
 @AllArgsConstructor
 public class UserGroupSecurityService {
-
+    private final IsActiveValidator isActiveValidator;
     private final TaskRepository taskRepository;
     private final AccountRepository accountRepository;
 
@@ -47,7 +48,7 @@ public class UserGroupSecurityService {
     }
 
     public void validateCanSafeDelete(AppUserDetails currentUser, UserGroup userGroup) {
-        if (!userGroup.isActive()) {
+        if (!isActiveValidator.isUserGroupActive(userGroup)) {
             throw new AccessDeniedException("Группа уже удалена");
         }
 
@@ -66,8 +67,8 @@ public class UserGroupSecurityService {
         throw new AccessDeniedException("У вас нет прав на удаление данной группы!");
     }
 
-    public void validateCanRestoreAfterSaafeDelete(AppUserDetails currentUser, UserGroup userGroup) {
-        if (userGroup.isActive()) {
+    public void validateCanRestoreAfterSafeDelete(AppUserDetails currentUser, UserGroup userGroup) {
+        if (isActiveValidator.isUserGroupActive(userGroup)) {
             throw new AccessDeniedException("Группа не удалена!");
         }
         if (currentUser.hasRole(UserRole.ADMIN)) {
