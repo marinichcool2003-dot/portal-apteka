@@ -1,258 +1,276 @@
 package com.apteka.portal.components.servicesecurity;
 
+import com.apteka.portal.repository.GroupGroupVisibilityRepository;
+
+import java.lang.foreign.AddressLayout;
 import java.time.Instant;
-import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
-import com.apteka.portal.dtos.request.task.TaskRequestDTO;
-import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
-import com.apteka.portal.exceptions.ClientNotFoundException;
-import com.apteka.portal.exceptions.WorkTypeNotFoundException;
-import com.apteka.portal.models.UserRole;
-import com.apteka.portal.models.UserType;
-import com.apteka.portal.models.WorkType;
-import com.apteka.portal.repository.ClientRepository;
-import com.apteka.portal.repository.WorkTypeRepository;
+import com.apteka.portal.components.validators.IsActiveValidator;
+import com.apteka.portal.models.Account;
+import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.Client;
 import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.UserGroup;
+import com.apteka.portal.models.UserRole;
+import com.apteka.portal.models.WorkType;
 
 import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
 public class TaskSecurityService {
+    private final GroupGroupVisibilityRepository groupGroupVisibilityRepository;
+    private final IsActiveValidator isActiveValidator;
 
-    private final ClientRepository clientRepository;
-    private final WorkTypeRepository workTypeRepository;
+    public void canSelectTask(Task task, AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_SELECT_ANOTHER_GROUP_TASKS)) {
+            return;
+        }
 
-    public void validateCanCreate(TaskRequestDTO dto, AppUserDetails currentUser) {
+        UserGroup creatorUserGroup = task.getWorkType().getGroupTask().getCreatorGroup();
+        UserGroup assignerUserGroup = task.getWorkType().getGroupTask().getExecutorGroup();
+        UserGroup userGroup = currentUser.getUserGroup();
 
-        UserGroup taskGroup = getUserGroupFromWorkTypeId(dto.workTypeId());
-        Integer taskGroupId = (taskGroup != null) ? taskGroup.getId() : null;
+        boolean existsRelationCreator = groupGroupVisibilityRepository.existsRelationBidirectional(userGroup.getId(), creatorUserGroup.getId());
+        boolean existsRelationAssigner = groupGroupVisibilityRepository.existsRelationBidirectional(userGroup.getId(), assignerUserGroup.getId());
 
-        if (currentUser.getType() == UserType.CLIENT) {
+        if (existsRelationAssigner || existsRelationCreator) {
+            return;
+        }
 
-            if (dto.assignedClientId() != null) {
-                Client targetClient = clientRepository.findByIdWithAccount(dto.assignedClientId())
-                        .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
+        throw new AccessDeniedException("вы не можете просмотреть данную задачу");
+    }
 
-                Integer targetClientGroupId = targetClient.getAccount().getUserGroup() != null
-                        ? targetClient.getAccount().getUserGroup().getId()
-                        : null;
+    public void validateCanCreateTask(Account assigner, WorkType workType, AppUserDetails currentUser) {
+        if (!isActiveValidator.isWorkTypeActive(workType)) {
+            throw new AccessDeniedException("Нельзя создать задачу с неактивным видом работ");
+        }
 
-                if (!Objects.equals(targetClientGroupId, taskGroupId)) {
-                    throw new AccessDeniedException(
-                            "Вы можете ставить задачи сотруднику в рамке вида работ его группы");
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+
+        if (currentUser.hasAction(AccountAction.CAN_CREATE_TASK_ANOTHER_GROUP_TO_ASSIGNER_GRAND)) {
+            return;
+        }
+
+        GroupTask groupTask = workType.getGroupTask();
+
+        if (canAddThisWorkType(workType, currentUser)) {
+
+            if (!sameGroup(groupTask.getCreatorGroup(), currentUser)) {
+                if (assigner != null) {
+                    if (!canAssignedTo(assigner, groupTask)) {
+                        throw new AccessDeniedException(
+                                "Указанный исполнитель неактивен или его группа не связана с этим типом задач");
+                    }
+                    if (!currentUser.hasAction(AccountAction.CAN_CREATE_TASK_ANOTHER_GROUP_TO_ASSIGNER)) {
+                        throw new AccessDeniedException(
+                                "У вас нет прав создавать задачи на конкретного исполнителя в другую группу!");
+                    }
+                    return;
+                } else {
+                    if (!currentUser.hasAction(AccountAction.CAN_CREATE_TASK_ANOTHER_GROUP)) {
+                        throw new AccessDeniedException("У вас нет прав на создание задач в другие группы!");
+                    }
+                    return;
+                }
+            }
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на создание данной задачи");
+    }
+
+    public void valdiateCanUpdateTask(AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_UPDATE_ALL_TASK)) {
+            return;
+        }
+        throw new AccessDeniedException("Вы не можете изменить уже созданную задачу!");
+    }
+
+    public void canChangeAssigner(Task task, WorkType workType, Account assigner, AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+
+        if (assigner != null && !isActiveValidator.isAccountActive(assigner)) {
+            throw new AccessDeniedException("Выбранный исполнитель неактивен!");
+        }
+
+        boolean isAssigner = isAssigner(task, currentUser);
+        boolean isTaskAssignedYourGroup = isTaskInYourGroup(task, currentUser);
+
+        boolean isNewAssignerInYourGroup = (assigner != null) && sameGroup(assigner.getUserGroup(), currentUser);
+        boolean isNewWorkTypeInTargetGroup = sameGroup(workType.getGroupTask().getCreatorGroup(), currentUser);
+        boolean isCreator = isCreator(task, currentUser);
+
+        if (isAssigner && isCreator) {
+            throw new AccessDeniedException("Вы не можете переводить задачи, которые назначены на Вас и созданы вами");
+        }
+
+        if (isAssigner) {
+            if (isNewWorkTypeInTargetGroup) {
+                if (assigner == null || isNewAssignerInYourGroup) {
+                    return;
                 }
             }
 
-            if (hasElevatedPrivileges(currentUser)) {
+            if (assigner == null && !isNewWorkTypeInTargetGroup) {
+                if (!currentUser.hasAction(AccountAction.CAN_CHANGE_ASSIGNER_ASSIGNED_YOU_ANOTHER_GROUP)) {
+                    throw new AccessDeniedException(
+                            "У вас нет прав переводить назначенную вам задачу на другую группу!");
+                }
                 return;
             }
 
-            if (currentUser.isJustUser()) {
-                Integer userGroupId = (currentUser.getUserGroup() != null) ? currentUser.getUserGroup().getId() : null;
-                boolean isAssigningToHisGroup = Objects.equals(userGroupId, taskGroupId);
-                if (!isAssigningToHisGroup && dto.assignedAptekaId() == null) {
-                    throw new AccessDeniedException(
-                            "Вы можете ставить задачи только сотрудникам своей группы или аптекам");
+            if (assigner != null && !isNewWorkTypeInTargetGroup) {
+                boolean newAssignerIsCreator = isCreator(task, currentUser);
+                if (newAssignerIsCreator) {
+                    throw new AccessDeniedException("Вы не можете перевести задачу на её же создателя!");
                 }
-            }
-        }
-
-        if (currentUser.getType() == UserType.APTEKA) {
-            if (dto.assignedClientId() != null) {
-                throw new AccessDeniedException("Аптека не может ставить задачи на конкретного сотрудника");
-            }
-        }
-    }
-
-    public void validateCanUpdate(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
-
-        if (hasUpdateDescriptionTask(dto)) {
-            if (currentUser.getType() == UserType.CLIENT) {
-                if (currentUser.isJustUser() && !isUserRelatedToTask(task, currentUser)) {
-                    throw new AccessDeniedException(
-                            "Обычный пользователь не может изменять задачу вне своего отдела или к которой не имеет отношение!");
+                if (!canAssignedTo(assigner, workType.getGroupTask())) {
+                    throw new AccessDeniedException("Выбранный исполнитель не связан с этим типом задач!");
                 }
-            }
-            if (currentUser.getType() == UserType.APTEKA) {
-                throw new AccessDeniedException("Аптека не может изменять описание задачи, которую уже создала");
-            }
-        }
-    }
-
-    public void validateCanDelete(AppUserDetails currentUser) {
-        if (!currentUser.hasRole(UserRole.ADMIN)) {
-            throw new AccessDeniedException("Только пользователь с правами администратора может удалить задачу");
-        }
-    }
-
-    public boolean changeAssigner(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
-        UserGroup targetTaskGroup = getUserGroupFromWorkTypeId(dto.workTypeId());
-
-        if (!isAssignmentChanged(task, dto, targetTaskGroup)) {
-            return false;
-        }
-
-        if (hasElevatedPrivileges(currentUser)) {
-            return true;
-        }
-
-        boolean isSameGroup = isWithinSameGroup(dto, currentUser, targetTaskGroup);
-        boolean isRelated = isUserRelatedToTask(task, currentUser);
-
-        if (!isSameGroup || !isRelated) {
-            throw new AccessDeniedException(
-                    "Пользователь без прав доступа может изменять исполнителей только своих собственных или назначенных ему задач и переводить их внутри своей группы");
-        }
-
-        return true;
-    }
-
-    public boolean changeWorkTypeToAnotherDepartament(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
-        if (dto.workTypeId() == null) {
-            return false;
-        }
-
-        Integer currentWorkTypeId = task.getWorkType() != null ? task.getWorkType().getId() : null;
-
-        if (!Objects.equals(currentWorkTypeId, dto.workTypeId())) {
-            if (hasElevatedPrivileges(currentUser)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public void validateStatus(Task task, AppUserDetails currentUser) {
-        if (isTaskLockedForChanges(task)) {
-            throw new BlockChangeIfNotActuallyTaskException();
-        }
-
-        if (currentUser.getType() == UserType.CLIENT) {
-            if (hasElevatedPrivileges(currentUser))
+                if (!currentUser.hasAction(AccountAction.CAN_CHANGE_ASSIGNER_ASSIGNED_YOU_ANOTHER_GROUP_TO_ASSIGNER)) {
+                    throw new AccessDeniedException(
+                            "У вас нет прав переводить свою задачу на конкретного сотрудника другой группы!");
+                }
                 return;
-
-            if (!isUserRelatedToTask(task, currentUser)) {
-                throw new AccessDeniedException(
-                        "Пользователь без прав доступа может изменять только свои собственные или назначенные ему задачи");
             }
         }
 
-        if (currentUser.getType() == UserType.APTEKA) {
-            if (!isUserRelatedToTask(task, currentUser)) {
-                throw new AccessDeniedException(
-                        "Аптека может изменять только свои собственные или назначенные ей задачи");
+        if (isTaskAssignedYourGroup && !isAssigner) {
+            if (isNewWorkTypeInTargetGroup && isNewAssignerInYourGroup) {
+                if (!currentUser.hasAction(AccountAction.CAN_CHANGE_ASSIGNER_ASSIGNED_NOT_YOU_IN_GROUP)) {
+                    throw new AccessDeniedException("У вас нет прав переназначать задачи коллег внутри группы!");
+                }
+                return;
+            }
+
+            if (assigner != null && !isNewWorkTypeInTargetGroup) {
+                if (!canAssignedTo(assigner, workType.getGroupTask())) {
+                    throw new AccessDeniedException("Выбранный исполнитель не связан с этим типом задач!");
+                }
+                if (!currentUser.hasAction(AccountAction.CAN_CHANGE_ASSIGNER_ASSIGNED_NOT_YOU_ANOTHER_GROUP)) {
+                    throw new AccessDeniedException(
+                            "У вас нет прав переводить задачи коллег на сотрудников другой группы!");
+                }
+                return;
+            }
+
+            if (assigner == null && !isNewWorkTypeInTargetGroup) {
+                if (!currentUser.hasAction(AccountAction.CAN_CHANGE_ASSIGNER_GROUP_FROM_YOUR_GROUP)) {
+                    throw new AccessDeniedException("У вас нет прав переводить задачи вашей группы на другие группы!");
+                }
+                return;
             }
         }
+
+        throw new AccessDeniedException(
+                "Вы не можете менять тип работ и исполнителя задачи, к которой не имеете отношения!");
     }
 
-    private boolean hasUpdateDescriptionTask(TaskRequestDTO dto) {
-        return dto.title() != null || dto.description() != null || dto.workTypeId() != null;
-    }
+    public void validateChangeStatusInTask(Task task, AppUserDetails currentUser, TaskStatus newStatus) {
 
-    private boolean hasElevatedPrivileges(AppUserDetails user) {
-        return user.getRoles().contains(UserRole.ADMIN)
-                || user.getRoles().contains(UserRole.BOSS)
-                || user.getRoles().contains(UserRole.SENIOR);
-    }
+        if (task.getStatus() == newStatus) {
+            throw new AccessDeniedException("Нельзя поменять статус задачи на идентичный!");
+        }
 
-    private boolean isUserRelatedToTask(Task task, AppUserDetails user) {
-        return Objects.equals(getCreator(task), user.getInternalId());
-    }
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
 
-    private boolean isTaskLockedForChanges(Task task) {
+        boolean isActive = Objects.equals(task.getStatus(), TaskStatus.OPEN)
+                || Objects.equals(task.getStatus(), TaskStatus.PROCESSED);
+
+        if (!isActive) {
+            Instant now = Instant.now();
+            Instant twoWeeksAgo = now.minus(14, ChronoUnit.DAYS);
+
+            if (task.getClosingDate() == null || task.getClosingDate().isBefore(twoWeeksAgo)) {
+                throw new AccessDeniedException(
+                        "Нельзя изменить статус задачи, с момента закрытия/отклонения которой прошло более 2 недель!");
+            }
+        }
+
         if (task.getStatus() == TaskStatus.DENIED) {
-            return true;
+            throw new AccessDeniedException("Нельзя изменять статус у отклоненных задач!");
         }
 
-        if (task.getStatus() == TaskStatus.CLOSED && task.getClosingDate() != null) {
-            Instant expirationInstant = task.getClosingDate()
-                    .atZone(ZoneId.systemDefault())
-                    .plusMonths(1)
-                    .toInstant();
+        boolean isCreator = isCreator(task, currentUser);
+        boolean isAssigner = isAssigner(task, currentUser);
 
-            return Instant.now().isAfter(expirationInstant);
+        boolean canChangeInGroup = (task.getAssigner() == null
+                && isTaskInYourGroup(task, currentUser)
+                && currentUser.hasAnyAction(
+                        AccountAction.CAN_CHANGE_STATUS_TASK_IN_GROUP,
+                        AccountAction.CAN_CHANGE_STATUS_TASK_ASSIGNED_IN_GROUP))
+                ||
+                (isTaskInYourGroup(task, currentUser)
+                        && currentUser.hasAction(AccountAction.CAN_CHANGE_STATUS_TASK_ASSIGNED_IN_GROUP));
+
+        if (isAssigner || isCreator || canChangeInGroup) {
+            return; 
         }
 
-        return false;
+        throw new AccessDeniedException("Вы не можете изменить статус данной задачи!");
     }
 
-    private boolean isAssignmentChanged(Task task, TaskRequestDTO dto, UserGroup targetTaskGroup) {
-        Integer targetGroupId = (targetTaskGroup != null) ? targetTaskGroup.getId() : null;
-
-        Integer currentGroupId = null;
-        if (task.getWorkType() != null
-                && task.getWorkType().getGroupTask() != null
-                && task.getWorkType().getGroupTask().getUserGroup() != null) {
-            currentGroupId = task.getWorkType().getGroupTask().getUserGroup().getId();
+    public void validateCanAnyChange(Task task, AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
         }
-
-        return !Objects.equals(getAssignerId(task), dto.assignedAptekaId()) ||
-                !Objects.equals(currentGroupId, targetGroupId);
+        if (task.getStatus() == TaskStatus.CLOSED || task.getStatus() == TaskStatus.DENIED) {
+            throw new AccessDeniedException(
+                    "Вы не можете делать какие-либо изменения в закрытых или отклоненных задачах!");
+        }
+        if (currentUser.hasAction(AccountAction.CAN_UPDATE_ALL_TASK)) {
+            return;   
+        }
+        throw new AccessDeniedException("Вы не можете делать какие либо изменения в уже созданных задачах!");
     }
 
-    private boolean isWithinSameGroup(TaskRequestDTO dto, AppUserDetails currentUser, UserGroup targetTaskGroup) {
-        Integer userGroupId = (currentUser.getUserGroup() != null) ? currentUser.getUserGroup().getId() : null;
-        Integer targetGroupId = (targetTaskGroup != null) ? targetTaskGroup.getId() : null;
-
-        if (!Objects.equals(userGroupId, targetGroupId)) {
+    private boolean canAssignedTo(Account account, GroupTask groupTask) {
+        if (!isActiveValidator.isAccountActive(account)) {
             return false;
         }
+        boolean isCorrectCreatorGroup = Objects.equals(account.getUserGroup().getId(),
+                groupTask.getCreatorGroup().getId());
 
-        if (dto.assignedClientId() != null) {
-            Client newClient = clientRepository.findById(dto.assignedClientId())
-                    .orElseThrow(() -> new ClientNotFoundException(dto.assignedClientId()));
-            Integer newClientGroupId = (newClient != null && newClient.getAccount().getUserGroup() != null)
-                    ? newClient.getAccount().getUserGroup().getId()
-                    : null;
-
-            return Objects.equals(userGroupId, newClientGroupId);
-        }
-
-        return true;
+        return isCorrectCreatorGroup;
     }
 
-    private UUID getAssignerId(Task task) {
-        if (task.getAssignedApteka() != null) {
-            return task.getAssignedApteka().getId();
-        } else if (task.getAssignedClient() != null) {
-            return task.getAssignedClient().getId();
-        } else {
-            return null;
-        }
+    private boolean canAddThisWorkType(WorkType workType, AppUserDetails currentUser) {
+        return Objects.equals(workType.getGroupTask().getExecutorGroup().getId(), currentUser.getUserGroup().getId());
     }
 
-    private UserGroup getUserGroupFromWorkTypeId(Integer workTypeId) {
-
-        if (workTypeId == null)
-            throw new WorkTypeNotFoundException(workTypeId);
-
-        WorkType workType = workTypeRepository.findById(workTypeId)
-                .orElseThrow(() -> new WorkTypeNotFoundException(workTypeId));
-        return Optional.ofNullable(workType)
-                .map(WorkType::getGroupTask)
-                .map(GroupTask::getUserGroup)
-                .orElse(null);
+    private boolean sameGroup(UserGroup userGroup, AppUserDetails currentUser) {
+        return Objects.equals(userGroup.getId(), currentUser.getUserGroup().getId());
     }
 
-    private UUID getCreator(Task task) {
-        if (task.getCreatedByApteka() != null) {
-            return task.getCreatedByApteka().getId();
-        } else if (task.getCreatedByClient() != null) {
-            return task.getCreatedByClient().getId();
-        } else {
-            return null;
-        }
+    private boolean isTaskInYourGroup(Task task, AppUserDetails currentUser) {
+        return Objects.equals(task.getWorkType().getGroupTask().getCreatorGroup().getId(),
+                currentUser.getUserGroup().getId());
+    }
+
+    private boolean isCreator(Task task, AppUserDetails currentUser) {
+        return Objects.equals(task.getCreator().getId(), currentUser.getInternalId());
+    }
+
+    private boolean isAssigner(Task task, AppUserDetails currentUser) {
+        return Objects.equals(task.getAssigner().getId(), currentUser.getInternalId());
     }
 }

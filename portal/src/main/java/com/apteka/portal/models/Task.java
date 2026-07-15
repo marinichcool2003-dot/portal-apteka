@@ -77,20 +77,12 @@ public class Task {
     private WorkType workType;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_apteka_id")
-    private Apteka createdByApteka;
+    @JoinColumn(name = "creator_id")
+    private Account creator;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by_client_id")
-    private Client createdByClient;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_client_id")
-    private Client assignedClient;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_apteka_id")
-    private Apteka assignedApteka;
+    @JoinColumn(name = "assigner_id")
+    private Account assigner;
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<TaskComment> employeeComments;
@@ -104,11 +96,8 @@ public class Task {
         this.description = taskBuilder.description;
         this.updatedDate = taskBuilder.updatedDate;
         this.workType = taskBuilder.workType;
-        this.createdByApteka = taskBuilder.createdByApteka;
-        this.createdByClient = taskBuilder.createdByClient;
-        this.assignedClient = taskBuilder.assignedClient;
-        this.assignedApteka = taskBuilder.assignedApteka;
-
+        this.creator = taskBuilder.creator;
+        this.assigner = taskBuilder.assigner;
         this.status = TaskStatus.OPEN;
     }
 
@@ -122,10 +111,8 @@ public class Task {
         private String description;
         private Instant updatedDate;
         private WorkType workType;
-        private Apteka createdByApteka;
-        private Client createdByClient;
-        private Client assignedClient;
-        private Apteka assignedApteka;
+        private Account creator;
+        private Account assigner;
 
         public TaskBuilder id(Long id) {
             this.id = id;
@@ -147,23 +134,13 @@ public class Task {
             return this;
         }
 
-        public TaskBuilder createdByApteka(Apteka createdByApteka) {
-            this.createdByApteka = createdByApteka;
+        public TaskBuilder creator(Account creator) {
+            this.creator = creator;
             return this;
         }
 
-        public TaskBuilder createdByClient(Client createdByClient) {
-            this.createdByClient = createdByClient;
-            return this;
-        }
-
-        public TaskBuilder assignedClient(Client assignedClient) {
-            this.assignedClient = assignedClient;
-            return this;
-        }
-
-        public TaskBuilder assignedApteka(Apteka assignedApteka) {
-            this.assignedApteka = assignedApteka;
+        public TaskBuilder createdByClient(Account assigner) {
+            this.assigner = assigner;
             return this;
         }
 

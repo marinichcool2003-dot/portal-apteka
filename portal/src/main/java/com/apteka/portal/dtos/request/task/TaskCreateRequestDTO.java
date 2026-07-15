@@ -15,6 +15,5 @@ public record TaskCreateRequestDTO(
 
         @NotNull(message = "Идентификатор вида работ не может быть пустым") @Positive(message = "Идентификатор вида работ не может быть меньше нуля") Integer workTypeId,
 
-        UUID assignedAptekaId,
-        UUID assignedClientId) implements TaskRequestDTO {
+        UUID assignerId) implements TaskRequestDTO {
 }

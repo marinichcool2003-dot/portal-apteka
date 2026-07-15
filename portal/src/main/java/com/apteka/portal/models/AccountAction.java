@@ -77,10 +77,29 @@ public enum AccountAction {
     NON_SAFE_UPDATE_WORK_TYPE("NON_SAFE_UPDATE_WORK_TYPE","Включает небезопасное обновление", LevelAction.CRITICAL),
     CAN_PERMANENT_DELETE_WORK_TYPE("CAN_PERMANENT_DELETE_WORK_TYPE", "Возможность перманентного удаления", LevelAction.CRITICAL),
 
-    CREATE_TASK_TO_GROUP("CREATE_TASK_TO_GROUP", "Создание задачи на любую группу сотрудников"),
-    CREATE_TASK_GRAND("CREATE_TASK_GRAND", "Создание задачи на любую группу сотрудников и на любого сотрудника из любого отдела"),
-    UPDATE_TASK_ASSIGNER_IN_GROUP("UPDATE_TASK_ASSIGNER_IN_GROUP", "Изменение исполнителя задачи любого сотрудника в своей группе"),
-    UPDATE_TASK_ASSIGNER("UPDATE_TASK_ASSIGNER", "Изменение исполнителя задачи любого сотрудника");
+    CAN_DISTRIBUTE_TASK_IN_GROUP("CAN_DISTRIBUTE_TASK_IN_GROUP", "Возможность распределения задач в группе", LevelAction.LOW),
+    CAN_CREATE_TASK_ANOTHER_GROUP("CAN_CREATE_TASK_ANOTHER_GROUP", "Возможность создавать задачи в другие группы", LevelAction.LOW),
+    CAN_CREATE_TASK_ANOTHER_GROUP_TO_ASSIGNER("CAN_CREATE_TASK_ANOTHER_GROUP_TO_ASSIGNER", "Возможность создавать задачи в другую группу с которой можно работать на конкретного исполнителя", LevelAction.LOW),
+    CAN_CREATE_TASK_ANOTHER_GROUP_TO_ASSIGNER_GRAND("CAN_CREATE_TASK_ANOTHER_GROUP_TO_ASSIGNER_GRAND", "Возможность создать задачи на конкретного сотрудника в любую группу", LevelAction.HIGH),
+    CAN_CREATE_TASK_TO_APTEKI("CAN_CREATE_TASK_TO_APTEKI", "Возможность создавать задачи всем аптекам", LevelAction.MEDIUM),
+
+    CAN_SELECT_USER_GROUP_STATS("CAN_SELECT_USER_GROUP_STATS", "Возможность видеть статистику по задачам в своей группе", LevelAction.LOW),
+    CAN_SELECT_USER_GROUP_STATS_ALL_VISIBILITY("CAN_SELECT_USER_GROUP_STATS_ALL_VISIBILITY", "Возможность видеть статистику задач групп с которыми вы работаете", LevelAction.MEDIUM),
+    CAN_SELECT_USER_GROUP_STATS_GRAND("CAN_SELECT_USER_GROUP_STATS_GRAND", "Возможность видеть статистику всех групп", LevelAction.HIGH),
+
+    CAN_SELECT_ANOTHER_GROUP_TASKS("CAN_SELECT_ANOTHER_GROUP_TASKS", "Возможность просматривать задачи никак не связанные с вами и вашей группой", LevelAction.HIGH),
+
+    CAN_CHANGE_ASSIGNER_ASSIGNED_YOU_ANOTHER_GROUP("CAN_CHANGE_ASSIGNER_ASSIGNED_YOU", "Возможность сменить исполнителя задачи, которая назначена тебе на другую группу", LevelAction.LOW),
+    CAN_CHANGE_ASSIGNER_ASSIGNED_YOU_ANOTHER_GROUP_TO_ASSIGNER("CAN_CHANGE_ASSIGNER_ASSIGNED_YOU_ANOTHER_GROUP_TO_ASSIGNER", "Возможность изменить исполнителя задачи, которая назначена на тебя, на другого исполнителя любой доступной группы", LevelAction.LOW),
+    CAN_CHANGE_ASSIGNER_ASSIGNED_NOT_YOU_IN_GROUP("CAN_CHANGE_ASSIGNER_ASSIGNED_NOT_YOU_IN_GROUP", "Возможность изменить исполнителя задачи назначенной не тебе (сотруднику твоей группы) на другого сотрудника твоей группы", LevelAction.LOW),
+    CAN_CHANGE_ASSIGNER_ASSIGNED_NOT_YOU_ANOTHER_GROUP("CAN_CHANGE_ASSIGNER_ASSIGNED_NOT_YOU_ANOTHER_GROUP", "Возможность изменить исполнителя задачи назначенной не тебе (сотруднику твоей группы) на другого сотрудника работающей с тобой группы", LevelAction.LOW),
+    CAN_CHANGE_ASSIGNER_GROUP_FROM_YOUR_GROUP("CAN_CHANGE_ASSIGNER_GROUP_FROM_YOUR_GROUP", "Возможность перевести задачу со своей группы на группу работающую с вашей группой", LevelAction.LOW),
+
+    CAN_CHANGE_STATUS_TASK_IN_GROUP("CAN_CHANGE_STATUS_TASK_IN_GROUP", "Возможность менять статус неназначенных задач в вашей группе", LevelAction.LOW),
+    CAN_CHANGE_STATUS_TASK_ASSIGNED_IN_GROUP("CAN_CHANGE_STATUS_TASK_ASSIGNED_IN_GROUP", "Возможность менять статус назначенных задач в вашей группе", LevelAction.MEDIUM),
+    
+
+    CAN_UPDATE_ALL_TASK("CAN_UPDATE_TASK", "Возможность полностью изменять задачи", LevelAction.HIGH);
 
     private final String code;
     private final String description;

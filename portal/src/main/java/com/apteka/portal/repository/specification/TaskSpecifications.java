@@ -27,19 +27,13 @@ public class TaskSpecifications {
                 predicates.add(cb.equal(root.join("workType").get("id"), filters.workTypeId()));
             }
 
-            if (filters.creatorClientId() != null) {
-                predicates.add(cb.equal(root.join("createdByClient", JoinType.LEFT).get("id"), filters.creatorClientId()));
+            if (filters.creatorId() != null) {
+                predicates.add(cb.equal(root.join("creator", JoinType.LEFT).get("id"), filters.creatorId()));
             }
-            if (filters.creatorAptekaId() != null) {
-                predicates.add(cb.equal(root.join("createdByApteka", JoinType.LEFT).get("id"), filters.creatorAptekaId()));
+            if (filters.assignerId() != null) {
+                predicates.add(cb.equal(root.join("assigner", JoinType.LEFT).get("id"), filters.assignerId()));
             }
-            if (filters.specificClientId() != null) {
-                predicates.add(cb.equal(root.join("assignedClient", JoinType.LEFT).get("id"), filters.specificClientId()));
-            }
-            if (filters.specificAptekaId() != null) {
-                predicates.add(cb.equal(root.join("assignedApteka", JoinType.LEFT).get("id"), filters.specificAptekaId()));
-            }
-
+            
             if (filters.status() != null) {
                 predicates.add(cb.equal(root.get("status"), filters.status()));
             }

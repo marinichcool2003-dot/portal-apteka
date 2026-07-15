@@ -14,10 +14,8 @@ ALTER TABLE work_type ADD CONSTRAINT fk_work_type_group FOREIGN KEY (group_task_
 
 -- Связи задач
 ALTER TABLE task ADD CONSTRAINT fk_work_type_task FOREIGN KEY (work_type_id) REFERENCES work_type(id) ON DELETE CASCADE;
-ALTER TABLE task ADD CONSTRAINT fk_client_task FOREIGN KEY (assigned_client_id) REFERENCES client(id) ON DELETE SET NULL;
-ALTER TABLE task ADD CONSTRAINT fk_apteka_task FOREIGN KEY (assigned_apteka_id) REFERENCES apteka(id) ON DELETE SET NULL;
-ALTER TABLE task ADD CONSTRAINT fk_created_by_apteka FOREIGN KEY (created_by_apteka_id) REFERENCES apteka(id) ON DELETE SET NULL;
-ALTER TABLE task ADD CONSTRAINT fk_created_by_client FOREIGN KEY (created_by_client_id) REFERENCES client(id) ON DELETE SET NULL;
+ALTER TABLE task ADD CONSTRAINT fk_creator_task FOREIGN KEY (creator_id) REFERENCES account(id) ON DELETE SET NULL;
+ALTER TABLE task ADD CONSTRAINT fk_assigner_task FOREIGN KEY (assigner_id) REFERENCES account(id) ON DELETE SET NULL;
 
 -- Чек-рейт создателя задачи
 ALTER TABLE task ADD CONSTRAINT chk_creator_not_null CHECK (created_by_apteka_id IS NOT NULL OR created_by_client_id IS NOT NULL);

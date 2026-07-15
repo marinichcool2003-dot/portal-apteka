@@ -9,16 +9,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.apteka.portal.dtos.request.TaskCommentRequestDTO;
 import com.apteka.portal.dtos.response.TaskCommentResponseDTO;
-import com.apteka.portal.exceptions.AvtorCommentNotInputException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
+import com.apteka.portal.models.Account;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.TaskComment;
 import com.apteka.portal.models.UserRole;
-import com.apteka.portal.repository.AptekaRepository;
-import com.apteka.portal.repository.ClientRepository;
+import com.apteka.portal.repository.AccountRepository;
 import com.apteka.portal.repository.TaskCommentRepository;
 import com.apteka.portal.repository.TaskRepository;
 
@@ -28,10 +27,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TaskCommentService {
     private final SseController sseController;
-    private final AptekaRepository aptekaRepository;
     private final TaskCommentRepository taskCommentsRepository;
     private final TaskRepository taskRepository;
-    private final ClientRepository clientRepository;
+    private AccountRepository accountRepository;
 
     @Transactional(readOnly = true)
     public List<TaskCommentResponseDTO> getByTask(Long taskId) {
@@ -84,16 +82,9 @@ public class TaskCommentService {
     }
 
     private void setCommentAuthor(TaskComment.TaskCommentBuilder builder, AppUserDetails currentUser) {
-        if (currentUser == null) {
-            return;
-        }
+        Account account = accountRepository.findById(currentUser.getInternalId()).orElseThrow(
+                () -> new AccessDeniedException("Пользователь не обнаружен!"));
 
-        if (currentUser.isClient()) {
-            builder.client(clientRepository.getReferenceById(currentUser.getInternalId()));
-        } else if (currentUser.isApteka()) {
-            builder.apteka(aptekaRepository.getReferenceById(currentUser.getInternalId()));
-        } else {
-            throw new AvtorCommentNotInputException("Автор комментария имеет неопределенный тип аккаунта.");
-        }
+        builder.account(account);
     }
 }

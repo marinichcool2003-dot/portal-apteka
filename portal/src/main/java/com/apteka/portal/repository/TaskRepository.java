@@ -25,10 +25,8 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 	@EntityGraph(attributePaths = {
 			"workType",
 			"workType.groupTask",
-			"createdByClient",
-			"createdByApteka",
-			"assignedClient",
-			"assignedApteka"
+			"creator",
+			"assigner"
 	})
 	@Override
 	Page<Task> findAll(Specification<Task> spec, Pageable pageable);
@@ -37,17 +35,15 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			SELECT DISTINCT t FROM Task t
 			JOIN FETCH t.workType w
 			JOIN FETCH w.groupTask gt
-			LEFT JOIN FETCH t.createdByClient
-			LEFT JOIN FETCH t.createdByApteka cba
-			LEFT JOIN FETCH t.assignedClient
-			LEFT JOIN FETCH t.assignedApteka aa
+			LEFT JOIN FETCH t.creator
+			LEFT JOIN FETCH t.assigner
 			WHERE t.id IN :ids
 			""")
 	List<Task> findShortTasksByIds(@Param("ids") List<Long> ids);
 
 	@Query("""
 			    SELECT new com.apteka.portal.dtos.response.AssignedStatsDTO(
-			        t.assignedClient.id,
+			        t.assigner.id,
 			        COUNT(t),
 			        COUNT(CASE WHEN CAST(t.status as string) = 'OPEN' THEN 1 END),
 			        COUNT(CASE WHEN CAST(t.status as string) = 'CLOSED' THEN 1 END),
@@ -55,19 +51,19 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			        COUNT(CASE WHEN CAST(t.status as string) = 'PROCESSED' THEN 1 END)
 			    )
 			    FROM Task t
-			    WHERE t.assignedClient.id IN :clientIds
-			    GROUP BY t.assignedClient.id
+			    WHERE t.assigner.id IN :clientIds
+			    GROUP BY t.assigner.id
 			""")
 	List<AssignedStatsDTO> getClientAssignedStatsBatch(@Param("clientIds") List<UUID> clientIds);
 
 	@Query("""
 				SELECT new com.apteka.portal.dtos.response.CreatedStatsDTO(
-					t.createdByClient.id,
+					t.creator.id,
 				COUNT(t)
 				)
 				FROM Task t
-				WHERE t.createdByClient.id IN :clientIds AND t.status = 'OPEN'
-				GROUP BY t.createdByClient.id
+				WHERE t.creator.id IN :clientIds AND t.status = 'OPEN'
+				GROUP BY t.creator.id
 			""")
 	List<CreatedStatsDTO> getClientCreatedStatsBatch(@Param("clientIds") List<UUID> clientIds);
 
@@ -111,27 +107,29 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			JOIN FETCH t.workType w
 			JOIN FETCH w.groupTask gt
 			LEFT JOIN FETCH gt.userGroup ug
-			LEFT JOIN FETCH t.createdByClient cbc
-			LEFT JOIN FETCH cbc.account acc_client
-			LEFT JOIN FETCH t.createdByApteka cba
-			LEFT JOIN FETCH cba.account acc_apteka
-			LEFT JOIN FETCH acc_apteka.userGroup
-			LEFT JOIN FETCH t.assignedClient ac
-			LEFT JOIN FETCH ac.account acc_assigned_client
-			LEFT JOIN FETCH t.assignedApteka aa
-			LEFT JOIN FETCH aa.account acca
-			LEFT JOIN FETCH acca.userGroup
-			LEFT JOIN FETCH t.pictures
+			LEFT JOIN FETCH t.creator cre
+			LEFT JOIN FETCH t.assigner ass
+			INNER JOIN FETCH cre.client
+			INNER JOIN FETCH cre.apteka
+			INNER JOIN FETCH ass.client
+			INNER JOIN FETCH ass.apteka
+			LEFT JOIN FETCH cre.userGroup
+			LEFT JOIN FETCH ass.userGroup
 			WHERE t.id = :id
 			""")
-	Optional<Task> findByIdWithDetailsAndPictures(@Param("id") Long id);
+	Optional<Task> findByIdWithDetails(@Param("id") Long id);
+
+	@Query("""
+			SELECT t FROM Task t JOIN FETCH t.pictures WHERE t.id = :id
+			""")
+	Optional<Task> fetchPictures(@Param("id") Long id);
 
 	@Query("""
 			    SELECT t FROM Task t
 			    LEFT JOIN FETCH t.employeeComments ec
-			    LEFT JOIN FETCH ec.client
-			    LEFT JOIN FETCH ec.apteka a
-				LEFT JOIN FETCH a.account acc
+			    LEFT JOIN FETCH ec.account acc
+			    INNER JOIN FETCH acc.client
+ 				INNER JOIN FETCH acc.apteka
 			    LEFT JOIN FETCH acc.userGroup
 			    WHERE t.id = :id
 			""")

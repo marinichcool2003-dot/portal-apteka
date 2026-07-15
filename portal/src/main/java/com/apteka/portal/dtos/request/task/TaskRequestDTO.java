@@ -6,6 +6,5 @@ public interface TaskRequestDTO {
     public String title();
     public String description();
     public Integer workTypeId();
-    public UUID assignedAptekaId();
-    public UUID assignedClientId();
+    public UUID assignerId();
 }

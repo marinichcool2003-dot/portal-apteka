@@ -118,10 +118,8 @@ CREATE TABLE IF NOT EXISTS task (
     updated_date TIMESTAMPTZ,
     status task_status NOT NULL DEFAULT 'OPEN', 
     work_type_id INT NOT NULL, 
-    assigned_client_id UUID,
-    assigned_apteka_id UUID,
-    created_by_apteka_id UUID,
-    created_by_client_id UUID   
+    creator_id UUID NOT NULL,
+    assigner_id UUID 
 );
 
 CREATE TABLE IF NOT EXISTS task_picture (

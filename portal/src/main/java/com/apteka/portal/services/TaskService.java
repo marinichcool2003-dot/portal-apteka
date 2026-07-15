@@ -24,12 +24,14 @@ import com.apteka.portal.dtos.request.task.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.dtos.response.TaskShortResponseDTO;
+import com.apteka.portal.exceptions.AccountNotFoundException;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
 import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.exceptions.WorkTypeNotFoundException;
+import com.apteka.portal.models.Account;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.CacheNames;
@@ -39,6 +41,7 @@ import com.apteka.portal.models.WorkType;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.UserGroup;
+import com.apteka.portal.repository.AccountRepository;
 import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.TaskRepository;
@@ -62,6 +65,7 @@ public class TaskService {
     private final TaskAuditService taskAuditService;
     private final TypeNameValidator typeNameValidator;
     private final SseController sseController;
+    private final AccountRepository accountRepository;
 
     @Transactional(readOnly = true)
     public Page<TaskShortResponseDTO> getAll(Pageable pageable) {
@@ -70,17 +74,21 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public TaskResponseDTO getOne(Long id) {
-        Task task = taskRepository.findByIdWithDetailsAndPictures(id)
+    public TaskResponseDTO getOne(Long id, AppUserDetails currentUser) {
+        Task task = taskRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
+        taskSecurityService.canSelectTask(task, currentUser);
+
+        task = taskRepository.fetchPictures(id).orElse(task);
         task = taskRepository.fetchCommentsForTask(id).orElse(task);
 
         return TaskResponseDTO.from(task);
     }
 
     @Transactional(readOnly = true)
-    public Page<TaskShortResponseDTO> getDepartmentTaskWithFilters(DepartamentTaskWithFiltersDTO dto, Pageable pageable) {
+    public Page<TaskShortResponseDTO> getDepartmentTaskWithFilters(DepartamentTaskWithFiltersDTO dto,
+            Pageable pageable) {
         return fetchAndMapTasks(dto, pageable);
     }
 
@@ -100,36 +108,18 @@ public class TaskService {
     public Page<TaskShortResponseDTO> getMyDepartmentTasks(DepartamentTaskWithFiltersDTO dto,
             AppUserDetails currentUser, Pageable pageable) {
         var dtoBuilder = dto.toBuilder();
-
-        if (currentUser.isClient()) {
-            dtoBuilder.specificClientId(currentUser.getInternalId());
-            dtoBuilder.specificAptekaId(null);
-        } else if (currentUser.isApteka()) {
-            dtoBuilder.specificAptekaId(currentUser.getInternalId());
-            dtoBuilder.specificClientId(null);
-        }
-
-        dtoBuilder.creatorAptekaId(null);
-        dtoBuilder.creatorClientId(null);
+        dtoBuilder.assignerId(currentUser.getInternalId());
+        dtoBuilder.creatorId(null);
 
         return fetchAndMapTasks(dtoBuilder.build(), pageable);
     }
 
     @Transactional(readOnly = true)
-    public Page<TaskShortResponseDTO> getCreatedMeTasks(DepartamentTaskWithFiltersDTO dto, AppUserDetails currentUser, Pageable pageable) {
+    public Page<TaskShortResponseDTO> getCreatedMeTasks(DepartamentTaskWithFiltersDTO dto, AppUserDetails currentUser,
+            Pageable pageable) {
         var dtoBuilder = dto.toBuilder();
-
-        if (currentUser.isClient()) {
-            dtoBuilder.creatorClientId(currentUser.getInternalId());
-            dtoBuilder.creatorAptekaId(null);
-        } else if (currentUser.isApteka()) {
-            dtoBuilder.creatorAptekaId(currentUser.getInternalId());
-            dtoBuilder.creatorClientId(null);
-        }
-
-        dtoBuilder.specificAptekaId(null);
-        dtoBuilder.specificClientId(null);
-
+        dtoBuilder.creatorId(currentUser.getInternalId());
+        dtoBuilder.assignerId(null);
         return fetchAndMapTasks(dtoBuilder.build(), pageable);
     }
 
@@ -158,15 +148,22 @@ public class TaskService {
 
     @Transactional
     public TaskShortResponseDTO create(TaskCreateRequestDTO dto, AppUserDetails currentUser) {
-        taskSecurityService.validateCanCreate(dto, currentUser);
+
+        Account account = null;
+        if (dto.assignerId() != null) {
+            account = accountRepository.findById(dto.assignerId())
+                    .orElseThrow(() -> new AccountNotFoundException(dto.assignerId()));
+        }
+
+        WorkType workType = workTypeRepository.findById(dto.workTypeId())
+                .orElseThrow(() -> new WorkTypeNotFoundException(dto.workTypeId()));
+
+        taskSecurityService.validateCanCreateTask(account, workType, currentUser);
 
         String cleanTitle = typeNameValidator.getCleanName(dto.title());
 
         validateTitle(cleanTitle);
         validateDescription(dto.description());
-
-        WorkType workType = workTypeRepository.findById(dto.workTypeId())
-                .orElseThrow(() -> new WorkTypeNotFoundException(dto.workTypeId()));
 
         Task task = Task.builder()
                 .title(cleanTitle)

@@ -11,10 +11,8 @@ import lombok.Builder;
 @Builder(toBuilder = true)
 public record DepartamentTaskWithFiltersDTO(
         @Positive(message = "Группа пользователей должна быть больше нуля") Integer groupId,
-        UUID creatorClientId,
-        UUID creatorAptekaId,
-        UUID specificClientId,
-        UUID specificAptekaId,
+        UUID creatorId,
+        UUID assignerId,
         TaskStatus status,
         TaskPriority priority,
         @Positive(message = "Идентификатор вида работ должен быть больше нуля") Integer workTypeId,

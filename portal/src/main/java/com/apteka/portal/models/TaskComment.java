@@ -35,10 +35,6 @@ public class TaskComment {
     private Task task;
 
     @ManyToOne
-    @JoinColumn(name = "client_id")
-    private Client client;
-
-    @ManyToOne
-    @JoinColumn(name = "apteka_id")
-    private Apteka apteka;
+    @JoinColumn(name = "account_id")
+    private Account account;
 }
