@@ -137,7 +137,7 @@ public class TaskController {
 
     @Operation(summary = "Создать задачу")
     @PostMapping
-    public ResponseEntity<TaskShortResponseDTO> create(@RequestBody TaskCreateRequestDTO dto,
+    public ResponseEntity<TaskShortResponseDTO> create(@Valid @RequestBody TaskCreateRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(taskService.create(dto, currentUser));
@@ -145,7 +145,7 @@ public class TaskController {
 
     @Operation(summary = "Изменить задачу")
     @PutMapping("/{id}")
-    public ResponseEntity<TaskShortResponseDTO> update(@PathVariable Long id, @RequestBody TaskUpdateRequestDTO dto,
+    public ResponseEntity<TaskShortResponseDTO> update(@Valid @PathVariable Long id, @RequestBody TaskUpdateRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(taskService.update(id, dto, currentUser));
     }

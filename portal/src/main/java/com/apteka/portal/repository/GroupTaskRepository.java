@@ -30,7 +30,7 @@ public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
             SELECT gt FROM GroupTask gt
             WHERE gt.creatorGroup.id = :creatorGroupId
             AND gt.intendedGroup.id = :intendedGroupId
-            AND gt.isActive =: isActive
+            AND gt.isActive = :isActive
             """)
     List<GroupTask> findByGroupsAndIsActive(@Param("creatorGroupId") Integer creatorGroupId, @Param("intendedGroupId") Integer intendedGroupId, @Param("isActive") boolean isActive);
 

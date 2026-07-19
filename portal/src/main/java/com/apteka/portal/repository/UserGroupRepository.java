@@ -32,7 +32,7 @@ public interface UserGroupRepository extends JpaRepository<UserGroup, Integer> {
     @Query("""
              SELECT COUNT(vg) > 0 FROM UserGroup g
              JOIN g.visibleGroups vg
-             WHERE g.id = :currentUserGroupId AND vg.id = :targetGroupId AND vg.isActive =: isActive
+             WHERE g.id = :currentUserGroupId AND vg.id = :targetGroupId AND vg.isActive = :isActive
             """)
     boolean isGroupVisibleToAnother(@Param("currentUserGroupId") Integer currentUserGroupId,
             @Param("targetGroupId") Integer targetGroupId, @Param("isActive") boolean isActive);

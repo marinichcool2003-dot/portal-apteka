@@ -1,5 +1,6 @@
 package com.apteka.portal.controllers;
 
+import java.io.IOException;
 import java.util.stream.Collectors;
 
 import org.postgresql.util.PSQLException;
@@ -24,12 +25,12 @@ import com.apteka.portal.exceptions.AvtorCommentNotInputException;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.exceptions.ClientBelongsToAnotherGroupException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
-import com.apteka.portal.exceptions.DublicateAptekaFullNameException;
-import com.apteka.portal.exceptions.DublicateAptekaLoginException;
-import com.apteka.portal.exceptions.DublicateClientLoginException;
-import com.apteka.portal.exceptions.DublicateGroupTaskException;
-import com.apteka.portal.exceptions.DublicateGroupUserException;
-import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
+import com.apteka.portal.exceptions.DuplicateAptekaFullNameException;
+import com.apteka.portal.exceptions.DuplicateAptekaLoginException;
+import com.apteka.portal.exceptions.DuplicateClientLoginException;
+import com.apteka.portal.exceptions.DuplicateGroupTaskException;
+import com.apteka.portal.exceptions.DuplicateGroupUserException;
+import com.apteka.portal.exceptions.DuplicateWorkTypeNameException;
 import com.apteka.portal.exceptions.GroupMainPageLinksAlreadyExistsException;
 import com.apteka.portal.exceptions.GroupMainPageLinksNotFoundException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
@@ -62,7 +63,6 @@ import com.apteka.portal.exceptions.UnknowTaskStatusException;
 import com.apteka.portal.exceptions.WorkTypeNotFoundException;
 import com.apteka.portal.models.ErrorResponse;
 
-import io.jsonwebtoken.io.IOException;
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
@@ -72,7 +72,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AlreadyHaveThisPasswordException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleIOException(AlreadyHaveThisPasswordException e) {
+    public ErrorResponse AlreadyHaveThisPasswordException(AlreadyHaveThisPasswordException e) {
         log.error("Ошибка сохранения пароля: {}", e.getMessage());
         String errorMessage = "Ошибка! Пароль не сохранен: " + e.getMessage();
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
@@ -98,7 +98,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorResponse handleBadCredentialsException(BadCredentialsException e) {
         log.error("Ошибка! Неверный логин или пароль: {}", e.getMessage());
-        String errorMessage = "Неверный логин или пароль: " + e.getMessage();
+        String errorMessage = "Неверный логин или пароль: ";
         return new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), errorMessage, System.currentTimeMillis());
     }
 
@@ -190,9 +190,9 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.FORBIDDEN.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(DublicateAptekaFullNameException.class)
+    @ExceptionHandler(DuplicateAptekaFullNameException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleDublicateAptekaFullNameException(DublicateAptekaFullNameException e) {
+    public ErrorResponse handleDublicateAptekaFullNameException(DuplicateAptekaFullNameException e) {
         log.warn("Ошибка изменения аптек: {}", e.getMessage(), e);
         String errorMessage = "Ошибка! Ошибка изменения аптек: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
@@ -206,17 +206,17 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(DublicateClientLoginException.class)
+    @ExceptionHandler(DuplicateClientLoginException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleDublicateClientLoginException(DublicateClientLoginException e) {
+    public ErrorResponse handleDublicateClientLoginException(DuplicateClientLoginException e) {
         log.warn("Ошибка изменения сотрудников: {}", e.getMessage(), e);
         String errorMessage = "Ошибка! Ошибка изменения сотрудников: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(DublicateWorkTypeNameException.class)
+    @ExceptionHandler(DuplicateWorkTypeNameException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleDublicateWorkTypeNameException(DublicateWorkTypeNameException e) {
+    public ErrorResponse handleDublicateWorkTypeNameException(DuplicateWorkTypeNameException e) {
         log.warn("Ошибка изменения вида работ: {}", e.getMessage(), e);
         String errorMessage = "Ошибка! Ошибка изменения вида работ: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
@@ -230,9 +230,9 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(DublicateAptekaLoginException.class)
+    @ExceptionHandler(DuplicateAptekaLoginException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleDublicateAptekaLoginException(DublicateAptekaLoginException e) {
+    public ErrorResponse handleDublicateAptekaLoginException(DuplicateAptekaLoginException e) {
         log.warn("Ошибка изменения аптек: {}", e.getMessage());
         String errorMessage = "Ошибка! Ошибка изменения аптек: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
@@ -254,17 +254,17 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(DublicateGroupTaskException.class)
+    @ExceptionHandler(DuplicateGroupTaskException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleDublicateGroupTaskException(DublicateGroupTaskException e) {
+    public ErrorResponse handleDublicateGroupTaskException(DuplicateGroupTaskException e) {
         log.warn("Группа задачи уже существует: {}", e.getMessage());
         String errorMessage = "Ошибка! Группа задачи уже существует: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
     }
 
-    @ExceptionHandler(DublicateGroupUserException.class)
+    @ExceptionHandler(DuplicateGroupUserException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleDublicateGroupClientException(DublicateGroupUserException e) {
+    public ErrorResponse handleDublicateGroupClientException(DuplicateGroupUserException e) {
         log.warn("Группа сотрудников уже существует: {}", e.getMessage());
         String errorMessage = "Ошибка! Группа сотрудников уже существует: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());

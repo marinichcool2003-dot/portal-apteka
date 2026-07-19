@@ -18,7 +18,7 @@ public class TaskSpecifications {
             
             if (filters.groupId() != null && filters.groupId() > 0) {
                 predicates.add(cb.equal(
-                    root.join("workType").join("groupTask").join("userGroup").get("id"),
+                    root.join("workType").join("groupTask").join("creatorGroup").get("id"),
                     filters.groupId()
                 ));
             } else if (filters.groupTaskId() != null) {

@@ -248,7 +248,7 @@ public class TaskSecurityService {
         boolean fullChangeTitle = !task.getTitle().contains(newTitle);
         boolean hasActionUpdateBeforeAssigned = currentUser.hasAction(AccountAction.CAN_ADD_TITLE_BEFORE_ASSIGNED);
 
-        if (fullChangeTitle && !currentUser.hasAction(AccountAction.CAN_FULL_IPDATE_TITLE_BEFORE_ASSIGNED)) {
+        if (fullChangeTitle && !currentUser.hasAction(AccountAction.CAN_FULL_UPDATE_TITLE_BEFORE_ASSIGNED)) {
             throw new AccessDeniedException(
                     "Вы не можете полностью изменять заголовок задачи! (имеется возможность дописать)");
         }
@@ -267,7 +267,7 @@ public class TaskSecurityService {
         throw new AccessDeniedException("Вы не можете изменить заголовок данной задачи!");
     }
 
-    public void valdiateCanPermanentDeleteTask(AppUserDetails currentUser) {
+    public void validateCanPermanentDeleteTask(AppUserDetails currentUser) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }

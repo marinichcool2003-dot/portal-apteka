@@ -1,11 +1,11 @@
 package com.apteka.portal.exceptions;
 
-public class DublicateAptekaLoginException extends RuntimeException {
-    public DublicateAptekaLoginException() {
+public class DuplicateAptekaLoginException extends RuntimeException {
+    public DuplicateAptekaLoginException() {
         super("Аптека с данной почтой уже существует!");
     }
 
-    public DublicateAptekaLoginException(String login) {
+    public DuplicateAptekaLoginException(String login) {
         super("Аптека с почтой: " + login + " уже существует!");
     }
 }

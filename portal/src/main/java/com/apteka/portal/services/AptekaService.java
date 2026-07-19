@@ -27,8 +27,8 @@ import com.apteka.portal.dtos.response.apteka.AptekaResponseDTO;
 import com.apteka.portal.dtos.request.AccountUpdateRequestDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
-import com.apteka.portal.exceptions.DublicateAptekaFullNameException;
-import com.apteka.portal.exceptions.DublicateAptekaLoginException;
+import com.apteka.portal.exceptions.DuplicateAptekaFullNameException;
+import com.apteka.portal.exceptions.DuplicateAptekaLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
 import com.apteka.portal.models.Account;
@@ -246,7 +246,7 @@ public class AptekaService {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new AptekaNotFoundException(id));
 
-        Integer aptekaId = account.getUserGroup().getId();
+        UUID aptekaId = account.getId();
         account.setActive(false);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -388,13 +388,13 @@ public class AptekaService {
             throw new InvalidAptekaNumberException();
         }
         if (aptekaRepository.existsByAccount_UserGroup_IdAndNumber(groupId, number)) {
-            throw new DublicateAptekaFullNameException("Аптека с таким юридическим лицом и номером уже существует");
+            throw new DuplicateAptekaFullNameException("Аптека с таким юридическим лицом и номером уже существует");
         }
     }
 
     private void validateLogin(String login) {
         if (aptekaRepository.existsByAccount_Login(login)) {
-            throw new DublicateAptekaLoginException(login);
+            throw new DuplicateAptekaLoginException(login);
         }
     }
 }

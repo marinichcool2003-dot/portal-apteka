@@ -46,7 +46,7 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         if (!clientRepository.existsByAccount_Login(adminLogin)) {
-            log.info("Начальный эадминистратор не найден. Запуск процесса создания...");
+            log.info("Начальный администратор не найден. Запуск процесса создания...");
 
             Client admin = Client.builder()
                     .fullName("Администратор")

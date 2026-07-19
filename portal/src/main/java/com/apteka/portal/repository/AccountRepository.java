@@ -18,6 +18,6 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
 
     Optional<Account> findByLogin(String login);
 
-    @Query("SELECT COUNT(a) FROM Account a WHERE a.userGroup.id =: userGroupId")
+    @Query("SELECT COUNT(a) FROM Account a WHERE a.userGroup.id = :userGroupId")
     Integer countByUserGroupId(@Param("userGroupId") Integer userGroupId);
 }

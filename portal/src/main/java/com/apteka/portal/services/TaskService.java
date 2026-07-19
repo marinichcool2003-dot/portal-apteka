@@ -2,10 +2,10 @@ package com.apteka.portal.services;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -93,7 +93,7 @@ public class TaskService {
     @Transactional(readOnly = true)
     public DepartmentTaskStatsDTO getGroupUserStats(Integer userGroupId) {
         return taskRepository.findGroupUserStatsByGroup(userGroupId)
-            .orElseThrow(() -> new GroupUserNotFoundException(userGroupId));
+                .orElseThrow(() -> new GroupUserNotFoundException(userGroupId));
     }
 
     @Transactional(readOnly = true)
@@ -123,19 +123,7 @@ public class TaskService {
         if (taskPage.isEmpty()) {
             return Page.empty(pageable);
         }
-
-        List<Long> taskIds = taskRepository.findAll(specification).stream()
-                .map(Task::getId)
-                .toList();
-
-        List<Task> heavyTasks = taskRepository.findShortTasksByIds(taskIds);
-
-        List<TaskShortResponseDTO> dtoList = taskIds.stream()
-                .map(id -> heavyTasks.stream().filter(t -> t.getId().equals(id)).findFirst().orElseThrow())
-                .map(TaskShortResponseDTO::from)
-                .toList();
-
-        return new PageImpl<>(dtoList, pageable, taskPage.getTotalElements());
+        return taskPage.map(TaskShortResponseDTO::from);
     }
 
     @Transactional
@@ -212,6 +200,7 @@ public class TaskService {
         if (dto.workTypeId() != null || dto.assignerId() != null) {
             WorkType workType = null;
             Account assigner = null;
+
             if (dto.workTypeId() != null) {
                 workType = workTypeRepository.findById(dto.workTypeId())
                         .orElseThrow(() -> new WorkTypeNotFoundException(dto.workTypeId()));
@@ -220,13 +209,31 @@ public class TaskService {
                 assigner = accountRepository.findById(dto.assignerId())
                         .orElseThrow(() -> new AccountNotFoundException(dto.assignerId()));
             }
-            if (!Objects.equals(task.getWorkType().getId(), workType.getId())
-                    || !Objects.equals(task.getAssigner().getId(), assigner.getId())) {
+
+            boolean workTypeChanged = false;
+            boolean assignerChanged = false;
+
+            if (dto.workTypeId() != null) {
+                Integer currentWorkTypeId = task.getWorkType() != null ? task.getWorkType().getId() : null;
+                workTypeChanged = !Objects.equals(currentWorkTypeId, workType.getId());
+            } else {
+                workTypeChanged = task.getWorkType() != null;
+            }
+
+            if (dto.assignerId() != null) {
+                UUID currentAssignerId = task.getAssigner() != null ? task.getAssigner().getId() : null;
+                assignerChanged = !Objects.equals(currentAssignerId, assigner.getId());
+            } else {
+                assignerChanged = task.getAssigner() != null;
+            }
+
+            if (workTypeChanged || assignerChanged) {
                 taskSecurityService.canChangeAssigner(task, workType, assigner, currentUser);
-                if (!Objects.equals(task.getWorkType().getId(), workType.getId())) {
+
+                if (workTypeChanged) {
                     task.setWorkType(workType);
                 }
-                if (!Objects.equals(task.getAssigner().getId(), assigner.getId())) {
+                if (assignerChanged) {
                     task.setAssigner(assigner);
                 }
                 hasChange = true;
@@ -252,7 +259,7 @@ public class TaskService {
     public void delete(Long id, AppUserDetails currentUser) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
-        taskSecurityService.valdiateCanPermanentDeleteTask(currentUser);
+        taskSecurityService.validateCanPermanentDeleteTask(currentUser);
         taskRepository.delete(task);
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {

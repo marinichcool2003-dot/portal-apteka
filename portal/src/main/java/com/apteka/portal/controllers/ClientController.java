@@ -134,7 +134,7 @@ public class ClientController {
     }
 
     @Operation(summary = "Полное обновление сотрудника")
-    @PreAuthorize("hasAnyAction('UPDATE_CLIENT_IN_GROUP_GRAND', 'UPDATE_CLIENT_GRAND') or hasrole('ADMIN')")
+    @PreAuthorize("hasAnyAction('UPDATE_CLIENT_IN_GROUP_GRAND', 'UPDATE_CLIENT_GRAND') or hasRole('ADMIN')")
     @PutMapping("/update-all/{id}")
     public ResponseEntity<ClientResponseDTO> updateAll(@PathVariable UUID id,
             @Valid @RequestBody ClientUpdateFullRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser)
@@ -166,7 +166,7 @@ public class ClientController {
     @PreAuthorize("hasAnyAction('SAFE_DELETE_CLIENT_IN_GROUP', 'SAFE_DELETE_CLIENT_GRAND', 'PERMANENT_DELETE_CLIENT') or hasRole('ADMIN')")
     @PatchMapping("/safe-delete/{id}")
     public ResponseEntity<Void> safeDelete(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
-        clientService.selfDelete(id, currentUser);
+        clientService.safeDelete(id, currentUser);
         return ResponseEntity.noContent().build();
     } 
 

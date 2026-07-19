@@ -1,14 +1,13 @@
 package com.apteka.portal.config;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.task.DelegatingSecurityContextAsyncTaskExecutor;
 
@@ -16,8 +15,11 @@ import lombok.extern.slf4j.Slf4j;
 
 @Configuration
 @EnableAsync
+@EnableScheduling
 @Slf4j
 public class AsyncConfig {
+
+    private ThreadPoolTaskExecutor auditExecutorInstance;
 
     @Bean(name = "auditExecutor")
     public Executor auditExecutor() {
@@ -37,23 +39,21 @@ public class AsyncConfig {
         
         executor.initialize();
         
-        logExecutorStats(executor);
+        this.auditExecutorInstance = executor;
         
         return new DelegatingSecurityContextAsyncTaskExecutor(executor);
     }
     
-    private void logExecutorStats(ThreadPoolTaskExecutor executor) {
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduler.scheduleAtFixedRate(() -> {
-            if (executor.getThreadPoolExecutor() != null) {
-                var pool = executor.getThreadPoolExecutor();
-                log.info("AuditExecutor Stats - Active: {}, PoolSize: {}, QueueSize: {}, Completed: {}, TaskCount: {}",
-                        pool.getActiveCount(),
-                        pool.getPoolSize(),
-                        pool.getQueue().size(),
-                        pool.getCompletedTaskCount(),
-                        pool.getTaskCount());
-            }
-        }, 60, 60, TimeUnit.SECONDS);
+    @Scheduled(fixedDelay = 60000, initialDelay = 60000)
+    public void logAuditExecutorStats() {
+        if (auditExecutorInstance != null && auditExecutorInstance.getThreadPoolExecutor() != null) {
+            var pool = auditExecutorInstance.getThreadPoolExecutor();
+            log.info("AuditExecutor Stats - Active: {}, PoolSize: {}, QueueSize: {}, Completed: {}, TaskCount: {}",
+                    pool.getActiveCount(),
+                    pool.getPoolSize(),
+                    pool.getQueue().size(),
+                    pool.getCompletedTaskCount(),
+                    pool.getTaskCount());
+        }
     }
 }

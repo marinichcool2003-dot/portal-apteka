@@ -1,11 +1,13 @@
 package com.apteka.portal.controllers;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,11 +38,18 @@ public class SseController {
 
         SseEmitter emitter = new SseEmitter(300_000L);
 
-        emiters.put(userIdString, emitter);
+        SseEmitter previousEmitter = emiters.put(userIdString, emitter);
+        if (previousEmitter != null) {
+            previousEmitter.complete();
+        }
 
-        emitter.onCompletion(() -> emiters.remove(userIdString));
-        emitter.onTimeout(() -> emiters.remove(userIdString));
-        emitter.onError((e) -> emiters.remove(userIdString));
+        Runnable removeCallback = () -> {
+            emiters.remove(userIdString, emitter);
+        };
+
+        emitter.onCompletion(removeCallback);
+        emitter.onTimeout(removeCallback);
+        emitter.onError((e) -> removeCallback.run());
 
         try {
             emitter.send(SseEmitter.event()
@@ -48,7 +57,7 @@ public class SseController {
                     .data("Успешное подключение к portal_apteka"));
         } catch (IOException e) {
             log.error("Ошибка при отправке стартового SSE события для {}", userIdString);
-            emiters.remove(userIdString);
+            emiters.remove(userIdString, emitter);
         }
         return emitter;
     }
@@ -62,21 +71,43 @@ public class SseController {
                         .data(data));
             } catch (IOException e) {
                 log.error("Не удалось отправить SSE уведомление для {}", userIdString, e);
-                emiters.remove(userIdString);
+                emiters.remove(userIdString, emitter);
             }
         }
     }
 
     public void broadcastNotification(String eventName, Object data) {
-        emiters.forEach((userIdString, emitter) -> {
+        Iterator<Map.Entry<String, SseEmitter>> iterator = emiters.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, SseEmitter> entry = iterator.next();
+            String userIdString = entry.getKey();
+            SseEmitter emitter = entry.getValue();
             try {
                 emitter.send(SseEmitter.event()
                         .name(eventName)
                         .data(data));
             } catch (IOException e) {
                 log.error("Не удалось отправить broadcast-уведомление для {}", userIdString);
-                emiters.remove(userIdString);
+                iterator.remove();
             }
-        });
+        }
+    }
+
+    @Scheduled(fixedRate = 30_000)
+    public void cleanDeadEmitters() {
+        Iterator<Map.Entry<String, SseEmitter>> iterator = emiters.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, SseEmitter> entry = iterator.next();
+            try {
+                entry.getValue().send(SseEmitter.event()
+                        .name(SseEventNames.HEARTBEAT)
+                        .data("ping"));
+            } catch (IOException e) {
+                log.debug("Удаление мёртвого SSE подключения: {}", entry.getKey());
+                iterator.remove();
+            }
+        }
     }
 }
+
+

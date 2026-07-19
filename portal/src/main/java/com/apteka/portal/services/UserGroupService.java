@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -28,7 +29,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.apteka.portal.exceptions.DublicateGroupUserException;
+import com.apteka.portal.exceptions.DuplicateGroupUserException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidGroupUserException;
 import com.apteka.portal.models.AppUserDetails;
@@ -57,7 +58,7 @@ public class UserGroupService {
     @Value("${app.default.avatars.upload.picture.group}")
     private String uploadAvatarPictureName;
 
-    @Cacheable(value = CacheNames.USER_GROUPS_LIST, key = "'active_only'", condition = "#isActive == true", sync = true)
+    @Cacheable(value = CacheNames.USER_GROUPS_LIST, key = "'active_user_groups'", condition = "#isActive", sync = true)
     @Transactional(readOnly = true)
     public List<UserGroupResponseDTO> findByActive(AppUserDetails currentUser, Boolean isActive) {
         if (Boolean.FALSE.equals(isActive)) {
@@ -68,7 +69,6 @@ public class UserGroupService {
                 .toList();
     }
 
-    @Cacheable(value = CacheNames.USER_GROUP, key = "#id", unless = "!#result.isActive", sync = true)
     @Transactional(readOnly = true)
     public UserGroupResponseDTO getOne(Integer id, AppUserDetails currentUser, Boolean isActive) {
         Integer currentUserGroupId = Optional.ofNullable(currentUser.getUserGroup())
@@ -84,17 +84,32 @@ public class UserGroupService {
                 throw new GroupUserNotFoundException("У вас нет прав на просмотр этой группы или она не существует");
             }
         }
-        UserGroup group = userGroupRepository.findByIdAndCache(id)
+
+        Cache cache = cacheManager.getCache(CacheNames.USER_GROUP);
+        if (Boolean.TRUE.equals(isActive) && cache != null) {
+            UserGroupResponseDTO cachedDto = cache.get(id, UserGroupResponseDTO.class);
+            if (cachedDto != null) {
+                return cachedDto;
+            }
+        }
+
+        UserGroup group = userGroupRepository.findById(id)
                 .orElseThrow(() -> new GroupUserNotFoundException(id));
 
         if (!group.isActive()) {
             userGroupSecurityService.canSelectNonActive(currentUser);
         }
 
-        return UserGroupResponseDTO.from(group);
+        UserGroupResponseDTO response = UserGroupResponseDTO.from(group);
+
+        if (Boolean.TRUE.equals(isActive) && group.isActive() && cache != null) {
+            cache.put(id, response);
+        }
+
+        return response;
     }
 
-    @Cacheable(value = CacheNames.USER_GROUPS_LIST, key = "#currentUser.userGroup != null ? #currentUser.userGroup.id : 'anonymous'", sync = true)
+    @Cacheable(value = CacheNames.USER_GROUPS_VISIBLE, key = "#currentUser.userGroup != null ? #currentUser.userGroup.id : 'anonymous'", sync = true)
     public List<UserGroupResponseDTO> getWithVisible(AppUserDetails currentUser) {
         Integer userGroupId = Optional.ofNullable(currentUser.getUserGroup()).map(UserGroup::getId)
                 .orElseThrow(() -> new GroupUserNotFoundException(
@@ -104,7 +119,8 @@ public class UserGroupService {
     }
 
     @Caching(evict = {
-            @CacheEvict(value = CacheNames.USER_GROUPS_LIST, allEntries = true)
+            @CacheEvict(value = CacheNames.USER_GROUPS_LIST, allEntries = true),
+            @CacheEvict(value = CacheNames.USER_GROUPS_VISIBLE, allEntries = true)
     })
     @Transactional
     public UserGroupResponseDTO create(UserGroupRequestDTO dto, AppUserDetails currentUser) throws IOException {
@@ -229,6 +245,12 @@ public class UserGroupService {
                                     cache.evict(id);
                                 }
                             }
+
+                            var userGroupsVisibleCache = cacheManager.getCache(CacheNames.USER_GROUPS_VISIBLE);
+                            if (userGroupsVisibleCache != null) {
+                                userGroupsVisibleCache.clear();
+                            }
+
                             var signal = new SseEventNames.EntityUpdateSignalDTO(id, SseSignalTypes.UPDATED);
                             sseController.broadcastNotification(SseEventNames.REFRESH_USER_GROUPS, signal);
                         }
@@ -261,6 +283,11 @@ public class UserGroupService {
                     var userGroupsListCache = cacheManager.getCache(CacheNames.USER_GROUPS_LIST);
                     if (userGroupsListCache != null) {
                         userGroupsListCache.clear();
+                    }
+
+                    var userGroupsVisibleCache = cacheManager.getCache(CacheNames.USER_GROUPS_VISIBLE);
+                    if (userGroupsVisibleCache != null) {
+                        userGroupsVisibleCache.clear();
                     }
 
                     var cache = cacheManager.getCache(CacheNames.GROUP_USER_STATUS);
@@ -296,6 +323,12 @@ public class UserGroupService {
                     if (userGroupsListCache != null) {
                         userGroupsListCache.clear();
                     }
+
+                    var userGroupsVisibleCache = cacheManager.getCache(CacheNames.USER_GROUPS_VISIBLE);
+                    if (userGroupsVisibleCache != null) {
+                        userGroupsVisibleCache.clear();
+                    }
+
                     var cache = cacheManager.getCache(CacheNames.GROUP_USER_STATUS);
                     if (cache != null) {
                         cache.evict(id);
@@ -310,6 +343,7 @@ public class UserGroupService {
     @Caching(evict = {
             @CacheEvict(value = CacheNames.USER_GROUP, key = "#id"),
             @CacheEvict(value = CacheNames.USER_GROUPS_LIST, allEntries = true),
+            @CacheEvict(value = CacheNames.USER_GROUPS_VISIBLE, allEntries = true),
             @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#id"),
             @CacheEvict(value = CacheNames.GROUP_TASK, allEntries = true),
             @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, allEntries = true)
@@ -340,7 +374,7 @@ public class UserGroupService {
 
         userGroupRepository.findByName(name).ifPresent(existingGroup -> {
             if (!Objects.equals(existingGroup.getId(), currentId)) {
-                throw new DublicateGroupUserException();
+                throw new DuplicateGroupUserException();
             }
         });
     }

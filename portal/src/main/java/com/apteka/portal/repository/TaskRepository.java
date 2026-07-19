@@ -24,7 +24,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
 	@EntityGraph(attributePaths = {
 			"workType",
-			"workType.groupTask",
 			"creator",
 			"assigner"
 	})

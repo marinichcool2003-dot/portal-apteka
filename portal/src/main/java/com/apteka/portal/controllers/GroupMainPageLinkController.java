@@ -61,7 +61,7 @@ public class GroupMainPageLinkController {
 
     @Operation(summary = "Безопасно удалить группу ссылок")
     @PatchMapping("/safe-delete/{id}")
-    @PreAuthorize("hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or hasrole('ADMIN')")
+    @PreAuthorize("hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     public ResponseEntity<Void> safeDelete(@PathVariable Integer id) {
         groupMainPageLinksService.safeDelete(id);
         return ResponseEntity.noContent().build();
@@ -69,7 +69,7 @@ public class GroupMainPageLinkController {
 
     @Operation(summary = "Восстановить группу ссылок")
     @PatchMapping("/restore/{id}")
-    @PreAuthorize("hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or hasrole('ADMIN')")
+    @PreAuthorize("hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     public ResponseEntity<Void> restore(@PathVariable Integer id) {
         groupMainPageLinksService.restore(id);
         return ResponseEntity.noContent().build();

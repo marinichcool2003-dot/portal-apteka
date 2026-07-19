@@ -3,6 +3,7 @@ package com.apteka.portal.services;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -19,7 +20,7 @@ import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.WorkTypeRequestDTO;
 import com.apteka.portal.dtos.request.WorkTypeUpdateRequestDTO;
 import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
-import com.apteka.portal.exceptions.DublicateWorkTypeNameException;
+import com.apteka.portal.exceptions.DuplicateWorkTypeNameException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
 import com.apteka.portal.exceptions.InvalidWorkTypeNameException;
 import com.apteka.portal.exceptions.WorkTypeNotFoundException;
@@ -60,16 +61,33 @@ public class WorkTypeService {
                 .map(WorkTypeResponseDTO::from).toList();
     }
 
-    @Cacheable(value = CacheNames.WORK_TYPE, key = "#id", condition = "#isActive == true", sync = true)
     @Transactional(readOnly = true)
     public WorkTypeResponseDTO getOne(Integer id, AppUserDetails currentUser) {
+        Cache cache = cacheManager.getCache(CacheNames.WORK_TYPE);
+        if (cache != null) {
+            WorkTypeResponseDTO cachedDto = cache.get(id, WorkTypeResponseDTO.class);
+            if (cachedDto != null) {
+                return cachedDto;
+            }
+        }
+
         WorkType workType = workTypeRepository.findByIdWithGroupTaskAndCreatorGroup(id)
                 .orElseThrow(() -> new WorkTypeNotFoundException(id));
-        if (!isActiveValidator.isWorkTypeActive(workType)) {
+
+        boolean isActive = isActiveValidator.isWorkTypeActive(workType);
+
+        if (!isActive) {
             UserGroup userGroup = workType.getGroupTask().getCreatorGroup();
             workTypeSecurityService.validateCanWorkWorkType(currentUser, userGroup);
         }
-        return WorkTypeResponseDTO.from(workType);
+
+        WorkTypeResponseDTO response = WorkTypeResponseDTO.from(workType);
+
+        if (isActive && cache != null) {
+            cache.put(id, response);
+        }
+
+        return response;
     }
 
     @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#result.taskGroup().id()")
@@ -167,7 +185,10 @@ public class WorkTypeService {
             if (!Objects.equals(newGroupTask.getId(), upWorkType.getGroupTask().getId())) {
                 validateWorkTypeName(upWorkType.getName(), newGroupTask.getId());
                 Integer oldGroupTaskId = upWorkType.getGroupTask().getId();
-                cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(oldGroupTaskId);
+                var oldGroupCache = cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP);
+                if (oldGroupCache != null) {
+                    oldGroupCache.evict(oldGroupTaskId);
+                }
                 upWorkType.setGroupTask(newGroupTask);
                 groupsChanged = true;
             }
@@ -189,15 +210,21 @@ public class WorkTypeService {
 
             final WorkTypeResponseDTO finalResponse = response;
             final Integer workTypeId = upWorkType.getId();
+            final boolean isActive = isActiveValidator.isWorkTypeActive(upWorkType);
 
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     var cache = cacheManager.getCache(CacheNames.WORK_TYPE);
-                    if (cache != null) {
+                    if (cache != null && isActive) {
                         cache.put(id, finalResponse);
                     }
-                    cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(response.taskGroup().id());
+
+                    var workTypesByGroupCache = cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP);
+                    if (workTypesByGroupCache != null) {
+                        workTypesByGroupCache.evict(response.taskGroup().id());
+                    }
+
                     var signal = new SseEventNames.EntityUpdateSignalDTO(workTypeId,
                             SseSignalTypes.UPDATED);
                     sseController.broadcastNotification(SseEventNames.REFRESH_WORK_TYPES, signal);
@@ -217,10 +244,21 @@ public class WorkTypeService {
         if (isActiveValidator.isWorkTypeActive(deletedWorkType)) {
             deletedWorkType.setActive(false);
             Integer deletedWorkTypeId = deletedWorkType.getId();
+            Integer groupTaskId = deletedWorkType.getGroupTask().getId();
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
+                        var workTypeCache = cacheManager.getCache(CacheNames.WORK_TYPE);
+                        if (workTypeCache != null) {
+                            workTypeCache.evict(deletedWorkTypeId);
+                        }
+
+                        var workTypesByGroupCache = cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP);
+                        if (workTypesByGroupCache != null) {
+                            workTypesByGroupCache.evict(groupTaskId);
+                        }
+
                         var signal = new SseEventNames.EntityUpdateSignalDTO(deletedWorkTypeId,
                                 SseSignalTypes.UPDATED);
                         sseController.broadcastNotification(SseEventNames.REFRESH_WORK_TYPES, signal);
@@ -239,10 +277,16 @@ public class WorkTypeService {
         if (!isActiveValidator.isWorkTypeActive(restoredWorkType)) {
             restoredWorkType.setActive(true);
             Integer restoredWorkTypeId = restoredWorkType.getId();
+            Integer groupTaskId = restoredWorkType.getGroupTask().getId();
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
+                        var workTypesByGroupCache = cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP);
+                        if (workTypesByGroupCache != null) {
+                            workTypesByGroupCache.evict(groupTaskId);
+                        }
+
                         var signal = new SseEventNames.EntityUpdateSignalDTO(restoredWorkTypeId,
                                 SseSignalTypes.UPDATED);
                         sseController.broadcastNotification(SseEventNames.REFRESH_WORK_TYPES, signal);
@@ -265,8 +309,15 @@ public class WorkTypeService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    cacheManager.getCache(CacheNames.WORK_TYPE).evict(id);
-                    cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(groupTaskId);
+                    var workTypeCache = cacheManager.getCache(CacheNames.WORK_TYPE);
+                    if (workTypeCache != null) {
+                        workTypeCache.evict(id);
+                    }
+
+                    var workTypesByGroupCache = cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP);
+                    if (workTypesByGroupCache != null) {
+                        workTypesByGroupCache.evict(groupTaskId);
+                    }
 
                     var signal = new SseEventNames.WorkTypeSignalDTO(id, SseSignalTypes.DELETED);
                     sseController.broadcastNotification(SseEventNames.REFRESH_WORK_TYPES, signal);
@@ -279,7 +330,7 @@ public class WorkTypeService {
     private void validateWorkTypeName(String name, Integer groupTaskId) {
         boolean exists = workTypeRepository.existsByNameAndGroupTaskId(name, groupTaskId);
         if (exists) {
-            throw new DublicateWorkTypeNameException(name);
+            throw new DuplicateWorkTypeNameException(name);
         }
     }
 }

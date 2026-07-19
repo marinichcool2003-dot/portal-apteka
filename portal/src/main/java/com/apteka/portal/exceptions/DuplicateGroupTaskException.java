@@ -1,7 +1,7 @@
 package com.apteka.portal.exceptions;
 
-public class DublicateGroupTaskException extends RuntimeException {
-    public DublicateGroupTaskException(String name) {
+public class DuplicateGroupTaskException extends RuntimeException {
+    public DuplicateGroupTaskException(String name) {
         super("Тип задачи: " + name + " уже существует!");
     }
 }

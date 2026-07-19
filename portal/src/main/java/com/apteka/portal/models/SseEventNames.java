@@ -5,6 +5,7 @@ public final class SseEventNames {
     }
 
     public static final String CONNECT = "CONNECT";
+    public static final String HEARTBEAT = "HEARTBEAT";
 
     public static final String REFRESH_USER_GROUPS = "REFRESH_USER_GROUPS";
 

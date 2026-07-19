@@ -67,7 +67,7 @@ public class MainPageLinksController {
 
     @Operation(summary = "Безопасно удалить ссылку")
     @PatchMapping("/safe-delete/{id}")
-    @PreAuthorize("hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or hasrole('ADMIN')")
+    @PreAuthorize("hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     public ResponseEntity<Void> safeDelete(@PathVariable Integer id) {
         mainPageLinksService.safeDelete(id);
         return ResponseEntity.noContent().build();
@@ -75,7 +75,7 @@ public class MainPageLinksController {
 
     @Operation(summary = "Восстановить ссылку")
     @PatchMapping("/restore/{id}")
-    @PreAuthorize("hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or hasrole('ADMIN')")
+    @PreAuthorize("hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or hasRole('ADMIN')")
     public ResponseEntity<Void> restore(@PathVariable Integer id) {
         mainPageLinksService.restore(id);
         return ResponseEntity.noContent().build();

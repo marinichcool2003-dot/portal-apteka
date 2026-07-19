@@ -16,7 +16,7 @@ import com.apteka.portal.models.Client;
 public interface ClientRepository extends JpaRepository<Client, UUID> {
 
     @EntityGraph(attributePaths = { "account", "account.userGroup" })
-    @Query(value = "SELECT Client c FROM Client c WHERE c.account.isActive = :isActive", countQuery = "SELECT count(c) FROM Client c WHERE c.account.isActive = :isActive")
+    @Query(value = "SELECT c FROM Client c WHERE c.account.isActive = :isActive", countQuery = "SELECT count(c) FROM Client c WHERE c.account.isActive = :isActive")
     Page<Client> findAll(Pageable pageable, @Param("isActive") boolean isActive);
 
     @Query("SELECT c FROM Client c JOIN FETCH c.account acc WHERE acc.login = :login AND acc.isActive = :isActive")

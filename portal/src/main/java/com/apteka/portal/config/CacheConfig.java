@@ -59,6 +59,7 @@ public class CacheConfig implements CachingConfigurer {
 
         RedisCacheConfiguration userGroupConfig = defaultConfiguration.entryTtl(Duration.ofDays(3));
         cacheConfigurations.put(CacheNames.USER_GROUPS_LIST, userGroupConfig);
+        cacheConfigurations.put(CacheNames.USER_GROUPS_VISIBLE, userGroupConfig);
         cacheConfigurations.put(CacheNames.USER_GROUP, userGroupConfig);
 
         RedisCacheConfiguration groupTaskConfig = defaultConfiguration.entryTtl(Duration.ofDays(3));

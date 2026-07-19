@@ -39,7 +39,7 @@ import com.apteka.portal.dtos.response.client.ClientResponseDTO;
 import com.apteka.portal.dtos.response.client.ClientWithStatsDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
-import com.apteka.portal.exceptions.DublicateClientLoginException;
+import com.apteka.portal.exceptions.DuplicateClientLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.UserHaveActiveTasksException;
 import com.apteka.portal.models.Account;
@@ -484,7 +484,7 @@ public class ClientService {
     }
 
     @Transactional
-    public void selfDelete(UUID id, AppUserDetails currentUser) {
+    public void safeDelete(UUID id, AppUserDetails currentUser) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.canSaveDelete(currentUser, account);
@@ -662,14 +662,14 @@ public class ClientService {
 
         if (dto.extensionNumber() != null) {
             String cleanExtensionNumber = phoneNumberValidator.getCleanExtensionNumber(dto.extensionNumber());
-            if (Objects.equals(cleanExtensionNumber, client.getExtensionNumber())) {
+            if (!Objects.equals(cleanExtensionNumber, client.getExtensionNumber())) {
                 client.setExtensionNumber(cleanExtensionNumber);
                 hasChange = true;
             }
         }
         if (dto.fullName() != null) {
             String cleanFullName = fullNameValidator.getCleanFullName(dto.fullName());
-            if (Objects.equals(cleanFullName, client.getFullName())) {
+            if (!Objects.equals(cleanFullName, client.getFullName())) {
                 client.setFullName(cleanFullName);
                 hasChange = true;
             }
@@ -691,7 +691,7 @@ public class ClientService {
 
     private void validateLogin(String login) {
         if (clientRepository.existsByAccount_Login(login)) {
-            throw new DublicateClientLoginException(login);
+            throw new DuplicateClientLoginException(login);
         }
     }
 }

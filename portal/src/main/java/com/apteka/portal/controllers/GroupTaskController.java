@@ -66,7 +66,7 @@ public class GroupTaskController {
 
     @Operation(summary = "Получить группу задач по ID")
     @GetMapping("/{id}")
-    public ResponseEntity<GroupTaskResponseDTO> getOne(@PathVariable Integer id, AppUserDetails currentUser) {
+    public ResponseEntity<GroupTaskResponseDTO> getOne(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(groupTaskService.getOne(id, currentUser));
     }
 
@@ -93,7 +93,7 @@ public class GroupTaskController {
     @Operation(summary = "Безопасное удаление группы задач")
     @PreAuthorize("hasAnyAction('BASE_WORK_WITH_GROUP_TASK', 'GRAND_WORK_WITH_GROUP_TASK') or hasRole('ADMIN')")
     @PatchMapping("/safe-delete/{id}")
-    public ResponseEntity<Void> safeDelete(@PathVariable Integer id, AppUserDetails currentUser) {
+    public ResponseEntity<Void> safeDelete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         groupTaskService.safeDelete(id, currentUser);
         return ResponseEntity.noContent().build();
     }
@@ -101,7 +101,7 @@ public class GroupTaskController {
     @Operation(summary = "Восстановление после безопасного удаления")
     @PreAuthorize("hasAnyAction('BASE_WORK_WITH_GROUP_TASK', 'GRAND_WORK_WITH_GROUP_TASK') or hasRole('ADMIN')")
     @PatchMapping("/restore/{id}")
-    public ResponseEntity<Void> restore(@PathVariable Integer id, AppUserDetails currentUser) {
+    public ResponseEntity<Void> restore(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         groupTaskService.restore(id, currentUser);
         return ResponseEntity.noContent().build();
     }
