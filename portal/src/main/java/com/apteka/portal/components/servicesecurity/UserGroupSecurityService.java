@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.apteka.portal.components.validators.IsActiveValidator;
 import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
+import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.UserGroup;
@@ -14,10 +15,10 @@ import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.AccountRepository;
 import com.apteka.portal.repository.TaskRepository;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
 @Component
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class UserGroupSecurityService {
     private final IsActiveValidator isActiveValidator;
     private final TaskRepository taskRepository;
@@ -52,7 +53,8 @@ public class UserGroupSecurityService {
             throw new AccessDeniedException("Группа уже удалена");
         }
 
-        DepartmentTaskStatsDTO stats = taskRepository.findGroupUserStatsByGroup(userGroup.getId());
+        DepartmentTaskStatsDTO stats = taskRepository.findGroupUserStatsByGroup(userGroup.getId())
+                .orElseThrow(() -> new GroupUserNotFoundException(userGroup.getId()));
         if (stats.openTasks() > 0) {
             throw new AccessDeniedException("У группы ещё имеются активные задачи, удаление запрещено");
         }
@@ -85,7 +87,8 @@ public class UserGroupSecurityService {
             if (confirm) {
                 return;
             }
-            DepartmentTaskStatsDTO stats = taskRepository.findGroupUserStatsByGroup(userGroup.getId());
+            DepartmentTaskStatsDTO stats = taskRepository.findGroupUserStatsByGroup(userGroup.getId())
+                    .orElseThrow(() -> new GroupUserNotFoundException(userGroup.getId()));
             Integer usersCount = accountRepository.countByUserGroupId(userGroup.getId());
             if (stats.totalTasks() == 0 && usersCount == 0 && !confirm) {
                 return;

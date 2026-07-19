@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.apteka.portal.models.GroupTask;
 
@@ -15,23 +16,23 @@ public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
                 SELECT 1
                 FROM GroupTask gt
                 WHERE gt.name = :name
-                    AND gt.executorGroup.id = :executorGroupId
-                    AND gt.Active = true
+                    AND gt.intendedGroup.id = :intendedGroupId
+                    AND gt.isActive = true
             )
             """)
-    boolean existsByNameAndExecutorGroupIdAndActive(String name, Integer executorGroupId);
+    boolean existsByNameAndExecutorGroupIdAndActive(@Param("name") String name, @Param("intendedGroupId") Integer intendedGroupId);
 
     @Override
-    @EntityGraph(attributePaths = { "creatorGroup", "executorGroup" })
+    @EntityGraph(attributePaths = { "creatorGroup", "intendedGroup" })
     Optional<GroupTask> findById(Integer id);
 
     @Query("""
             SELECT gt FROM GroupTask gt
             WHERE gt.creatorGroup.id = :creatorGroupId
-            AND gt.executorGroup.id = :executorGroupId
-            AND gt.Active =: isActive
+            AND gt.intendedGroup.id = :intendedGroupId
+            AND gt.isActive =: isActive
             """)
-    List<GroupTask> findByGroupsAndActive(Integer creatorGroupId, Integer executorGroupId, boolean isActive);
+    List<GroupTask> findByGroupsAndIsActive(@Param("creatorGroupId") Integer creatorGroupId, @Param("intendedGroupId") Integer intendedGroupId, @Param("isActive") boolean isActive);
 
-    boolean existsByNameAndCreatorGroupIdAndExecutorGroupId(String name, Integer creatorGroupId, Integer executorGroupId);
+    boolean existsByNameAndCreatorGroupIdAndIntendedGroupId(String name, Integer creatorGroupId, Integer intendedGroupId);
 }

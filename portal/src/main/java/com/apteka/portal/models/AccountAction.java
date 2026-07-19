@@ -98,8 +98,13 @@ public enum AccountAction {
     CAN_CHANGE_STATUS_TASK_IN_GROUP("CAN_CHANGE_STATUS_TASK_IN_GROUP", "Возможность менять статус неназначенных задач в вашей группе", LevelAction.LOW),
     CAN_CHANGE_STATUS_TASK_ASSIGNED_IN_GROUP("CAN_CHANGE_STATUS_TASK_ASSIGNED_IN_GROUP", "Возможность менять статус назначенных задач в вашей группе", LevelAction.MEDIUM),
     
+    CAN_ADD_TITLE_BEFORE_ASSIGNED("CAN_UPDATE_TITLE_BEFORE_ASSIGNED", "Возможность изменять заголовок задач до их распределения", LevelAction.LOW),
+    CAN_FULL_IPDATE_TITLE_BEFORE_ASSIGNED("CAN_FULL_IPDATE_TITLE_BEFORE_ASSIGNED", "Возможность полностью изменять заголовок задач до распределения", LevelAction.MEDIUM),
+    CAN_UPDATE_ALL_TASK("CAN_UPDATE_TASK", "Возможность полностью изменять задачи", LevelAction.HIGH),
+    
+    CAN_PERMANENT_DELETE_TASK("CAN_PERMANENT_DELETE_TASK", "Возможность полностью удалить задачу", LevelAction.HIGH);
 
-    CAN_UPDATE_ALL_TASK("CAN_UPDATE_TASK", "Возможность полностью изменять задачи", LevelAction.HIGH);
+
 
     private final String code;
     private final String description;

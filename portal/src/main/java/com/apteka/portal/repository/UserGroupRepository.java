@@ -17,10 +17,6 @@ public interface UserGroupRepository extends JpaRepository<UserGroup, Integer> {
 
     boolean existsByName(String name);
 
-    @Query("SELECT g.isActive FROM UserGroup ug WHERE ug.id = :id")
-    @Cacheable(value = CacheNames.GROUP_USER_STATUS, key = "#id")
-    Boolean isGroupActive(@Param("id") Integer id);
-
     List<UserGroup> findAllByIdIn(Set<Integer> ids);
 
     @Query("""
@@ -31,7 +27,7 @@ public interface UserGroupRepository extends JpaRepository<UserGroup, Integer> {
             """)
     List<UserGroup> findVisibleGroupsIncludingSelf(@Param("groupId") Integer groupId);
 
-    List<UserGroup> findByActive(boolean active);
+    List<UserGroup> findByIsActive(boolean isActive);
 
     @Query("""
              SELECT COUNT(vg) > 0 FROM UserGroup g

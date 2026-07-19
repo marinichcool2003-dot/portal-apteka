@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS group_user (
 );
 
 CREATE TABLE IF NOT EXISTS group_group_visibility (
+    id SERIAL PRIMARY KEY,
     first_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
     second_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
     UNIQUE(first_group_id, second_group_id)
@@ -76,6 +77,9 @@ CREATE TABLE IF NOT EXISTS account (
 CREATE TABLE IF NOT EXISTS account_actions (
     account_id UUID NOT NULL,
     action VARCHAR(50) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    description TEXT,
+    level_action VARCHAR(20) NOT NULL,
     PRIMARY KEY (account_id, action) 
 );
 
@@ -132,8 +136,7 @@ CREATE TABLE IF NOT EXISTS task_comment (
     id BIGSERIAL PRIMARY KEY,
     comment VARCHAR(255) NOT NULL,
     task_id BIGINT NOT NULL,
-    client_id UUID,
-    apteka_id UUID
+    account_id UUID
 );
 
 -- =========================================================================

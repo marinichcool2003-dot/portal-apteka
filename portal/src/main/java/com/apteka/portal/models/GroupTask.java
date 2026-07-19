@@ -47,7 +47,7 @@ public class GroupTask {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "executor_group_id", nullable = false)
-    private UserGroup executorGroup;
+    private UserGroup intendedGroup;
     
     @Column(name = "is_active")
     private boolean isActive;

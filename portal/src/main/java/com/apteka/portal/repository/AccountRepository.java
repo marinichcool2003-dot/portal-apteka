@@ -13,7 +13,8 @@ import com.apteka.portal.models.Account;
 public interface AccountRepository extends JpaRepository<Account, UUID> {
 
     @EntityGraph(attributePaths = "userGroup")
-    Optional<Account> findByIdWithUserGroup(UUID id);
+    @Query("SELECT a FROM Account a WHERE a.id = :id")
+    Optional<Account> findByIdWithUserGroup(@Param("id") UUID id);
 
     Optional<Account> findByLogin(String login);
 

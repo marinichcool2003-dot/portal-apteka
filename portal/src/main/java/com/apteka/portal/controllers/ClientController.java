@@ -94,7 +94,7 @@ public class ClientController {
     }
 
     @Operation(summary = "Фильтр сотрудников")
-    @GetMapping("/by-user-group/task-number/{userGroupId}")
+    @GetMapping("/filter")
     public ResponseEntity<Page<ClientResponseDTO>> filter(@ModelAttribute ClientFilterRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser, Pageable pageable) {
         return ResponseEntity.ok(clientService.filter(dto, currentUser, pageable));

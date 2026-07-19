@@ -2,8 +2,6 @@ package com.apteka.portal.config;
 
 import com.apteka.portal.repository.UserGroupRepository;
 
-import java.util.Set;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -52,13 +50,13 @@ public class DataInitializer implements CommandLineRunner {
 
             Client admin = Client.builder()
                     .fullName("Администратор")
-                    .roles(Set.of(UserRole.ADMIN))   
                     .build();
 
             Account account = Account.builder()
                     .login(adminLogin)
                     .password(passwordEncoder.encode(adminPassword))
                     .userGroup(adminGroup)
+                    .userRole(UserRole.ADMIN)
                     .client(admin)
                     .build();
             

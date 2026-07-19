@@ -1,6 +1,7 @@
 package com.apteka.portal.components.servicesecurity;
 
 import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Component;
 import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.GroupTask;
+import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.models.WorkType;
@@ -53,8 +55,8 @@ public class WorkTypeSecurityService {
         }
 
         if (groupsChanged) {
-            boolean hasActive = taskRepository.existsByWorkTypeAndStatusActive(workTypeId);
-            boolean hasNonActive = taskRepository.existsByGroupTaskAndStatusNonActive(workTypeId);
+            boolean hasActive = taskRepository.existsByWorkTypeAndStatusActive(workTypeId, Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
+            boolean hasNonActive = taskRepository.existsByGroupTaskAndStatusNonActive(workTypeId, Set.of(TaskStatus.CLOSED, TaskStatus.DENIED));
 
             if (hasNonActive || hasActive) {
                 throw new AccessDeniedException(
@@ -63,7 +65,7 @@ public class WorkTypeSecurityService {
         }
 
         if (nameChanged) {
-            if (taskRepository.existsByWorkTypeAndStatusActive(workTypeId)) {
+            if (taskRepository.existsByWorkTypeAndStatusActive(workTypeId, Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED))) {
                 throw new AccessDeniedException(
                         "Невозможно изменить имя: по данному типу задач имеются активные заявки!");
             }
@@ -83,12 +85,12 @@ public class WorkTypeSecurityService {
 
     public void validateCanPermanentDelete(WorkType workType, Boolean confirm) {
         Integer workTypeId = workType.getId();
-        boolean existsActive = taskRepository.existsByWorkTypeAndStatusActive(workTypeId);
+        boolean existsActive = taskRepository.existsByWorkTypeAndStatusActive(workTypeId, Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
         if (existsActive) {
             throw new AccessDeniedException(
                     "Невозможно изменить имя: по данному типу задач имеются активные заявки!");
         }
-        boolean existsNonActive = taskRepository.existsByWorkTypeAndStatusNonActive(workTypeId);
+        boolean existsNonActive = taskRepository.existsByWorkTypeAndStatusNonActive(workTypeId, Set.of(TaskStatus.CLOSED, TaskStatus.DENIED));
         if (!confirm) {
             if (existsNonActive) {
                 throw new AccessDeniedException(

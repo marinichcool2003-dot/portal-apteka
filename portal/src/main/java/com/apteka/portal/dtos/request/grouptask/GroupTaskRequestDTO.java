@@ -14,6 +14,6 @@ public record GroupTaskRequestDTO(
 
     @NotNull(message = "Идентификатор группы создателя не может быть пустым")
     @Positive(message = "Группа создателя должна быть больше нуля!")
-    Integer executorGroupId
+    Integer intendedGroupId
 ) 
 {}

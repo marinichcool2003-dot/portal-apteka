@@ -16,7 +16,7 @@ public class IsActiveValidator {
         return account.isActive() && isUserGroupActive(account.getUserGroup());
     }
     public boolean isGroupTaskActive(GroupTask groupTask) {
-        return groupTask.isActive() && isUserGroupActive(groupTask.getCreatorGroup()) && isUserGroupActive(groupTask.getExecutorGroup());
+        return groupTask.isActive() && isUserGroupActive(groupTask.getCreatorGroup()) && isUserGroupActive(groupTask.getIntendedGroup());
     }
     public boolean isWorkTypeActive(WorkType workType) {
         return workType.isActive() && isGroupTaskActive(workType.getGroupTask());

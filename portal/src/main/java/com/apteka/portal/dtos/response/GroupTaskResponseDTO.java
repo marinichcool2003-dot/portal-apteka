@@ -21,8 +21,8 @@ public record GroupTaskResponseDTO(
                 Optional.ofNullable(groupTask.getCreatorGroup()).map(UserGroup::getName).orElse(null)
             ),
             new UserGroupShortResponseDTO(
-                Optional.ofNullable(groupTask.getExecutorGroup()).map(UserGroup::getId).orElse(null),
-                Optional.ofNullable(groupTask.getExecutorGroup()).map(UserGroup::getName).orElse(null)
+                Optional.ofNullable(groupTask.getIntendedGroup()).map(UserGroup::getId).orElse(null),
+                Optional.ofNullable(groupTask.getIntendedGroup()).map(UserGroup::getName).orElse(null)
             )
         );
     }

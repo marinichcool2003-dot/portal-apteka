@@ -16,6 +16,5 @@ public record TaskUpdateRequestDTO(
 
         @Pattern(regexp = "^(?!\\s*$).+", message = "Статус задачи не может быть пустым, но может быть null") String statusCode,
 
-        UUID assignedAptekaId,
-        UUID assignedClientId) implements TaskRequestDTO {
+        UUID assignerId) implements TaskRequestDTO {
 }

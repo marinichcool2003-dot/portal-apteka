@@ -112,9 +112,9 @@ public class ClientService {
     public TaskStatsDTO getMyStats(AppUserDetails currentUser) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
         List<AssignedStatsDTO> assignedStatsList = taskRepository
-                .getClientAssignedStatsBatch(List.of(currentUser.getInternalId()));
+                .getAssignerStatsBatch(List.of(currentUser.getInternalId()));
         List<CreatedStatsDTO> createdStatsList = taskRepository
-                .getClientCreatedStatsBatch(List.of(currentUser.getInternalId()));
+                .getCreatorStatsBatch(List.of(currentUser.getInternalId()));
 
         AssignedStatsDTO assignedStats = assignedStatsList.isEmpty()
                 ? new AssignedStatsDTO(currentUser.getInternalId(), 0L, 0L, 0L, 0L, 0L)
@@ -162,7 +162,7 @@ public class ClientService {
 
         List<UUID> clientIds = clients.stream().map(ClientResponseDTO::id).toList();
 
-        Map<UUID, AssignedStatsDTO> statsMap = taskRepository.getClientAssignedStatsBatch(clientIds)
+        Map<UUID, AssignedStatsDTO> statsMap = taskRepository.getAssignerStatsBatch(clientIds)
                 .stream()
                 .collect(Collectors.toMap(AssignedStatsDTO::clientId, dto -> dto));
 
@@ -635,7 +635,7 @@ public class ClientService {
     private UpdateAccountResponseDTO updateUserGroup(Account account, Integer userGroupId, boolean hasChange,
             boolean needsLogout, boolean isOnlyForCurrent) {
         UUID accountId = account.getId();
-        boolean haveActiveTasks = taskRepository.existsByClientIdAndStatus(accountId,
+        boolean haveActiveTasks = taskRepository.existsByAccountIdAndStatus(accountId,
                 Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
         if (haveActiveTasks) {
             throw new UserHaveActiveTasksException(accountId);

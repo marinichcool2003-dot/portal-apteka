@@ -2,16 +2,17 @@ package com.apteka.portal.services;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.StringUtils;
 
 import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.servicesecurity.TaskSecurityService;
@@ -19,31 +20,23 @@ import com.apteka.portal.components.validators.TypeNameValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.task.TaskCreateRequestDTO;
-import com.apteka.portal.dtos.request.task.TaskRequestDTO;
 import com.apteka.portal.dtos.request.task.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
 import com.apteka.portal.dtos.response.TaskResponseDTO;
 import com.apteka.portal.dtos.response.TaskShortResponseDTO;
 import com.apteka.portal.exceptions.AccountNotFoundException;
-import com.apteka.portal.exceptions.AptekaNotFoundException;
-import com.apteka.portal.exceptions.ClientNotFoundException;
+import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
 import com.apteka.portal.exceptions.InvalidTaskTitleException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.exceptions.WorkTypeNotFoundException;
 import com.apteka.portal.models.Account;
 import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.CacheNames;
-import com.apteka.portal.models.Client;
-import com.apteka.portal.models.GroupTask;
 import com.apteka.portal.models.WorkType;
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.TaskStatus;
-import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.AccountRepository;
-import com.apteka.portal.repository.AptekaRepository;
-import com.apteka.portal.repository.ClientRepository;
 import com.apteka.portal.repository.TaskRepository;
 import com.apteka.portal.repository.WorkTypeRepository;
 import com.apteka.portal.repository.specification.TaskSpecifications;
@@ -59,8 +52,6 @@ import lombok.extern.slf4j.Slf4j;
 public class TaskService {
     private final TaskRepository taskRepository;
     private final WorkTypeRepository workTypeRepository;
-    private final AptekaRepository aptekaRepository;
-    private final ClientRepository clientRepository;
     private final TaskSecurityService taskSecurityService;
     private final TaskAuditService taskAuditService;
     private final TypeNameValidator typeNameValidator;
@@ -101,7 +92,8 @@ public class TaskService {
     @Cacheable(value = CacheNames.GROUPS_USER_STATS, key = "#userGroupId", sync = true)
     @Transactional(readOnly = true)
     public DepartmentTaskStatsDTO getGroupUserStats(Integer userGroupId) {
-        return taskRepository.findGroupUserStatsByGroup(userGroupId);
+        return taskRepository.findGroupUserStatsByGroup(userGroupId)
+            .orElseThrow(() -> new GroupUserNotFoundException(userGroupId));
     }
 
     @Transactional(readOnly = true)
@@ -148,22 +140,25 @@ public class TaskService {
 
     @Transactional
     public TaskShortResponseDTO create(TaskCreateRequestDTO dto, AppUserDetails currentUser) {
-
-        Account account = null;
+        Account assigner = null;
         if (dto.assignerId() != null) {
-            account = accountRepository.findById(dto.assignerId())
+            assigner = accountRepository.findById(dto.assignerId())
                     .orElseThrow(() -> new AccountNotFoundException(dto.assignerId()));
         }
 
         WorkType workType = workTypeRepository.findById(dto.workTypeId())
                 .orElseThrow(() -> new WorkTypeNotFoundException(dto.workTypeId()));
 
-        taskSecurityService.validateCanCreateTask(account, workType, currentUser);
+        taskSecurityService.validateCanCreateTask(assigner, workType, currentUser);
 
+        if (!StringUtils.hasText(dto.title())) {
+            throw new InvalidTaskTitleException();
+        }
         String cleanTitle = typeNameValidator.getCleanName(dto.title());
 
-        validateTitle(cleanTitle);
-        validateDescription(dto.description());
+        if (!StringUtils.hasText(dto.description())) {
+            throw new InvalidTaskDescriptionException();
+        }
 
         Task task = Task.builder()
                 .title(cleanTitle)
@@ -171,25 +166,23 @@ public class TaskService {
                 .workType(workType)
                 .build();
 
-        switch (currentUser.getType()) {
-            case APTEKA -> {
-                Apteka apteka = aptekaRepository.findById(currentUser.getInternalId())
-                        .orElseThrow(() -> new AptekaNotFoundException(currentUser.getInternalId()));
-                task.setCreatedByApteka(apteka);
-            }
-            case CLIENT -> {
-                Client client = clientRepository.findById(currentUser.getInternalId())
-                        .orElseThrow(() -> new ClientNotFoundException(currentUser.getInternalId()));
-                task.setCreatedByClient(client);
-            }
-        }
+        Account creator = accountRepository.findById(currentUser.getInternalId())
+                .orElseThrow(() -> new AccountNotFoundException(currentUser.getInternalId()));
 
-        setAssignee(task, dto, currentUser);
+        task.setCreator(creator);
+        task.setAssigner(assigner);
 
         Task saved = taskRepository.save(task);
 
-        var event = new SseEventNames.TaskSignalsDTO(saved.getWorkType().getId(), SseSignalTypes.CREATED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var event = new SseEventNames.TaskSignalsDTO(saved.getWorkType().getId(), SseSignalTypes.CREATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
+                }
+            });
+        }
         return TaskShortResponseDTO.from(saved);
     }
 
@@ -198,48 +191,52 @@ public class TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
-        taskSecurityService.validateCanUpdate(task, dto, currentUser);
-
         boolean hasChange = false;
 
-        if (dto.title() != null) {
+        if (StringUtils.hasText(dto.title())) {
             String cleanTitle = typeNameValidator.getCleanName(dto.title());
+            taskSecurityService.validateCanChangeTitle(task, currentUser, cleanTitle);
             if (!Objects.equals(task.getTitle(), cleanTitle)) {
-                validateTitle(cleanTitle);
                 taskAuditService.logChange(task.getId(), currentUser, "заголовок", task.getTitle(), cleanTitle);
                 task.setTitle(cleanTitle);
                 hasChange = true;
             }
         }
 
-        if (dto.description() != null && !Objects.equals(task.getDescription(), dto.description())) {
-            validateDescription(dto.description());
+        if (StringUtils.hasText(dto.description()) && !Objects.equals(task.getDescription(), dto.description())) {
             taskAuditService.logChange(task.getId(), currentUser, "описание", task.getDescription(), dto.description());
             task.setDescription(dto.description().strip());
             hasChange = true;
         }
 
-        if (dto.workTypeId() != null && dto.workTypeId() > 0) {
-            WorkType workType = workTypeRepository.findById(dto.workTypeId())
-                    .orElseThrow(() -> new WorkTypeNotFoundException(dto.workTypeId()));
-            if (taskSecurityService.changeWorkTypeToAnotherDepartament(task, dto, currentUser)
-                    && !Objects.equals(task.getWorkType().getId(), dto.workTypeId())) {
-                task.setWorkType(workType);
+        if (dto.workTypeId() != null || dto.assignerId() != null) {
+            WorkType workType = null;
+            Account assigner = null;
+            if (dto.workTypeId() != null) {
+                workType = workTypeRepository.findById(dto.workTypeId())
+                        .orElseThrow(() -> new WorkTypeNotFoundException(dto.workTypeId()));
+            }
+            if (dto.assignerId() != null) {
+                assigner = accountRepository.findById(dto.assignerId())
+                        .orElseThrow(() -> new AccountNotFoundException(dto.assignerId()));
+            }
+            if (!Objects.equals(task.getWorkType().getId(), workType.getId())
+                    || !Objects.equals(task.getAssigner().getId(), assigner.getId())) {
+                taskSecurityService.canChangeAssigner(task, workType, assigner, currentUser);
+                if (!Objects.equals(task.getWorkType().getId(), workType.getId())) {
+                    task.setWorkType(workType);
+                }
+                if (!Objects.equals(task.getAssigner().getId(), assigner.getId())) {
+                    task.setAssigner(assigner);
+                }
                 hasChange = true;
             }
         }
 
-        if (taskSecurityService.changeAssigner(task, dto, currentUser)) {
-            String oldAssigneeName = getAssigneeName(task);
-            setAssignee(task, dto, currentUser);
-            String newAssigneeName = getAssigneeName(task);
-            taskAuditService.logChange(task.getId(), currentUser, "исполнителя", oldAssigneeName, newAssigneeName);
-            hasChange = true;
-        }
-
-        if (dto.statusCode() != null && !dto.statusCode().isBlank()
-                && !Objects.equals(task.getStatus().getCode(), dto.statusCode())) {
-            task = changeStatus(task, dto.statusCode(), currentUser);
+        if (StringUtils.hasText(dto.statusCode())) {
+            TaskStatus newStatus = TaskStatus.fromCode(dto.statusCode());
+            taskSecurityService.validateChangeStatusInTask(task, currentUser, newStatus);
+            task.changeStatus(newStatus);
             hasChange = true;
         }
 
@@ -255,90 +252,18 @@ public class TaskService {
     public void delete(Long id, AppUserDetails currentUser) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
-        taskSecurityService.validateCanDelete(currentUser);
-
+        taskSecurityService.valdiateCanPermanentDeleteTask(currentUser);
         taskRepository.delete(task);
-        var event = new SseEventNames.EntityUpdateSignalDTO(task.getWorkType().getId(), SseSignalTypes.DELETED);
-        sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
-    }
 
-    private Task changeStatus(Task task, String code, AppUserDetails currentUser) {
-        taskSecurityService.validateStatus(task, currentUser);
-        TaskStatus newStatus = TaskStatus.fromCode(code);
-
-        if (newStatus == task.getStatus()) {
-            return task;
-        }
-
-        String oldStatus = task.getStatus().getDescription();
-        task.changeStatus(newStatus);
-
-        String commentText = "Пользователь %s изменил статус задачи #%d c '%s' на '%s'"
-                .formatted(taskAuditService.getAuthor(currentUser), task.getId(), oldStatus,
-                        newStatus.getDescription());
-
-        taskAuditService.addComment(commentText, currentUser, task.getId());
-        return task;
-    }
-
-    private void setAssignee(Task task, TaskRequestDTO dto, AppUserDetails currentUser) {
-        if (dto.assignedClientId() != null) {
-            if (currentUser.isApteka()) {
-                throw new AccessDeniedException("Аптека не может назначать задачи на конкретного сотрудника");
-            }
-            if (!clientRepository.existsById(dto.assignedClientId())) {
-                throw new ClientNotFoundException(dto.assignedClientId());
-            }
-            task.setAssignedClient(clientRepository.getReferenceById(dto.assignedClientId()));
-            task.setAssignedApteka(null);
-
-        } else if (dto.assignedAptekaId() != null) {
-            if (currentUser.isApteka()) {
-                throw new AccessDeniedException("Аптека не может назначать задачи на другие аптеки");
-            }
-            if (!aptekaRepository.existsById(dto.assignedAptekaId())) {
-                throw new AptekaNotFoundException(dto.assignedAptekaId());
-            }
-            task.setAssignedApteka(aptekaRepository.getReferenceById(dto.assignedAptekaId()));
-            task.setAssignedClient(null);
-        }
-    }
-
-    private String getAssigneeName(Task task) {
-        StringBuilder assigneeNameBuilder = new StringBuilder();
-
-        Optional.ofNullable(task.getWorkType())
-                .map(WorkType::getGroupTask)
-                .map(GroupTask::getUserGroup)
-                .map(UserGroup::getName)
-                .ifPresentOrElse(
-                        assigneeNameBuilder::append,
-                        () -> assigneeNameBuilder.append("Общая группа"));
-
-        if (task.getAssignedClient() != null) {
-            assigneeNameBuilder.append(" - ").append(task.getAssignedClient().getFullName());
-            return assigneeNameBuilder.toString();
-        }
-
-        if (task.getAssignedApteka() != null) {
-            Integer number = task.getAssignedApteka().getNumber();
-            String ident = (number != null) ? "№" + number : task.getAssignedApteka().getAccount().getLogin();
-            assigneeNameBuilder.append(" - ").append("Аптека ").append(ident);
-            return assigneeNameBuilder.toString();
-        }
-
-        return assigneeNameBuilder.append(" (Не назначен)").toString();
-    }
-
-    private void validateTitle(String title) {
-        if (title == null || title.isBlank()) {
-            throw new InvalidTaskTitleException();
-        }
-    }
-
-    private void validateDescription(String description) {
-        if (description == null || description.isBlank()) {
-            throw new InvalidTaskDescriptionException();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var event = new SseEventNames.EntityUpdateSignalDTO(task.getWorkType().getId(),
+                            SseSignalTypes.DELETED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
+                }
+            });
         }
     }
 }

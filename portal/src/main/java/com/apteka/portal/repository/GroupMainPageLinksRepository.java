@@ -9,5 +9,5 @@ import com.apteka.portal.models.GroupMainPageLinks;
 public interface GroupMainPageLinksRepository extends JpaRepository<GroupMainPageLinks, Integer> {
     boolean existsByName(String name);
 
-    List<GroupMainPageLinks> findByActive(boolean active);
+    List<GroupMainPageLinks> findByIsActive(boolean isActive);
 }

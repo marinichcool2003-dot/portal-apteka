@@ -2,7 +2,6 @@ package com.apteka.portal.components.servicesecurity;
 
 import com.apteka.portal.repository.GroupGroupVisibilityRepository;
 
-import java.lang.foreign.AddressLayout;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
@@ -38,11 +37,13 @@ public class TaskSecurityService {
         }
 
         UserGroup creatorUserGroup = task.getWorkType().getGroupTask().getCreatorGroup();
-        UserGroup assignerUserGroup = task.getWorkType().getGroupTask().getExecutorGroup();
+        UserGroup assignerUserGroup = task.getWorkType().getGroupTask().getIntendedGroup();
         UserGroup userGroup = currentUser.getUserGroup();
 
-        boolean existsRelationCreator = groupGroupVisibilityRepository.existsRelationBidirectional(userGroup.getId(), creatorUserGroup.getId());
-        boolean existsRelationAssigner = groupGroupVisibilityRepository.existsRelationBidirectional(userGroup.getId(), assignerUserGroup.getId());
+        boolean existsRelationCreator = groupGroupVisibilityRepository.existsRelationBidirectional(userGroup.getId(),
+                creatorUserGroup.getId());
+        boolean existsRelationAssigner = groupGroupVisibilityRepository.existsRelationBidirectional(userGroup.getId(),
+                assignerUserGroup.getId());
 
         if (existsRelationAssigner || existsRelationCreator) {
             return;
@@ -91,14 +92,15 @@ public class TaskSecurityService {
         throw new AccessDeniedException("У вас нет прав на создание данной задачи");
     }
 
-    public void valdiateCanUpdateTask(AppUserDetails currentUser) {
+    public void valdiateCanUpdateDescriptionTask(Task task, AppUserDetails currentUser) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
+        validateIsClosed(task, currentUser);
         if (currentUser.hasAction(AccountAction.CAN_UPDATE_ALL_TASK)) {
             return;
         }
-        throw new AccessDeniedException("Вы не можете изменить уже созданную задачу!");
+        throw new AccessDeniedException("Вы не можете изменить описание уже созданной задачи!");
     }
 
     public void canChangeAssigner(Task task, WorkType workType, Account assigner, AppUserDetails currentUser) {
@@ -223,24 +225,63 @@ public class TaskSecurityService {
                         && currentUser.hasAction(AccountAction.CAN_CHANGE_STATUS_TASK_ASSIGNED_IN_GROUP));
 
         if (isAssigner || isCreator || canChangeInGroup) {
-            return; 
+            return;
         }
 
         throw new AccessDeniedException("Вы не можете изменить статус данной задачи!");
     }
 
-    public void validateCanAnyChange(Task task, AppUserDetails currentUser) {
+    public void validateCanChangeTitle(Task task, AppUserDetails currentUser, String newTitle) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
+
+        validateIsClosed(task, currentUser);
+
+        if (currentUser.hasAction(AccountAction.CAN_UPDATE_ALL_TASK)) {
+            return;
+        }
+
+        boolean isAssigner = isAssigner(task, currentUser);
+        boolean isNotRelatedTask = task.getAssigner() == null;
+        boolean isTaskInYourGroup = isTaskInYourGroup(task, currentUser);
+        boolean fullChangeTitle = !task.getTitle().contains(newTitle);
+        boolean hasActionUpdateBeforeAssigned = currentUser.hasAction(AccountAction.CAN_ADD_TITLE_BEFORE_ASSIGNED);
+
+        if (fullChangeTitle && !currentUser.hasAction(AccountAction.CAN_FULL_IPDATE_TITLE_BEFORE_ASSIGNED)) {
+            throw new AccessDeniedException(
+                    "Вы не можете полностью изменять заголовок задачи! (имеется возможность дописать)");
+        }
+
+        if (isTaskInYourGroup) {
+            if (isNotRelatedTask) {
+                if (!hasActionUpdateBeforeAssigned) {
+                    return;
+                }
+                throw new AccessDeniedException("Вы не можете изменять заголовок ещё не распределённых задач!");
+            }
+            if (!isAssigner) {
+                throw new AccessDeniedException("Вы не можете изменять заголовок задач которые не назначены вам!");
+            }
+        }
+        throw new AccessDeniedException("Вы не можете изменить заголовок данной задачи!");
+    }
+
+    public void valdiateCanPermanentDeleteTask(AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        if (currentUser.hasAction(AccountAction.CAN_PERMANENT_DELETE_TASK)) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на удаление задач!");
+    }
+
+    private void validateIsClosed(Task task, AppUserDetails currentUser) {
         if (task.getStatus() == TaskStatus.CLOSED || task.getStatus() == TaskStatus.DENIED) {
             throw new AccessDeniedException(
                     "Вы не можете делать какие-либо изменения в закрытых или отклоненных задачах!");
         }
-        if (currentUser.hasAction(AccountAction.CAN_UPDATE_ALL_TASK)) {
-            return;   
-        }
-        throw new AccessDeniedException("Вы не можете делать какие либо изменения в уже созданных задачах!");
     }
 
     private boolean canAssignedTo(Account account, GroupTask groupTask) {
@@ -254,7 +295,7 @@ public class TaskSecurityService {
     }
 
     private boolean canAddThisWorkType(WorkType workType, AppUserDetails currentUser) {
-        return Objects.equals(workType.getGroupTask().getExecutorGroup().getId(), currentUser.getUserGroup().getId());
+        return Objects.equals(workType.getGroupTask().getIntendedGroup().getId(), currentUser.getUserGroup().getId());
     }
 
     private boolean sameGroup(UserGroup userGroup, AppUserDetails currentUser) {

@@ -51,8 +51,8 @@ public class TaskController {
 
     @Operation(summary = "Получить задачу по ID")
     @GetMapping("/{id}")
-    public ResponseEntity<TaskResponseDTO> getOne(@PathVariable Long id) {
-        return ResponseEntity.ok(taskService.getOne(id));
+    public ResponseEntity<TaskResponseDTO> getOne(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(taskService.getOne(id, currentUser));
     }
 
     @Operation(summary = "Получить задачи назначенные авторизированному пользователю")
@@ -128,10 +128,8 @@ public class TaskController {
                 .workTypeId(dto.workTypeId())
                 .groupTaskId(dto.groupTaskId())
                 .groupId(dto.groupId())
-                .creatorClientId(dto.creatorClientId())
-                .creatorAptekaId(dto.creatorAptekaId())
-                .specificClientId(dto.specificClientId())
-                .specificAptekaId(dto.specificAptekaId())
+                .creatorId(dto.creatorId())
+                .assignerId(dto.assignerId())
                 .build();
         System.out.println(dto);
         return ResponseEntity.ok(taskService.getDepartmentTaskWithFilters(filter, pageable));

@@ -18,7 +18,7 @@ public interface AptekaRepository extends JpaRepository<Apteka, UUID> {
     @Query(value = "SELECT a FROM Apteka a WHERE a.account.isActive = :isActive ORDER BY a.account.userGroup.id, a.number", countQuery = "SELECT count(a) FROM Apteka a WHERE a.account.isActive = :isActive")
     Page<Apteka> findAll(@Param("isActive") boolean isActive, Pageable pageable);
 
-    @Query("SELECT a FROM Apteka a WHERE a.id = :id AND a.isActive = :isActive")
+    @Query("SELECT a FROM Apteka a WHERE a.id = :id AND a.account.isActive = :isActive")
     @EntityGraph(attributePaths = { "account", "account.userGroup" })
     Optional<Apteka> findByIdWithAccount(@Param("id") UUID id, @Param("isActive") boolean isActive);
 

@@ -1,6 +1,7 @@
 package com.apteka.portal.components.servicesecurity;
 
 import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Component;
 import com.apteka.portal.models.AccountAction;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.GroupTask;
+import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.GroupGroupVisibilityRepository;
@@ -57,8 +59,8 @@ public class GroupTaskSecurityService {
         }
 
         if (groupsChanged) {
-            boolean hasActive = taskRepository.existsByGroupTaskAndStatusActive(groupTaskId);
-            boolean hasNonActive = taskRepository.existsByGroupTaskAndStatusNonActive(groupTaskId);
+            boolean hasActive = taskRepository.existsByGroupTaskAndStatusActive(groupTaskId, Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
+            boolean hasNonActive = taskRepository.existsByGroupTaskAndStatusNonActive(groupTaskId, Set.of(TaskStatus.CLOSED, TaskStatus.DENIED));
             boolean hasWorkTypes = workTypeRepository.existsByGroupTaskIdActive(groupTaskId);
 
             if (hasActive || hasNonActive || hasWorkTypes) {
@@ -68,7 +70,7 @@ public class GroupTaskSecurityService {
         }
 
         if (nameChanged) {
-            if (taskRepository.existsByGroupTaskAndStatusActive(groupTaskId)) {
+            if (taskRepository.existsByGroupTaskAndStatusActive(groupTaskId, Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED))) {
                 throw new AccessDeniedException(
                         "Невозможно изменить имя: по данному типу задач имеются активные заявки!");
             }
@@ -88,12 +90,12 @@ public class GroupTaskSecurityService {
 
     public void validateCanPermanentDelete(GroupTask groupTask, Boolean confirm) {
         Integer groupTaskId = groupTask.getId();
-        boolean existsActive = taskRepository.existsByGroupTaskAndStatusActive(groupTaskId);
+        boolean existsActive = taskRepository.existsByGroupTaskAndStatusActive(groupTaskId, Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
         if (existsActive) {
             throw new AccessDeniedException(
                     "По данному типу задач имеются активные задачи (необходимо либо закрыть либо отклонить)!");
         }
-        boolean existsNonActive = taskRepository.existsByGroupTaskAndStatusNonActive(groupTaskId);
+        boolean existsNonActive = taskRepository.existsByGroupTaskAndStatusNonActive(groupTaskId, Set.of(TaskStatus.CLOSED, TaskStatus.DENIED));
         boolean existsWorkType = workTypeRepository.existsByGroupTaskIdActive(groupTaskId);
         if (!confirm) {
             if (existsNonActive) {

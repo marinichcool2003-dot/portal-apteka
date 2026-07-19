@@ -63,7 +63,7 @@ public class UserGroupService {
         if (Boolean.FALSE.equals(isActive)) {
             userGroupSecurityService.canSelectNonActive(currentUser);
         }
-        return userGroupRepository.findByActive(isActive).stream()
+        return userGroupRepository.findByIsActive(isActive).stream()
                 .map(UserGroupResponseDTO::from)
                 .toList();
     }

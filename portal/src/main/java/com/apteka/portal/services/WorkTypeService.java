@@ -56,7 +56,7 @@ public class WorkTypeService {
             UserGroup userGroup = groupTask.getCreatorGroup();
             workTypeSecurityService.validateCanWorkWorkType(currentUser, userGroup);
         }
-        return workTypeRepository.findByGroupTaskIdAndActive(groupTaskId, isActive).stream()
+        return workTypeRepository.findByGroupTaskIdAndIsActive(groupTaskId, isActive).stream()
                 .map(WorkTypeResponseDTO::from).toList();
     }
 

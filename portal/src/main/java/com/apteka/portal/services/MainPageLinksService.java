@@ -48,7 +48,7 @@ public class MainPageLinksService {
         if (Boolean.FALSE.equals(isActive)) {
             mainPageLinksSecurityService.validateCanSelectNonActive(currentUser);
         }
-        return mainPageLinkRepository.findByGroupMainPageLinksIdAndActive(groupId, isActive)
+        return mainPageLinkRepository.findByGroupMainPageLinksIdAndIsActive(groupId, isActive)
                 .stream().map(MainPageLinkResponseDTO::from).toList();
     }
 

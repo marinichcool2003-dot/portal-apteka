@@ -8,5 +8,5 @@ public record GroupTaskUpdateRequestDTO(
 
         @Positive(message = "Группа создателя должна быть больше нуля!") Integer creatorGroupId,
 
-        @Positive(message = "Группа создателя должна быть больше нуля!") Integer executorGroupId) {
+        @Positive(message = "Группа создателя должна быть больше нуля!") Integer intendedGroupId) {
 }

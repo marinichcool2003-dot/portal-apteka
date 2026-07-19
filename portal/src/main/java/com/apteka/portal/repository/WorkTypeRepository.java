@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.Query;
 
 import com.apteka.portal.models.WorkType;
 
+import io.lettuce.core.dynamic.annotation.Param;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -29,5 +31,5 @@ public interface WorkTypeRepository extends JpaRepository<WorkType, Integer>{
             """)
     Optional<WorkType> findByIdWithGroupTaskAndCreatorGroup(Integer id);
 
-    List<WorkType> findByGroupTaskIdAndActive(Integer groupTaskId, Boolean isActive);
+    List<WorkType> findByGroupTaskIdAndIsActive(@Param("groupTaskId") Integer groupTaskId, @Param("isActive") Boolean isActive);
 }

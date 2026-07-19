@@ -6,35 +6,32 @@ import com.apteka.portal.models.TaskComment;
 import com.apteka.portal.models.UserType;
 
 public record TaskCommentResponseDTO(
-    Long id,
-    String comment,
-    UserType authorType,
-    String authorName,
-    Object authorId
-) {
+        Long id,
+        String comment,
+        UserType authorType,
+        String authorName,
+        Object authorId) {
     public static TaskCommentResponseDTO from(TaskComment taskComments) {
         UserType type = null;
         String authorName = "Система";
         Object authorId = null;
 
-        if (taskComments.getClient() != null) {
+        if (taskComments.getAccount().getClient() != null) {
             type = UserType.CLIENT;
-            authorName = taskComments.getClient().getFullName();
-            authorId = taskComments.getClient().getId();
-        } else if (taskComments.getApteka() != null) {
+            authorName = taskComments.getAccount().getClient().getFullName();
+            authorId = taskComments.getAccount().getId();
+        } else if (taskComments.getAccount().getClient() != null) {
             type = UserType.APTEKA;
-            authorName = Optional.ofNullable(taskComments.getApteka().getAccount().getUserGroup())
-                .map(group -> group.getName() + " " + taskComments.getApteka().getNumber())
-                .orElse(taskComments.getApteka().getAccount().getLogin());
-            authorId = taskComments.getApteka().getId();
+            authorName = Optional.ofNullable(taskComments.getAccount().getUserGroup())
+                    .map(ug -> ug.getName() + " " + taskComments.getAccount().getApteka().getNumber())
+                    .orElse(taskComments.getAccount().getLogin());
+            authorId = taskComments.getAccount().getId();
         }
-
         return new TaskCommentResponseDTO(
-            taskComments.getId(), 
-            taskComments.getComment(), 
-            type, 
-            authorName, 
-            authorId
-        );
+                taskComments.getId(),
+                taskComments.getComment(),
+                type,
+                authorName,
+                authorId);
     }
 }

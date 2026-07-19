@@ -44,21 +44,21 @@ public class GroupTaskService {
 
     private final SseController sseController;
 
-    @Cacheable(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#creatorGroupId.toString() + ':' + #executorGroupId.toString()", condition = "#isActive == true", sync = true)
+    @Cacheable(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#creatorGroupId.toString() + ':' + #intendedGroupId.toString()", condition = "#isActive == true", sync = true)
     @Transactional(readOnly = true)
-    public List<GroupTaskResponseDTO> getByGroups(Integer creatorGroupId, Integer executorGroupId, Boolean isActive,
+    public List<GroupTaskResponseDTO> getByGroups(Integer creatorGroupId, Integer intendedGroupId, Boolean isActive,
             AppUserDetails currentUser) {
         
         UserGroup creatorGroup = userGroupRepository.findById(creatorGroupId).orElseThrow(() -> new GroupTaskNotFoundException(creatorGroupId));
         creatorGroup.setExtensionNumber(null);
         boolean creatorGroupExists = creatorGroup != null ? true : false;
-        boolean executorGroupExists = userGroupRepository.existsById(executorGroupId);
+        boolean intendedGroupExists = userGroupRepository.existsById(intendedGroupId);
 
-        if (!(creatorGroupExists && executorGroupExists)) {
+        if (!(creatorGroupExists && intendedGroupExists)) {
             throw new GroupUserNotFoundException("Группа не найдена!");
         }
 
-        return groupTaskRepository.findByGroupsAndActive(creatorGroupId, executorGroupId, isActive).stream()
+        return groupTaskRepository.findByGroupsAndIsActive(creatorGroupId, intendedGroupId, isActive).stream()
                 .map(GroupTaskResponseDTO::from).toList();
 
     }
@@ -74,34 +74,34 @@ public class GroupTaskService {
         return GroupTaskResponseDTO.from(groupTask);
     }
 
-    @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#result.creatorGroup.id.toString() + ':' + #result.executorGroup.id.toString()")
+    @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#result.creatorGroup.id.toString() + ':' + #result.intendedGroup.id.toString()")
     @Transactional
     public GroupTaskResponseDTO create(GroupTaskRequestDTO dto, AppUserDetails currentUser) {
 
-        groupTaskSecurityService.validateGroupVisibility(dto.creatorGroupId(), dto.executorGroupId());
+        groupTaskSecurityService.validateGroupVisibility(dto.creatorGroupId(), dto.intendedGroupId());
 
         UserGroup creatorGroup = userGroupRepository.findById(dto.creatorGroupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.creatorGroupId()));
 
-        UserGroup executorGroup = userGroupRepository.findById(dto.executorGroupId())
-                .orElseThrow(() -> new GroupUserNotFoundException(dto.executorGroupId()));
+        UserGroup intendedGroup = userGroupRepository.findById(dto.intendedGroupId())
+                .orElseThrow(() -> new GroupUserNotFoundException(dto.intendedGroupId()));
 
         groupTaskSecurityService.validateCanWorkGroupTask(currentUser, creatorGroup);
 
         String cleanName = typeNameValidator.getCleanName(dto.name());
-        validateGroupTaskName(cleanName, creatorGroup.getId(), executorGroup.getId());
+        validateGroupTaskName(cleanName, creatorGroup.getId(), intendedGroup.getId());
 
         GroupTask saved = groupTaskRepository.save(GroupTask.builder()
                 .name(cleanName)
                 .creatorGroup(creatorGroup)
-                .executorGroup(executorGroup)
+                .intendedGroup(intendedGroup)
                 .build());
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    var signal = new SseEventNames.GroupTaskSignalDTO(creatorGroup.getId(), executorGroup.getId(),
+                    var signal = new SseEventNames.GroupTaskSignalDTO(creatorGroup.getId(), intendedGroup.getId(),
                             SseSignalTypes.CREATED);
                     sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
                 }
@@ -116,7 +116,7 @@ public class GroupTaskService {
             Boolean confirm) {
         GroupTask upGroup = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
-        String oldCacheKey = upGroup.getCreatorGroup().getId() + ":" + upGroup.getExecutorGroup().getId();
+        String oldCacheKey = upGroup.getCreatorGroup().getId() + ":" + upGroup.getIntendedGroup().getId();
 
         boolean nameChange = false;
         boolean groupsChange = false;
@@ -128,18 +128,18 @@ public class GroupTaskService {
             groupsChange = true;
         }
 
-        if (dto.executorGroupId() != null
-                && !Objects.equals(dto.executorGroupId(), upGroup.getExecutorGroup().getId())) {
-            UserGroup executorGroup = userGroupRepository.findById(dto.executorGroupId())
-                    .orElseThrow(() -> new GroupUserNotFoundException(dto.executorGroupId()));
-            upGroup.setExecutorGroup(executorGroup);
+        if (dto.intendedGroupId() != null
+                && !Objects.equals(dto.intendedGroupId(), upGroup.getIntendedGroup().getId())) {
+            UserGroup intendedGroup = userGroupRepository.findById(dto.intendedGroupId())
+                    .orElseThrow(() -> new GroupUserNotFoundException(dto.intendedGroupId()));
+            upGroup.setIntendedGroup(intendedGroup);
             groupsChange = true;
         }
 
         if (dto.name() != null) {
             String cleanName = typeNameValidator.getCleanName(dto.name());
             if (!Objects.equals(cleanName, upGroup.getName())) {
-                validateGroupTaskName(cleanName, upGroup.getCreatorGroup().getId(), upGroup.getExecutorGroup().getId());
+                validateGroupTaskName(cleanName, upGroup.getCreatorGroup().getId(), upGroup.getIntendedGroup().getId());
                 upGroup.setName(cleanName);
                 nameChange = true;
             }
@@ -160,7 +160,7 @@ public class GroupTaskService {
 
         if (hasChange && TransactionSynchronizationManager.isSynchronizationActive()) {
             final GroupTaskResponseDTO finalResponse = response;
-            final String newCacheKey = upGroup.getCreatorGroup().getId() + ":" + upGroup.getExecutorGroup().getId();
+            final String newCacheKey = upGroup.getCreatorGroup().getId() + ":" + upGroup.getIntendedGroup().getId();
             final Integer groupTaskId = upGroup.getId();
 
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -231,7 +231,7 @@ public class GroupTaskService {
         groupTaskRepository.deleteById(id);
 
         String cachekey = deletedGroupTask.getCreatorGroup().getId().toString() + ':' +
-                deletedGroupTask.getExecutorGroup().getId().toString();
+                deletedGroupTask.getIntendedGroup().getId().toString();
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -243,7 +243,7 @@ public class GroupTaskService {
                     cacheManager.getCache(CacheNames.WORK_TYPES_BY_GROUP).evict(id);
 
                     var signal = new SseEventNames.GroupTaskSignalDTO(deletedGroupTask.getCreatorGroup().getId(),
-                            deletedGroupTask.getExecutorGroup().getId(),
+                            deletedGroupTask.getIntendedGroup().getId(),
                             SseSignalTypes.DELETED);
                     sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
                 }
@@ -251,9 +251,9 @@ public class GroupTaskService {
         }
     }
 
-    private void validateGroupTaskName(String cleanName, Integer creatorGroupId, Integer executorGroupId) {
-        if (groupTaskRepository.existsByNameAndCreatorGroupIdAndExecutorGroupId(cleanName, creatorGroupId,
-                executorGroupId)) {
+    private void validateGroupTaskName(String cleanName, Integer creatorGroupId, Integer intendedGroupId) {
+        if (groupTaskRepository.existsByNameAndCreatorGroupIdAndIntendedGroupId(cleanName, creatorGroupId,
+                intendedGroupId)) {
             throw new DublicateGroupTaskException(cleanName);
         }
     }
