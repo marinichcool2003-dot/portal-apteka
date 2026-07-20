@@ -8,12 +8,13 @@ import lombok.Getter;
 @AllArgsConstructor
 @Getter
 public enum TaskStatus {
-    OPEN("OPEN", "Открыта"),
-    CLOSED("CLOSED", "Закрыта"),
-    DENIED("DENIED", "Отклонена"),
-    PROCESSED("PROCESSED", "В процессе");
+    OPEN("OPEN", "Открыта", "Задача открыта"),
+    CLOSED("CLOSED", "Закрыта", "Задача выполнена"),
+    DENIED("DENIED", "Отклонена", "Задача отклонена"),
+    PROCESSED("PROCESSED", "В процессе", "Задача в процессе выполнения");
 
     private final String code;
+    private final String name;
     private final String description;
 
     public static TaskStatus fromCode(String code) {

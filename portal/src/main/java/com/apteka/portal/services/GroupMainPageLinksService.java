@@ -61,7 +61,7 @@ public class GroupMainPageLinksService {
             savedBuilder.description(cleanDescription);
         }
 
-        GroupMainPageLinks saved = groupMainPageLinksRepository.save(savedBuilder.build());
+        GroupMainPageLinks saved = groupMainPageLinksRepository.save(savedBuilder.isActive(true).build());
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

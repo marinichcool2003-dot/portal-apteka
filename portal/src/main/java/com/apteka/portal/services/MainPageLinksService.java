@@ -75,7 +75,7 @@ public class MainPageLinksService {
         validateLink(cleanLink);
 
         MainPageLink savedLink = mainPageLinkRepository
-                .save(MainPageLink.builder().name(cleanName).link(cleanLink).groupMainPageLinks(group).build());
+                .save(MainPageLink.builder().name(cleanName).link(cleanLink).groupMainPageLinks(group).isActive(true).build());
         Integer groupmainPageLinkId = savedLink.getGroupMainPageLinks().getId();
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {

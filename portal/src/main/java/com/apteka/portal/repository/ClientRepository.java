@@ -15,34 +15,64 @@ import com.apteka.portal.models.Client;
 
 public interface ClientRepository extends JpaRepository<Client, UUID> {
 
-    @EntityGraph(attributePaths = { "account", "account.userGroup" })
-    @Query(value = "SELECT c FROM Client c WHERE c.account.isActive = :isActive", countQuery = "SELECT count(c) FROM Client c WHERE c.account.isActive = :isActive")
+    @Query(value = """
+            SELECT c FROM Client c
+            JOIN FETCH c.account acc
+            JOIN FETCH acc.userGroup ug 
+            WHERE ((:isActive = true AND acc.isActive = true AND ug.isActive = true) OR (:isActive = false AND (acc.isActive = false OR ug.isActive = false)))
+            """, 
+            countQuery = "SELECT count(c) FROM Client c JOIN c.account acc JOIN acc.userGroup ug WHERE ((:isActive = true AND acc.isActive = true AND ug.isActive = true) OR (:isActive = false AND (acc.isActive = false OR ug.isActive = false)))")
     Page<Client> findAll(Pageable pageable, @Param("isActive") boolean isActive);
 
-    @Query("SELECT c FROM Client c JOIN FETCH c.account acc WHERE acc.login = :login AND acc.isActive = :isActive")
-    Optional<Client> findByLogin(@Param("login") String login, @Param("isActive") boolean isActive);
-
-    @EntityGraph(attributePaths = { "account", "account.userGroup" })
     @Query("""
             SELECT c FROM Client c
-            LEFT JOIN c.account acc
-            LEFT JOIN acc.userGroup ug
-            WHERE acc.isActive = :isActive
+            JOIN FETCH c.account acc
+            JOIN FETCH acc.userGroup ug
+            WHERE acc.login = :login
+            AND (
+                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
+                OR
+                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
+            )
+            """)
+    Optional<Client> findByLogin(@Param("login") String login, @Param("isActive") boolean isActive);
+
+    @Query("""
+            SELECT c FROM Client c
+            JOIN FETCH c.account acc
+            JOIN FETCH acc.userGroup ug
+            WHERE (
+                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
+                OR
+                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
+            )
             AND ug.id = :groupId
                 """)
-    Page<Client> findByUserGroupId(@Param("groupId") Integer groupId, @Param("isActive") boolean isActive, Pageable pageable);
+    Page<Client> findByUserGroupId(@Param("groupId") Integer groupId, @Param("isActive") boolean isActive,
+            Pageable pageable);
 
-    @EntityGraph(attributePaths = {"account", "account.userGroup"})
-    @Query("SELECT c FROM Client c WHERE c.account.userGroup.id = :userGroupId AND c.account.isActive = :isActive")
-    List<Client> findByUserGroupId(@Param("userGroupId") Integer userGroupId, boolean isActive);
+    @Query("""
+            SELECT c FROM Client c
+            JOIN FETCH c.account acc
+            JOIN FETCH acc.userGroup ug
+            WHERE ug.id = :userGroupId 
+            AND (
+                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
+                OR
+                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
+            )
+            """)
+    List<Client> findByUserGroupId(@Param("userGroupId") Integer userGroupId, @Param("isActive") boolean isActive);
 
-    @EntityGraph(attributePaths = { "account", "account.userGroup" })
     @Query(value = """
             SELECT DISTINCT c FROM Client c
-            LEFT JOIN c.account acc
-            LEFT JOIN acc.userGroup ug
-            LEFT JOIN acc.actions act
-            WHERE acc.isActive = :isActive
+            JOIN FETCH c.account acc
+            JOIN FETCH acc.userGroup ug
+            WHERE (
+                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
+                OR
+                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
+            )
             AND (:login IS NULL OR acc.login = :login)
             AND (:phoneNumber IS NULL OR acc.phoneNumber = :phoneNumber)
             AND (:groupId IS NULL OR ug.id = :groupId)
@@ -50,9 +80,13 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
             AND (:extensionNumber IS NULL OR c.extensionNumber = :extensionNumber)
             """, countQuery = """
             SELECT COUNT(DISTINCT c) FROM Client c
-            LEFT JOIN c.account acc
-            LEFT JOIN acc.userGroup ug
-            WHERE acc.isActive = :isActive
+            JOIN c.account acc
+            JOIN acc.userGroup ug
+            WHERE (
+                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
+                OR
+                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
+            )
             AND (:login IS NULL OR acc.login = :login)
             AND (:phoneNumber IS NULL OR acc.phoneNumber = :phoneNumber)
             AND (:groupId IS NULL OR ug.id = :groupId)

@@ -4,8 +4,6 @@ import java.time.Instant;
 import java.util.Set;
 
 import org.hibernate.annotations.DynamicInsert;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -65,11 +63,8 @@ public class Task {
     @Column(name = "updated_date")
     private Instant updatedDate;
 
-    @Setter(AccessLevel.NONE)
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @ToString.Include
+    @Column(name = "status", nullable = false, length = 20)
     private TaskStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)

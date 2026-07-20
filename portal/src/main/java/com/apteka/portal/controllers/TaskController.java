@@ -43,7 +43,7 @@ public class TaskController {
     private final TaskService taskService;
 
     @Operation(summary = "Получить весь список задач (Только ADMIN, BOSS)")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BOSS')")
+    @PreAuthorize("@security.hasAnyRole('ADMIN', 'BOSS')")
     @GetMapping
     public ResponseEntity<Page<TaskShortResponseDTO>> getAll(Pageable pageable) {
         return ResponseEntity.ok(taskService.getAll(pageable));
@@ -118,7 +118,7 @@ public class TaskController {
     }
 
     @Operation(summary = "Получить задачи по всем возможным фильтрам (Только для ADMIN)")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@security.hasRole('ADMIN')")
     @GetMapping("/full-filter")
     public ResponseEntity<Page<TaskShortResponseDTO>> getDepartamentTaskWithFilters(
             @ParameterObject @Valid @ModelAttribute DepartmentFullFilterRequestDTO dto, Pageable pageable) {

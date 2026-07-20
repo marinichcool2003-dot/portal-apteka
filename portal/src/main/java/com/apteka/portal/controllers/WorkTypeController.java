@@ -54,7 +54,7 @@ public class WorkTypeController {
     }
 
     @Operation(summary = "Создать новый вид работы")
-    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE') or @security.hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<WorkTypeResponseDTO> create(@Valid @RequestBody WorkTypeRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -63,7 +63,7 @@ public class WorkTypeController {
     }
 
     @Operation(summary = "Обновить вид работы")
-    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE', 'NON_SAFE_UPDATE_WORK_TYPE') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE', 'NON_SAFE_UPDATE_WORK_TYPE') or @security.hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<WorkTypeResponseDTO> update(@PathVariable Integer id,
             @Valid @RequestBody WorkTypeUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser,
@@ -72,7 +72,7 @@ public class WorkTypeController {
     }
 
     @Operation(summary = "Безопасно удалить вид работы")
-    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE') or @security.hasRole('ADMIN')")
     @PatchMapping("/safe-delete/{id}")
     public ResponseEntity<Void> safeDelete(@PathVariable Integer id,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -81,7 +81,7 @@ public class WorkTypeController {
     }
 
     @Operation(summary = "Восстановить вид работы")
-    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAnyAction('BASE_WORK_WITH_WORK_TYPE', 'GRAND_WORK_WITH_WORK_TYPE') or @security.hasRole('ADMIN')")
     @PatchMapping("/restore/{id}")
     public ResponseEntity<Void> restore(@PathVariable Integer id,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -90,7 +90,7 @@ public class WorkTypeController {
     }
 
     @Operation(summary = "Безвозвратно удалить вид работы")
-    @PreAuthorize("hasAction('CAN_PERMANENT_DELETE_WORK_TYPE') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('CAN_PERMANENT_DELETE_WORK_TYPE') or @security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> permanentDelete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser, @RequestParam(defaultValue = "false") Boolean confirm) {
         workTypeService.permanentDelete(id, currentUser, confirm);

@@ -1,21 +1,4 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
--- =========================================================================
--- ТИПЫ ДАННЫХ (ENUMS)
--- =========================================================================
-CREATE TYPE task_status AS ENUM (
-    'OPEN',
-    'CLOSED',
-    'DENIED',
-    'PROCESSED'
-);
-
-CREATE TYPE task_priority AS ENUM (
-    'LOW',
-    'MIDDLE',
-    'HIGH'
-);
-
 -- =========================================================================
 -- ТАБЛИЦЫ СТРУКТУРЫ И ГРУПП
 -- =========================================================================
@@ -26,6 +9,7 @@ CREATE TABLE IF NOT EXISTS group_user (
     internal_number VARCHAR(20),
     extension_number VARCHAR(20),
     avatar_url VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),
     is_active BOOLEAN DEFAULT true
@@ -43,6 +27,7 @@ CREATE TABLE IF NOT EXISTS group_task (
     creator_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
     executor_group_id INT NOT NULL REFERENCES group_user(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),
     is_active BOOLEAN DEFAULT true,
@@ -52,10 +37,11 @@ CREATE TABLE IF NOT EXISTS group_task (
 CREATE TABLE IF NOT EXISTS work_type (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    priority task_priority NOT NULL DEFAULT 'LOW',
+    priority VARCHAR(20) NOT NULL DEFAULT 'LOW',
     wiki_link VARCHAR(2048),
     comment_for_creator VARCHAR(1024),
     group_task_id INT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),
     is_active BOOLEAN DEFAULT true
@@ -88,6 +74,7 @@ CREATE TABLE IF NOT EXISTS apteka (
     number INT NOT NULL,
     address_id BIGINT,
     created_by VARCHAR(50),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)
 );
@@ -106,6 +93,7 @@ CREATE TABLE IF NOT EXISTS client (
     extension_number VARCHAR(20),
     avatar_url VARCHAR(255),
     created_by VARCHAR(50),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)
 );
@@ -117,10 +105,10 @@ CREATE TABLE IF NOT EXISTS task (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     description VARCHAR(255) NOT NULL,
-    creation_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    creation_date TIMESTAMPTZ DEFAULT NOW(),
     closing_date TIMESTAMPTZ,
     updated_date TIMESTAMPTZ,
-    status task_status NOT NULL DEFAULT 'OPEN', 
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN', 
     work_type_id INT NOT NULL, 
     creator_id UUID NOT NULL,
     assigner_id UUID 
@@ -148,7 +136,7 @@ CREATE TABLE IF NOT EXISTS news (
     news_text TEXT NOT NULL,
     author_id UUID,
     group_user_id INT NOT NULL,
-    creation_date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    creation_date TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50)
 );
@@ -157,6 +145,7 @@ CREATE TABLE IF NOT EXISTS groups_main_page_links (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     description VARCHAR(100),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),
     is_active BOOLEAN DEFAULT true
@@ -167,6 +156,7 @@ CREATE TABLE IF NOT EXISTS main_page_links (
     name VARCHAR(50) NOT NULL,
     link VARCHAR(2048) NOT NULL,
     group_link_id INT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),
     is_active BOOLEAN DEFAULT true

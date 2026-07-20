@@ -8,11 +8,12 @@ import lombok.Getter;
 @AllArgsConstructor
 @Getter
 public enum TaskPriority {
-    LOW("LOW", "Низкий"),
-    MIDDLE("MIDDLE", "Средний"),
-    HIGH("HIGH", "Высокий");
+    LOW("LOW", "Низкий", "У задачи низкий приоритет"),
+    MIDDLE("MIDDLE", "Средний", "У задачи средний приоритет"),
+    HIGH("HIGH", "Высокий", "У задачи высокий приоритет");
 
     private final String code;
+    private final String name;
     private final String description;
 
     public static TaskPriority fromCode(String code) {

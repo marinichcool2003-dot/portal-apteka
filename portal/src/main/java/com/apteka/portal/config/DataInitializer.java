@@ -38,7 +38,7 @@ public class DataInitializer implements CommandLineRunner {
 
         if (!userGroupRepository.existsByName(adminGroupName)) {
             log.info("Группа администраторов не найдена. Запуск процесса создания...");
-            adminGroup = UserGroup.builder().name(adminGroupName).build();
+            adminGroup = UserGroup.builder().name(adminGroupName).isActive(true).build();
             userGroupRepository.save(adminGroup);
         } else {
             adminGroup = userGroupRepository.findByName(adminGroupName)
@@ -57,6 +57,7 @@ public class DataInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode(adminPassword))
                     .userGroup(adminGroup)
                     .userRole(UserRole.ADMIN)
+                    .isActive(true)
                     .client(admin)
                     .build();
             

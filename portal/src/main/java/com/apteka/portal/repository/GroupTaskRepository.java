@@ -15,12 +15,14 @@ public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
             SELECT EXISTS(
                 SELECT 1
                 FROM GroupTask gt
+                LEFT JOIN gt.creatorGroup cg
+                LEFT JOIN gt.intendedGroup ig
                 WHERE gt.name = :name
-                    AND gt.intendedGroup.id = :intendedGroupId
-                    AND gt.isActive = true
+                    AND ig.id = :intendedGroupId
+                    AND (gt.isActive = true AND cg.isActive = true AND ig.isActive = true)
             )
             """)
-    boolean existsByNameAndExecutorGroupIdAndActive(@Param("name") String name, @Param("intendedGroupId") Integer intendedGroupId);
+    boolean existsByNameAndIntendedGroupIdAndActive(@Param("name") String name, @Param("intendedGroupId") Integer intendedGroupId);
 
     @Override
     @EntityGraph(attributePaths = { "creatorGroup", "intendedGroup" })
@@ -28,9 +30,16 @@ public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
 
     @Query("""
             SELECT gt FROM GroupTask gt
-            WHERE gt.creatorGroup.id = :creatorGroupId
-            AND gt.intendedGroup.id = :intendedGroupId
-            AND gt.isActive = :isActive
+            LEFT JOIN gt.creatorGroup cg
+            LEFT JOIN gt.intendedGroup ig
+            WHERE cg.id = :creatorGroupId
+            AND ig.id = :intendedGroupId
+            AND (
+                (:isActive = true AND gt.isActive = true AND cg.isActive = true AND ig.isActive = true)
+                OR
+                (:isActive = false AND (gt.isActive = false OR cg.isActive = false OR ig.isActive = false))
+            )
+            ORDER BY cg.id, gt.id, gt.name
             """)
     List<GroupTask> findByGroupsAndIsActive(@Param("creatorGroupId") Integer creatorGroupId, @Param("intendedGroupId") Integer intendedGroupId, @Param("isActive") boolean isActive);
 

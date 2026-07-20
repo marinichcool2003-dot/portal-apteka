@@ -2,7 +2,7 @@ package com.apteka.portal.dtos.response.apteka;
 
 import java.util.UUID;
 
-import com.apteka.portal.models.Adress;
+import com.apteka.portal.models.Address;
 
 public record AdressResponseDTO(
     String city,
@@ -10,7 +10,7 @@ public record AdressResponseDTO(
     String house,
     UUID fiasId
 ) {
-    public static AdressResponseDTO from(Adress adress) {
+    public static AdressResponseDTO from(Address adress) {
         return new AdressResponseDTO(
             adress.getCity(),
             adress.getStreet(),

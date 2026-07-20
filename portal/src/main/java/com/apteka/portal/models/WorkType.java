@@ -2,9 +2,6 @@ package com.apteka.portal.models;
 
 import java.time.Instant;
 
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -39,8 +36,7 @@ public class WorkType {
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "priority", nullable = false)
+    @Column(name = "priority", nullable = false, length = 20)
     private TaskPriority priority;
 
     @Column(name = "wiki_link", length = 2048)
@@ -48,6 +44,9 @@ public class WorkType {
 
     @Column(name = "comment_for_creator", length = 1024)
     private String commentForCreator;
+
+    @Column(name = "created_at")
+    private Instant createdAt;
 
     @Column(name = "updated_at")
     private Instant updatedAt;

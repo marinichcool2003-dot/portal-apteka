@@ -41,6 +41,9 @@ public class GroupTask {
     @Column(name = "updated_by")
     private String updatedBy;
 
+    @Column(name = "created_at")
+    private Instant createdAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creator_group_id", nullable = false)
     private UserGroup creatorGroup;

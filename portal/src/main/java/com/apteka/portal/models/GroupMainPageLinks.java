@@ -32,6 +32,9 @@ public class GroupMainPageLinks {
 
     @Column(name = "description", nullable = true)
     private String description;
+
+    @Column(name = "created_at")
+    private Instant createdAt;
     
     @Column(name = "updated_at")
     private Instant updatedAt;

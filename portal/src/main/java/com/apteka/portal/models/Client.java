@@ -49,6 +49,9 @@ public class Client{
     @Column(name = "created_by", length = 50)
     private String createdBy;
 
+    @Column(name = "created_at")
+    private Instant createdAt;
+
     @Column(name = "updated_at")
     private Instant updatedAt;
 

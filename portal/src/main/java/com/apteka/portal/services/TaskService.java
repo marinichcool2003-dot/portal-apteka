@@ -2,11 +2,13 @@ package com.apteka.portal.services;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ import org.springframework.util.StringUtils;
 
 import com.apteka.portal.components.TaskAuditService;
 import com.apteka.portal.components.servicesecurity.TaskSecurityService;
+import com.apteka.portal.components.validators.SortingValidator;
 import com.apteka.portal.components.validators.TypeNameValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
@@ -57,10 +60,32 @@ public class TaskService {
     private final TypeNameValidator typeNameValidator;
     private final SseController sseController;
     private final AccountRepository accountRepository;
+    private final SortingValidator sortingValidator;
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "creationDate",
+            "updatedDate",
+            "closingDate",
+            "status",
+            "workType.name",
+            "workType.priority",
+            "workType.groupTask.name",
+            "workType.groupTask.creatorGroup.id",
+            "workType.groupTask.intendedGroup.id",
+            "creator.userGroup.id",
+            "assigner.userGroup.id");
+
+    private static final Sort DEFAULT_SORT = Sort.by(
+            Sort.Order.asc("creationDate"));
+
+    
 
     @Transactional(readOnly = true)
     public Page<TaskShortResponseDTO> getAll(Pageable pageable) {
-        return taskRepository.findAll(pageable)
+
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
+
+        return taskRepository.findAll(validatedPageable)
                 .map(TaskShortResponseDTO::from);
     }
 
@@ -80,7 +105,8 @@ public class TaskService {
     @Transactional(readOnly = true)
     public Page<TaskShortResponseDTO> getDepartmentTaskWithFilters(DepartamentTaskWithFiltersDTO dto,
             Pageable pageable) {
-        return fetchAndMapTasks(dto, pageable);
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
+        return fetchAndMapTasks(dto, validatedPageable);
     }
 
     @Cacheable(value = CacheNames.GROUPS_USER_STATS, sync = true)
@@ -99,29 +125,33 @@ public class TaskService {
     @Transactional(readOnly = true)
     public Page<TaskShortResponseDTO> getMyDepartmentTasks(DepartamentTaskWithFiltersDTO dto,
             AppUserDetails currentUser, Pageable pageable) {
+                
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
         var dtoBuilder = dto.toBuilder();
         dtoBuilder.assignerId(currentUser.getInternalId());
         dtoBuilder.creatorId(null);
 
-        return fetchAndMapTasks(dtoBuilder.build(), pageable);
+        return fetchAndMapTasks(dtoBuilder.build(), validatedPageable);
     }
 
     @Transactional(readOnly = true)
     public Page<TaskShortResponseDTO> getCreatedMeTasks(DepartamentTaskWithFiltersDTO dto, AppUserDetails currentUser,
             Pageable pageable) {
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
         var dtoBuilder = dto.toBuilder();
         dtoBuilder.creatorId(currentUser.getInternalId());
         dtoBuilder.assignerId(null);
-        return fetchAndMapTasks(dtoBuilder.build(), pageable);
+        return fetchAndMapTasks(dtoBuilder.build(), validatedPageable);
     }
 
     private Page<TaskShortResponseDTO> fetchAndMapTasks(DepartamentTaskWithFiltersDTO dto, Pageable pageable) {
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
         Specification<Task> specification = TaskSpecifications.getTaskWithFilters(dto);
 
-        Page<Task> taskPage = taskRepository.findAll(specification, pageable);
+        Page<Task> taskPage = taskRepository.findAll(specification, validatedPageable);
 
         if (taskPage.isEmpty()) {
-            return Page.empty(pageable);
+            return Page.empty(validatedPageable);
         }
         return taskPage.map(TaskShortResponseDTO::from);
     }

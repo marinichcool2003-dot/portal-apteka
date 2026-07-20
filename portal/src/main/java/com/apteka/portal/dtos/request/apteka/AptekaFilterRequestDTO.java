@@ -6,5 +6,7 @@ public record AptekaFilterRequestDTO(
         String login,
         @Positive(message = "Номер группы может быть только положительным числом") Integer groupId,
         @Positive(message = "Номер аптеки может быть только положительным числом") Integer number,
-        String phoneNumber) {
+        String phoneNumber,
+        String city,
+        String street) {
 }

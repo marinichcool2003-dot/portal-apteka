@@ -127,6 +127,7 @@ public class GroupTaskService {
                 .name(cleanName)
                 .creatorGroup(creatorGroup)
                 .intendedGroup(intendedGroup)
+                .isActive(true)
                 .build());
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {

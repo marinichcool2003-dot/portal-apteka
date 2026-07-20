@@ -2,10 +2,12 @@ package com.apteka.portal.services;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,7 @@ import com.apteka.portal.components.servicesecurity.AptekaSecurityService;
 import com.apteka.portal.components.validators.LoginValidator;
 import com.apteka.portal.components.validators.PasswordValidator;
 import com.apteka.portal.components.validators.PhoneNumberValidator;
+import com.apteka.portal.components.validators.SortingValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.AptekaUpdateRequestDTO;
 import com.apteka.portal.dtos.request.apteka.AdressRequestDTO;
@@ -32,7 +35,7 @@ import com.apteka.portal.exceptions.DuplicateAptekaLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
 import com.apteka.portal.models.Account;
-import com.apteka.portal.models.Adress;
+import com.apteka.portal.models.Address;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Apteka;
 import com.apteka.portal.models.SseEventNames;
@@ -56,13 +59,28 @@ public class AptekaService {
     private final PhoneNumberValidator phoneNumberValidator;
     private final AptekaSecurityService aptekaSecurityService;
     private final AccountRepository accountRepository;
-
     private final SseController sseController;
+    private final SortingValidator sortingValidator;
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "number",
+            "address.city",
+            "address.street",
+            "account.userGroup.id",
+            "createdAt",
+            "updatedAt",
+            "account.login",
+            "account.phoneNumber");
+
+    private static final Sort DEFAULT_SORT = Sort.by(
+            Sort.Order.asc("account.userGroup.id"),
+            Sort.Order.asc("number"));
 
     @Transactional(readOnly = true)
     public Page<AptekaResponseDTO> getAll(Pageable pageable, boolean isActive, AppUserDetails currentUser) {
         aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
-        return aptekaRepository.findAll(isActive, pageable).map(AptekaResponseDTO::from);
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
+        return aptekaRepository.findAll(isActive, validatedPageable).map(AptekaResponseDTO::from);
     }
 
     @Transactional(readOnly = true)
@@ -77,8 +95,15 @@ public class AptekaService {
     public Page<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto, Pageable pageable, boolean isActive,
             AppUserDetails currentUser) {
         aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
-        return aptekaRepository.filter(dto.login(), dto.groupId(), dto.number(), dto.phoneNumber(), isActive, pageable)
-                .map(AptekaResponseDTO::from);
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
+        return aptekaRepository.filter(dto.login(),
+                dto.groupId(),
+                dto.number(),
+                dto.phoneNumber(),
+                isActive,
+                dto.city(),
+                dto.street(),
+                validatedPageable).map(AptekaResponseDTO::from);
     }
 
     @Transactional
@@ -93,12 +118,12 @@ public class AptekaService {
         validateAptekaNumberInGroup(dto.number(), dto.groupId());
         String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
 
-        Adress address = Adress.builder()
-            .city(dto.adressRequestDTO().city())
-            .street(dto.adressRequestDTO().street())
-            .house(dto.adressRequestDTO().house())
-            .fiasId(dto.adressRequestDTO().fiasId())
-            .build();
+        Address address = Address.builder()
+                .city(dto.adressRequestDTO().city())
+                .street(dto.adressRequestDTO().street())
+                .house(dto.adressRequestDTO().house())
+                .fiasId(dto.adressRequestDTO().fiasId())
+                .build();
 
         Apteka apteka = Apteka.builder()
                 .number(dto.number())
@@ -346,7 +371,7 @@ public class AptekaService {
         boolean hasChange = false;
 
         AdressRequestDTO adressRequestDTO = dto.adressRequestDTO();
-        Adress adress = apteka.getAddress();
+        Address adress = apteka.getAddress();
 
         if (StringUtils.hasText(adressRequestDTO.city())) {
             if (!Objects.equals(adressRequestDTO.city(), adress.getCity())) {

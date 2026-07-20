@@ -1,7 +1,6 @@
 package com.apteka.portal.models;
 
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 
 import jakarta.persistence.CascadeType;
@@ -42,16 +41,19 @@ public class Apteka {
     @JoinColumn(name = "id")
     private Account account;
 
-    public Set<UserRole> getRoles() {
-        return Set.of(UserRole.APTEKA);
+    public UserRole getRole() {
+        return UserRole.APTEKA;
     }
 
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "address_id")
-    private Adress address;
+    private Address address;
 
     @Column(name = "created_by", length = 50)
     private String createdBy;
+
+    @Column(name = "created_at")
+    private Instant createdAt;
 
     @Column(name = "updated_at")
     private Instant updatedAt;

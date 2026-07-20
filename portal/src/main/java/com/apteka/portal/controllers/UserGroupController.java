@@ -56,7 +56,7 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Создать новую группу пользователей")
-    @PreAuthorize("hasAction('CAN_CREATE_USER_GROUP') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('CAN_CREATE_USER_GROUP') or @security.hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<UserGroupResponseDTO> create(@Valid @RequestBody UserGroupRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
@@ -65,7 +65,7 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Обновить группу пользователей")
-    @PreAuthorize("hasAnyAction('CAN_UPDATE_SELF_USER_GROUP', 'CAN_UPDATE_USER_GROUP') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAnyAction('CAN_UPDATE_SELF_USER_GROUP', 'CAN_UPDATE_USER_GROUP') or @security.hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<UserGroupResponseDTO> update(@PathVariable Integer id,
             @Valid @RequestBody UserGroupUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser)
@@ -74,7 +74,7 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Безопасное удаление группы пользователей")
-    @PreAuthorize("hasAction('SAFE_DELETE_USER_GROUP') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('SAFE_DELETE_USER_GROUP') or @security.hasRole('ADMIN')")
     @PatchMapping("/safe-delete/{id}")
     public ResponseEntity<Void> safeDelete(@PathVariable Integer id,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -83,7 +83,7 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Восстановление после безопасного удаления")
-    @PreAuthorize("hasAction('CAN_ACTIVATE_USER_GROUP_AFTER_SAFE_DELETE') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('CAN_ACTIVATE_USER_GROUP_AFTER_SAFE_DELETE') or @security.hasRole('ADMIN')")
     @PatchMapping("/restore/{id}")
     public ResponseEntity<Void> restoreAfterSafeDelete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         userGroupService.restoreAfterSafeDelete(id, currentUser);
@@ -91,7 +91,7 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Безвозвратное удаление группы пользователей")
-    @PreAuthorize("hasAction('PERMANENT_DELETE_USER_GROUP') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('PERMANENT_DELETE_USER_GROUP') or @security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser,
             @RequestParam(defaultValue = "false") Boolean confirm) {

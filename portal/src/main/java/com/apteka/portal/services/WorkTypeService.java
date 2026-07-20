@@ -125,7 +125,7 @@ public class WorkTypeService {
             workTypeBuilder.commentForCreator(dto.commentForCreator());
         }
 
-        WorkType newWorkType = workTypeRepository.save(workTypeBuilder.build());
+        WorkType newWorkType = workTypeRepository.save(workTypeBuilder.isActive(true).build());
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

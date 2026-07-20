@@ -37,7 +37,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
             if (currentRequests != null && currentRequests > 5) {
                 response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                 response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"error\": \"Too many login attempts. Try again in a minute.\"}");
+                response.getWriter().write("{\"error\": \"Слишком много попыток входа. Повторите попытку позже.\"}");
                 return;
             }
         }

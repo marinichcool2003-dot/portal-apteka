@@ -45,7 +45,7 @@ public class NewsController {
     }
 
     @Operation(summary = "Создать новость")
-    @PreAuthorize("hasAnyAction('NEWS_WORK', 'NEWS_WORK_ALL_GROUPS') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAnyAction('NEWS_WORK', 'NEWS_WORK_ALL_GROUPS') or @security.hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<NewsResponseDTO> create(@RequestBody NewsRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -53,14 +53,14 @@ public class NewsController {
     }
 
     @Operation(summary = "Обновить новость")
-    @PreAuthorize("hasAnyAction('UPDATE_ALL_NEWS_IN_GROUP', 'UPDATE_ALL_NEWS_CREATE_GROUP', 'UPDATE_ALL_NEWS') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAnyAction('UPDATE_ALL_NEWS_IN_GROUP', 'UPDATE_ALL_NEWS_CREATE_GROUP', 'UPDATE_ALL_NEWS') or @security.hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<NewsResponseDTO> update(@PathVariable Integer id,  @RequestBody NewsUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(newsService.update(id, dto, currentUser));
     }
 
     @Operation(summary = "Удалить новость")
-    @PreAuthorize("hasAnyAction('DELETE_ALL_NEWS_CREATE_GROUP', 'DELETE_ALL_NEWS_IN_GROUP', 'DELETE_ALL_NEWS') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAnyAction('DELETE_ALL_NEWS_CREATE_GROUP', 'DELETE_ALL_NEWS_IN_GROUP', 'DELETE_ALL_NEWS') or @security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         newsService.delete(id, currentUser);

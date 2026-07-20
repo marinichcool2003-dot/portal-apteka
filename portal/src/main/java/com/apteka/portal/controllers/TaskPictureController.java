@@ -17,10 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.apteka.portal.docs.taskpicture.TaskPictureCreateOperation;
-import com.apteka.portal.docs.taskpicture.TaskPictureGetOperation;
-import com.apteka.portal.docs.taskpicture.TaskPictureNotFoundResponse;
-import com.apteka.portal.docs.taskpicture.TaskPictureValidationErrorResponse;
 import com.apteka.portal.dtos.response.TaskPictureResponseDTO;
 import com.apteka.portal.services.TaskPictureService;
 
@@ -38,9 +34,6 @@ public class TaskPictureController {
 
     @Operation(summary = "Загрузка картинки")
     @PostMapping(value = "/upload-to-task/{taskId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @TaskPictureCreateOperation
-    @TaskPictureValidationErrorResponse
-    @TaskPictureNotFoundResponse
     public ResponseEntity<TaskPictureResponseDTO> uploadPicture(
             @PathVariable Long taskId,
             @RequestParam("file") MultipartFile file) throws IOException {
@@ -51,8 +44,6 @@ public class TaskPictureController {
 
     @Operation(summary = "Получение картинки")
     @GetMapping("/{pictureId}")
-    @TaskPictureGetOperation
-    @TaskPictureNotFoundResponse
     public ResponseEntity<Resource> getPicture(@PathVariable Long pictureId) throws IOException{
 
         File file = taskPictureService.getFileById(pictureId);

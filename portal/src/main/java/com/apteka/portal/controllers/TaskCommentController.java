@@ -52,7 +52,7 @@ public class TaskCommentController {
     }
 
     @Operation(summary = "Удаление комментария (Только ADMIN)")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("@security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails currentUser) {
         taskCommentService.delete(id, currentUser);

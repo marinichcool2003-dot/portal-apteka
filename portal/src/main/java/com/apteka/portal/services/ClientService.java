@@ -1,5 +1,6 @@
 package com.apteka.portal.services;
 
+import com.apteka.portal.components.validators.IsActiveValidator;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ import com.apteka.portal.components.validators.FullNameValidator;
 import com.apteka.portal.components.validators.LoginValidator;
 import com.apteka.portal.components.validators.PasswordValidator;
 import com.apteka.portal.components.validators.PhoneNumberValidator;
+import com.apteka.portal.components.validators.SortingValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.response.AssignedStatsDTO;
 import com.apteka.portal.dtos.response.CreatedStatsDTO;
@@ -62,6 +65,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ClientService {
 
+    private final IsActiveValidator isActiveValidator;
     private final AuthService authService;
     private final ClientRepository clientRepository;
     private final AvatarService avatarClientService;
@@ -74,7 +78,7 @@ public class ClientService {
     private final FullNameValidator fullNameValidator;
     private final PhoneNumberValidator phoneNumberValidator;
     private final AccountRepository accountRepository;
-
+    private final SortingValidator sortingValidator;
     private final SseController sseController;
 
     @Value("${app.default.avatars.upload.dir}")
@@ -83,6 +87,18 @@ public class ClientService {
     @Value("${app.default.avatars.upload.picture.user}")
     private String uploadAvatarPictureName;
 
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+        "account.userGroup.id",
+        "fullName",
+        "createdAt",
+        "updatedAt"
+    );
+
+    private static final Sort DEFAULT_SORT = Sort.by(
+        Sort.Order.asc("account.userGroup.id"),
+        Sort.Order.asc("fullName")
+    );
+
     @Transactional(readOnly = true)
     public Page<ClientResponseDTO> getAll(AppUserDetails currentUser, Pageable pageable, Boolean isActive) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
@@ -90,7 +106,9 @@ public class ClientService {
             clientSecurityService.validateWhoCanSelectNonActiveClients(currentUser, null);
         }
 
-        return clientRepository.findAll(pageable, isActive)
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
+
+        return clientRepository.findAll(validatedPageable, isActive)
                 .map(ClientResponseDTO::from);
     }
 
@@ -100,9 +118,8 @@ public class ClientService {
         Client client = clientRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         Account account = client.getAccount();
-        Boolean isActive = account.isActive();
         UserGroup userGroup = account.getUserGroup();
-        if (!isActive) {
+        if (!isActiveValidator.isAccountActive(account)) {
             clientSecurityService.validateWhoCanSelectNonActiveClients(currentUser, userGroup);
         }
         return ClientResponseDTO.from(client);
@@ -138,7 +155,10 @@ public class ClientService {
         if (Boolean.FALSE.equals(isActive)) {
             clientSecurityService.validateWhoCanSelectNonActiveClients(currentUser, userGroup);
         }
-        return clientRepository.findByUserGroupId(userGroupId, isActive, pageable).map(ClientResponseDTO::from);
+
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
+
+        return clientRepository.findByUserGroupId(userGroupId, isActive, validatedPageable).map(ClientResponseDTO::from);
     }
 
     @Transactional(readOnly = true)
@@ -177,8 +197,9 @@ public class ClientService {
     @Transactional
     public Page<ClientResponseDTO> filter(ClientFilterRequestDTO dto, AppUserDetails currentUser, Pageable pageable) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
+        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
         return clientRepository.filter(
-                pageable,
+                validatedPageable,
                 dto.login(),
                 dto.phoneNumber(),
                 dto.groupId(),

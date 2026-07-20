@@ -21,7 +21,7 @@ import lombok.Setter;
 @Builder
 @Getter
 @Setter
-public class Adress {
+public class Address {
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)

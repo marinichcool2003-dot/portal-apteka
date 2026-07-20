@@ -44,6 +44,9 @@ public class MainPageLink {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private GroupMainPageLinks groupMainPageLinks;
 
+    @Column(name = "created_at")
+    private Instant createdAt;
+
     @Column(name = "updated_at")
     private Instant updatedAt;
 
