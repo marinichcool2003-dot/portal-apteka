@@ -1,5 +1,6 @@
 package com.apteka.portal.services;
 
+import com.apteka.portal.components.validators.IsActiveValidator;
 import java.util.List;
 import java.util.Objects;
 
@@ -36,11 +37,11 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class MainPageLinksService {
+    private final IsActiveValidator isActiveValidator;
     private final MainPageLinkRepository mainPageLinkRepository;
     private final MainPageLinksSecurityService mainPageLinksSecurityService;
     private final TypeNameValidator typeNameValidator;
     private final GroupMainPageLinksRepository groupMainPageLinksRepository;
-
     private final SseController sseController;
 
     @Transactional(readOnly = true)
@@ -50,6 +51,16 @@ public class MainPageLinksService {
         }
         return mainPageLinkRepository.findByGroupMainPageLinksIdAndIsActive(groupId, isActive)
                 .stream().map(MainPageLinkResponseDTO::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public MainPageLinkResponseDTO getOne(Integer id, AppUserDetails currentUser) {
+        MainPageLink mainPageLink = mainPageLinkRepository.findById(id)
+                .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка не найдена!"));
+        if (!isActiveValidator.isMainPageLinkActive(mainPageLink)) {
+            mainPageLinksSecurityService.validateCanSelectNonActive(currentUser);
+        }
+        return MainPageLinkResponseDTO.from(mainPageLink);
     }
 
     @Cacheable(value = CacheNames.MAIN_PAGE_LINKS, key = "'active_only'", condition = "isActive == true", sync = true)
@@ -72,7 +83,6 @@ public class MainPageLinksService {
         String cleanName = typeNameValidator.getCleanName(dto.name());
         String cleanLink = dto.link().replaceAll("\\s", "");
         validateName(cleanName);
-        validateLink(cleanLink);
 
         MainPageLink savedLink = mainPageLinkRepository
                 .save(MainPageLink.builder().name(cleanName).link(cleanLink).groupMainPageLinks(group).isActive(true).build());
@@ -97,7 +107,7 @@ public class MainPageLinksService {
         MainPageLink mainPageLink = mainPageLinkRepository.findById(id)
                 .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка на главной странице не найдена!"));
 
-        if (!isActive(mainPageLink, mainPageLink.getGroupMainPageLinks())) {
+        if (!isActiveValidator.isMainPageLinkActive(mainPageLink)) {
             mainPageLinksSecurityService.validateCanSelectNonActive(currentUser);
         }
 
@@ -115,7 +125,6 @@ public class MainPageLinksService {
         if (dto.link() != null) {
             String cleanLink = dto.link().replaceAll("\\s", "");
             if (!Objects.equals(cleanLink, mainPageLink.getLink())) {
-                validateLink(cleanLink);
                 mainPageLink.setLink(cleanLink);
                 hasChange = true;
             }
@@ -157,7 +166,7 @@ public class MainPageLinksService {
         MainPageLink deletedLink = mainPageLinkRepository.findById(id)
                 .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка на главной странице не найдена!"));
 
-        if (!isActive(deletedLink, deletedLink.getGroupMainPageLinks())) {
+        if (isActiveValidator.isMainPageLinkActive(deletedLink)) {
             deletedLink.setActive(false);
             Integer mainPageLinkId = deletedLink.getId();
 
@@ -180,7 +189,7 @@ public class MainPageLinksService {
         MainPageLink restoredLink = mainPageLinkRepository.findById(id)
                 .orElseThrow(() -> new MainPageLinkNotFoundException("Ссылка на главной странице не найдена!"));
 
-        if (isActive(restoredLink, restoredLink.getGroupMainPageLinks())) {
+        if (!isActiveValidator.isMainPageLinkActive(restoredLink)) {
             restoredLink.setActive(true);
             Integer mainPageLinkId = restoredLink.getId();
 
@@ -220,20 +229,8 @@ public class MainPageLinksService {
     }
 
     private void validateName(String name) {
-        if (name.length() > 50) {
-            throw new InvalidMainPageLinkNameException("Наименование ссылки не должно превышать 50 символов!");
-        }
         if (mainPageLinkRepository.existsByName(name)) {
             throw new MainPageLinkAlreadyExistsException("Ссылка с таким именем уже существует!");
         }
-    }
-
-    private void validateLink(String link) {
-        if (link.length() > 1000) {
-            throw new InvalidMainPageLinkNameException("Ссылка не может содержать более 1000 символов!");
-        }
-    }
-    private boolean isActive(MainPageLink mainPageLink, GroupMainPageLinks groupMainPageLinks) {
-        return mainPageLink.isActive() && groupMainPageLinks.isActive();
     }
 }

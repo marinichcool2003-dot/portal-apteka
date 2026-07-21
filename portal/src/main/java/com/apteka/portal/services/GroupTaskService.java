@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -107,6 +108,7 @@ public class GroupTaskService {
         return response;
     }
 
+    @CacheEvict(value = CacheNames.GROUP_TASKS_BY_GROUP, key = "#dto.creatorGroupId() + ':' + #dto.intendedGroupId()")
     @Transactional
     public GroupTaskResponseDTO create(GroupTaskRequestDTO dto, AppUserDetails currentUser) {
 
@@ -130,10 +132,16 @@ public class GroupTaskService {
                 .isActive(true)
                 .build());
 
+        GroupTaskResponseDTO response = GroupTaskResponseDTO.from(saved);
+
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
+                    var cache = cacheManager.getCache(CacheNames.GROUP_TASK);
+                    if (cache != null) {
+                        cache.put(saved.getId(), response);
+                    }
                     var signal = new SseEventNames.GroupTaskSignalDTO(creatorGroup.getId(), intendedGroup.getId(),
                             SseSignalTypes.CREATED);
                     sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
@@ -141,7 +149,7 @@ public class GroupTaskService {
             });
         }
 
-        return GroupTaskResponseDTO.from(saved);
+        return response;
     }
 
     @Transactional

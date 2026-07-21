@@ -42,8 +42,8 @@ import lombok.RequiredArgsConstructor;
 public class TaskController {
     private final TaskService taskService;
 
-    @Operation(summary = "Получить весь список задач (Только ADMIN, BOSS)")
-    @PreAuthorize("@security.hasAnyRole('ADMIN', 'BOSS')")
+    @Operation(summary = "Получить весь список задач (Только ADMIN)")
+    @PreAuthorize("@security.hasAction('CAN_SELECT_ANOTHER_GROUP_TASKS') or @security.hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<Page<TaskShortResponseDTO>> getAll(Pageable pageable) {
         return ResponseEntity.ok(taskService.getAll(pageable));
@@ -117,8 +117,8 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getCreatedMeTasks(filter, currentUser, pageable));
     }
 
-    @Operation(summary = "Получить задачи по всем возможным фильтрам (Только для ADMIN)")
-    @PreAuthorize("@security.hasRole('ADMIN')")
+    @Operation(summary = "Получить задачи по всем возможным фильтрам")
+    @PreAuthorize("@security.hasAction('CAN_SELECT_ANOTHER_GROUP_TASKS') or @security.hasRole('ADMIN')")
     @GetMapping("/full-filter")
     public ResponseEntity<Page<TaskShortResponseDTO>> getDepartamentTaskWithFilters(
             @ParameterObject @Valid @ModelAttribute DepartmentFullFilterRequestDTO dto, Pageable pageable) {

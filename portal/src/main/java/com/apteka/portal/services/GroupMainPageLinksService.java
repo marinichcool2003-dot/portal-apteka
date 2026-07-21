@@ -10,6 +10,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.StringUtils;
 
 import com.apteka.portal.components.servicesecurity.MainPageLinksSecurityService;
+import com.apteka.portal.components.validators.IsActiveValidator;
 import com.apteka.portal.components.validators.TypeNameValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.mainpagelinks.GroupMainPageLinkUpdateRequestDTO;
@@ -17,7 +18,6 @@ import com.apteka.portal.dtos.request.mainpagelinks.GroupMainPageLinksRequestDTO
 import com.apteka.portal.dtos.response.mainpagelink.GroupMainPageLinksResponseDTO;
 import com.apteka.portal.exceptions.GroupMainPageLinksAlreadyExistsException;
 import com.apteka.portal.exceptions.GroupMainPageLinksNotFoundException;
-import com.apteka.portal.exceptions.InvalidGroupMainPageLinksDescriptionException;
 import com.apteka.portal.exceptions.InvalidGroupMainPageLinksNameException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.GroupMainPageLinks;
@@ -33,7 +33,7 @@ public class GroupMainPageLinksService {
     private final GroupMainPageLinksRepository groupMainPageLinksRepository;
     private final TypeNameValidator typeNameValidator;
     private final MainPageLinksSecurityService groupMainPageLinksSecurityService;
-
+    private final IsActiveValidator isActiveValidator;
     private final SseController sseController;
 
     @Transactional
@@ -57,7 +57,6 @@ public class GroupMainPageLinksService {
 
         if (StringUtils.hasText(dto.description())) {
             String cleanDescription = typeNameValidator.getCleanName(dto.description());
-            validateDescription(cleanDescription);
             savedBuilder.description(cleanDescription);
         }
 
@@ -82,7 +81,7 @@ public class GroupMainPageLinksService {
         GroupMainPageLinks groupMainPageLinks = groupMainPageLinksRepository.findById(id)
                 .orElseThrow(() -> new GroupMainPageLinksNotFoundException("Группа ссылок не найдена"));
 
-        if (!groupMainPageLinks.isActive()) {
+        if (!isActiveValidator.isGroupMainPageLinksActive(groupMainPageLinks)) {
             groupMainPageLinksSecurityService.validateCanSelectNonActive(currentUser);
         }
 
@@ -100,7 +99,6 @@ public class GroupMainPageLinksService {
         if (dto.description() != null) {
             String cleanDescription = typeNameValidator.getCleanName(dto.description());
             if (!Objects.equals(groupMainPageLinks.getDescription(), cleanDescription)) {
-                validateDescription(cleanDescription);
                 groupMainPageLinks.setDescription(cleanDescription);
                 hasChange = true;
             }
@@ -180,28 +178,8 @@ public class GroupMainPageLinksService {
     }
 
     private void validateName(String name) {
-        if (name.length() > 50) {
-            throw new InvalidGroupMainPageLinksNameException(
-                    "Наименование группы ссылок не может быть больше 50 символов!");
-        }
-
-        if (!StringUtils.hasText(name)) {
-            throw new InvalidGroupMainPageLinksNameException("Наименование группы ссылок не может быть пустым!");
-        }
-
         if (groupMainPageLinksRepository.existsByName(name)) {
             throw new GroupMainPageLinksAlreadyExistsException("Группа " + name + " уже существует!");
-        }
-    }
-
-    private void validateDescription(String description) {
-        if (description.length() > 100) {
-            throw new InvalidGroupMainPageLinksDescriptionException(
-                    "Описание группы ссылок не может быть больше 100 символов!");
-        }
-        if (description.isEmpty()) {
-            throw new InvalidGroupMainPageLinksDescriptionException(
-                    "Описание группы ссылок не может быть пустым, но может быть не указано!");
         }
     }
 }

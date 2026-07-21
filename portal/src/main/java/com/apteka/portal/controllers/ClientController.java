@@ -44,7 +44,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/clients")
 @RequiredArgsConstructor
-@PreAuthorize("@appSecurity.isClient()")
 @Tag(name = "Пользователи")
 public class ClientController {
     private final ClientService clientService;
@@ -86,7 +85,7 @@ public class ClientController {
 
     @Operation(summary = "Получить статистику сотрудников по задачам")
     @GetMapping("/by-user-group/task-number/{userGroupId}")
-    @PreAuthorize("@security.hasAnyAction('CAN_SELECT_CLIENT_STATS_IN_GROUP', 'CAN_SELECT_CLIENT_STATS_GRAND') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('CAN_SELECT_CLIENT_STATS_IN_GROUP') or @security.hasAction('CAN_SELECT_CLIENT_STATS_GRAND') or @security.hasRole('ADMIN')")
     public ResponseEntity<List<ClientWithStatsDTO>> getWithNumberOfTask(@PathVariable Integer userGroupId,
             @AuthenticationPrincipal AppUserDetails currentUser,
             @RequestParam(defaultValue = "true") Boolean isActive) {
@@ -101,7 +100,7 @@ public class ClientController {
     }
 
     @Operation(summary = "Создать сотрудника")
-    @PreAuthorize("@security.hasAnyAction('CREATE_CLIENT_IN_GROUP', 'CREATE_CLIENT_GRAND') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('CREATE_CLIENT_IN_GROUP') or @security.hasAction('CREATE_CLIENT_GRAND') or @security.hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ClientResponseDTO> create(@Valid @RequestBody ClientCreateRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
@@ -110,7 +109,13 @@ public class ClientController {
     }
 
     @Operation(summary = "Обновить аккаунт сотрудника")
-    @PreAuthorize("@security.hasAnyAction('UPDATE_CLIENT_ACCOUNT_IN_GROUP', 'UPDATE_CLIENT_ACCOUNT_GRAND', 'UPDATE_CLIENT_GRAND', 'UPDATE_CLIENT_IN_GROUP_GRAND') or @security.hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('UPDATE_CLIENT_ACCOUNT_IN_GROUP')
+            or @security.hasAction('UPDATE_CLIENT_ACCOUNT_GRAND')
+            or @security.hasAction('UPDATE_CLIENT_GRAND')
+            or @security.hasAction('UPDATE_CLIENT_IN_GROUP_GRAND')
+            or @security.hasRole('ADMIN')
+                """)
     @PutMapping("/update-account/{id}")
     public ResponseEntity<ClientResponseDTO> updateAccount(@PathVariable UUID id,
             @Valid @RequestBody AccountUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -118,7 +123,13 @@ public class ClientController {
     }
 
     @Operation(summary = "Обновить описание сотрудника")
-    @PreAuthorize("@security.hasAnyAction('UPDATE_CLIENT_DESCRIPTION_IN_GROUP', 'UPDATE_CLIENT_DESCRIPTION_GRAND', 'UPDATE_CLIENT_IN_GROUP_GRAND', 'UPDATE_CLIENT_GRAND') or @security.hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('UPDATE_CLIENT_DESCRIPTION_IN_GROUP')
+            or @security.hasAction('UPDATE_CLIENT_DESCRIPTION_GRAND')
+            or @security.hasAction('UPDATE_CLIENT_IN_GROUP_GRAND')
+            or @security.hasAction('UPDATE_CLIENT_GRAND')
+            or @security.hasRole('ADMIN')
+                """)
     @PutMapping("/update-description/{id}")
     public ResponseEntity<ClientResponseDTO> updateDescription(@PathVariable UUID id,
             @Valid @RequestBody ClientUpdateDescriptionRequestDTO dto,
@@ -134,7 +145,7 @@ public class ClientController {
     }
 
     @Operation(summary = "Полное обновление сотрудника")
-    @PreAuthorize("@security.hasAnyAction('UPDATE_CLIENT_IN_GROUP_GRAND', 'UPDATE_CLIENT_GRAND') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('UPDATE_CLIENT_IN_GROUP_GRAND') or @security.hasAction('UPDATE_CLIENT_GRAND') or @security.hasRole('ADMIN')")
     @PutMapping("/update-all/{id}")
     public ResponseEntity<ClientResponseDTO> updateAll(@PathVariable UUID id,
             @Valid @RequestBody ClientUpdateFullRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser)
@@ -143,7 +154,12 @@ public class ClientController {
     }
 
     @Operation(summary = "Добавить действия сотруднику")
-    @PreAuthorize("@security.hasAnyAction('CAN_ADD_ACCOUNT_ACTIONS_IN_GROUP', 'CAN_ADD_ACCOUNT_ACTIONS_GRAND', 'CAN_ADD_ACCOUNT_ACTIONS_GRAND_EXTENDED') or @security.hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('CAN_ADD_ACCOUNT_ACTIONS_IN_GROUP')
+            or @security.hasAction('CAN_ADD_ACCOUNT_ACTIONS_GRAND')
+            or @security.hasAction('CAN_ADD_ACCOUNT_ACTIONS_GRAND_EXTENDED')
+            or @security.hasRole('ADMIN')
+                """)
     @PutMapping("/add-actions/{id}")
     public ResponseEntity<ClientResponseDTO> addRole(@PathVariable UUID id, @RequestBody Set<String> actionsCode,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -153,7 +169,12 @@ public class ClientController {
     }
 
     @Operation(summary = "Добавить действия сотруднику")
-    @PreAuthorize("@security.hasAnyAction('CAN_REMOVE_ACCOUNT_ACTIONS_IN_GROUP', 'CAN_REMOVE_ACCOUNT_ACTIONS_GRAND', 'CAN_REMOVE_ACCOUNT_ACTIONS_GRAND_EXTENDED') or @security.hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('CAN_REMOVE_ACCOUNT_ACTIONS_IN_GROUP')
+            or @security.hasAction('CAN_REMOVE_ACCOUNT_ACTIONS_GRAND')
+            or @security.hasAction('CAN_REMOVE_ACCOUNT_ACTIONS_GRAND_EXTENDED')
+            or @security.hasRole('ADMIN')
+                """)
     @PutMapping("/remove-actions/{id}")
     public ResponseEntity<ClientResponseDTO> removeRole(@PathVariable UUID id, @RequestBody Set<String> actionsCode,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -163,15 +184,20 @@ public class ClientController {
     }
 
     @Operation(summary = "Безопасное удаление сотрудника")
-    @PreAuthorize("@security.hasAnyAction('SAFE_DELETE_CLIENT_IN_GROUP', 'SAFE_DELETE_CLIENT_GRAND', 'PERMANENT_DELETE_CLIENT') or @security.hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('SAFE_DELETE_CLIENT_IN_GROUP')
+            or @security.hasAction('SAFE_DELETE_CLIENT_GRAND')
+            or @security.hasAction('PERMANENT_DELETE_CLIENT')
+            or @security.hasRole('ADMIN')
+                """)
     @PatchMapping("/safe-delete/{id}")
     public ResponseEntity<Void> safeDelete(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
         clientService.safeDelete(id, currentUser);
         return ResponseEntity.noContent().build();
-    } 
+    }
 
     @Operation(summary = "Восстановление сотрудника после удаления")
-    @PreAuthorize("@security.hasAnyAction('CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE') or @security.hasRole('ADMIN')")
     @PatchMapping("/restore-after-safe-delete/{id}")
     public ResponseEntity<Void> restore(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
         clientService.restoreAfterSafeDelete(id, currentUser);
@@ -179,7 +205,7 @@ public class ClientController {
     }
 
     @Operation(summary = "Перманентное удаление сотрудника")
-    @PreAuthorize("@security.hasAnyAction('PERMANENT_DELETE_CLIENT') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('PERMANENT_DELETE_CLIENT') or @security.hasRole('ADMIN')")
     @DeleteMapping("/permanent-delete/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
         clientService.permanentDelete(id, currentUser);

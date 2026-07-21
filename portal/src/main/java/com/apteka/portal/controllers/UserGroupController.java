@@ -65,7 +65,7 @@ public class UserGroupController {
     }
 
     @Operation(summary = "Обновить группу пользователей")
-    @PreAuthorize("@security.hasAnyAction('CAN_UPDATE_SELF_USER_GROUP', 'CAN_UPDATE_USER_GROUP') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('CAN_UPDATE_SELF_USER_GROUP') or @security.hasAction('CAN_UPDATE_USER_GROUP') or @security.hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<UserGroupResponseDTO> update(@PathVariable Integer id,
             @Valid @RequestBody UserGroupUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser)

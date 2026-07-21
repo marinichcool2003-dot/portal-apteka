@@ -36,7 +36,15 @@ public class MainPageLinksController {
     private final MainPageLinksService mainPageLinksService;
 
     @Operation(summary = "Получить ссылки по группе")
-    @PreAuthorize("@security.hasAnyAction('CAN_SELECT_NON_ACTIVE_MAIN_PAGE_LINK', 'CREATE_MAIN_PAGE_LINK', 'UPDATE_MAIN_PAGE_LINK', 'SAFE_DELETE_MAIN_PAGE_LINK', 'CAN_ACTIVATE_MAIN_PAGE_LINK_AFTER_SAFE_DELETE', 'PERMANENT_DELETE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
+    @PreAuthorize("""
+        @security.hasAction('CAN_SELECT_NON_ACTIVE_MAIN_PAGE_LINK') 
+        or @security.hasAction('CREATE_MAIN_PAGE_LINK') 
+        or @security.hasAction('UPDATE_MAIN_PAGE_LINK') 
+        or @security.hasAction('SAFE_DELETE_MAIN_PAGE_LINK') 
+        or @security.hasAction('CAN_ACTIVATE_MAIN_PAGE_LINK_AFTER_SAFE_DELETE') 
+        or @security.hasAction('PERMANENT_DELETE_MAIN_PAGE_LINK') 
+        or @security.hasRole('ADMIN')
+            """)
     @GetMapping("/by-group/{groupId}")
     public ResponseEntity<List<MainPageLinkResponseDTO>> getByGroup(@PathVariable Integer groupId,
             @RequestParam(defaultValue = "true") Boolean isActive,

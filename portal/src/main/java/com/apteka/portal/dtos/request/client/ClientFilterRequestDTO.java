@@ -5,5 +5,6 @@ public record ClientFilterRequestDTO (
     String phoneNumber,
     Integer groupId,
     String fullName,
-    String extensionNumber
+    String extensionNumber,
+    Boolean isActive
 ){}

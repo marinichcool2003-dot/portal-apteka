@@ -41,7 +41,6 @@ import com.apteka.portal.exceptions.InvalidAptekaPasswordException;
 import com.apteka.portal.exceptions.InvalidPhoneNumberException;
 import com.apteka.portal.exceptions.InvalidFullNameException;
 import com.apteka.portal.exceptions.InvalidClientPasswordException;
-import com.apteka.portal.exceptions.InvalidGroupMainPageLinksDescriptionException;
 import com.apteka.portal.exceptions.InvalidGroupMainPageLinksNameException;
 import com.apteka.portal.exceptions.InvalidGroupTaskException;
 import com.apteka.portal.exceptions.InvalidLoginException;
@@ -308,14 +307,6 @@ public class GlobalExceptionHandler {
         log.warn("Ошибка при изменении группы ссылок: {}", e.getMessage());
         String errorMessage = "Ошибка! Ошибка при изменении группы ссылок: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
-    }
-
-    @ExceptionHandler(InvalidGroupMainPageLinksDescriptionException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleInvalidGroupMainPageLinksDescriptionException(InvalidGroupMainPageLinksDescriptionException e) {
-        log.warn("Ошибка! Ошибка при изменении группы ссылок: {}", e.getMessage());
-        String errorMessage = "Ошибка! Ошибка при изменении группы ссылок: " + e.getMessage();
-        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
     @ExceptionHandler(GroupTaskNotFoundException.class)

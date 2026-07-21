@@ -82,7 +82,7 @@ public class AptekaController {
     }
 
     @Operation(summary = "Обновление аккаунта аптеки")
-    @PreAuthorize("@security.hasAnyAction('UPDATE_ALL_APTEKA', 'UPDATE_APTEKA_ACCOUNT') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('UPDATE_ALL_APTEKA') or @security.hasAction('UPDATE_APTEKA_ACCOUNT') or @security.hasRole('ADMIN')")
     @PutMapping("/account/{id}")
     public ResponseEntity<AptekaResponseDTO> updateAccount(@PathVariable UUID id,
             @Valid @RequestBody AccountUpdateRequestDTO dto,
@@ -91,7 +91,7 @@ public class AptekaController {
     }
 
     @Operation(summary = "Обновление описания аптеки")
-    @PreAuthorize("@security.hasAnyAction('UPDATE_ALL_APTEKA', 'UPDATE_APTEKA_DESCRIPTION') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('UPDATE_ALL_APTEKA') or @security.hasAction('UPDATE_APTEKA_DESCRIPTION') or @security.hasRole('ADMIN')")
     @PutMapping("/description/{id}")
     public ResponseEntity<AptekaResponseDTO> updateDescription(@PathVariable UUID id,
             @Valid @RequestBody AptekaUpdateDescriptionRequestDTO dto,
@@ -109,7 +109,7 @@ public class AptekaController {
     }
 
     @Operation(summary = "Безопасно удалить аптеку")
-    @PreAuthorize("@security.hasAnyAction('SAFE_DELETE_APTEKA', 'PERMANENT_DELETE_APTEKA') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('SAFE_DELETE_APTEKA') or @security.hasAction('PERMANENT_DELETE_APTEKA') or @security.hasRole('ADMIN')")
     @PatchMapping("/{id}")
     public ResponseEntity<Void> safeDelete(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
         aptekaService.safeDelete(id, currentUser);

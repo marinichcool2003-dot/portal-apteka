@@ -45,22 +45,34 @@ public class NewsController {
     }
 
     @Operation(summary = "Создать новость")
-    @PreAuthorize("@security.hasAnyAction('NEWS_WORK', 'NEWS_WORK_ALL_GROUPS') or @security.hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('NEWS_WORK') or @security.hasAction('NEWS_WORK_ALL_GROUPS') or @security.hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<NewsResponseDTO> create(@RequestBody NewsRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<NewsResponseDTO> create(@RequestBody NewsRequestDTO dto,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(newsService.create(dto, currentUser));
+                .body(newsService.create(dto, currentUser));
     }
 
     @Operation(summary = "Обновить новость")
-    @PreAuthorize("@security.hasAnyAction('UPDATE_ALL_NEWS_IN_GROUP', 'UPDATE_ALL_NEWS_CREATE_GROUP', 'UPDATE_ALL_NEWS') or @security.hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('UPDATE_ALL_NEWS_IN_GROUP')
+            or @security.hasAction('UPDATE_ALL_NEWS_CREATE_GROUP')
+            or @security.hasAction('UPDATE_ALL_NEWS')
+            or @security.hasRole('ADMIN')
+                """)
     @PutMapping("/{id}")
-    public ResponseEntity<NewsResponseDTO> update(@PathVariable Integer id,  @RequestBody NewsUpdateRequestDTO dto, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<NewsResponseDTO> update(@PathVariable Integer id, @RequestBody NewsUpdateRequestDTO dto,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(newsService.update(id, dto, currentUser));
     }
 
     @Operation(summary = "Удалить новость")
-    @PreAuthorize("@security.hasAnyAction('DELETE_ALL_NEWS_CREATE_GROUP', 'DELETE_ALL_NEWS_IN_GROUP', 'DELETE_ALL_NEWS') or @security.hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('DELETE_ALL_NEWS_CREATE_GROUP')
+            or @security.hasAction('DELETE_ALL_NEWS_IN_GROUP')
+            or @security.hasAction('DELETE_ALL_NEWS')
+            or @security.hasRole('ADMIN')
+                """)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         newsService.delete(id, currentUser);

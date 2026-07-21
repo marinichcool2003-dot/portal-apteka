@@ -161,6 +161,10 @@ public class UserGroupService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
+                    Cache userGroupCache = cacheManager.getCache(CacheNames.USER_GROUP);
+                    if (userGroupCache != null) {
+                        userGroupCache.put(saved.getId(), UserGroupResponseDTO.from(saved));
+                    }
                     sseController.broadcastNotification(SseEventNames.REFRESH_USER_GROUPS, SseSignalTypes.CREATED);
                 }
             });

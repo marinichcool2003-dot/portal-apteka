@@ -69,9 +69,9 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
             JOIN FETCH c.account acc
             JOIN FETCH acc.userGroup ug
             WHERE (
-                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
+                (COALESCE(:isActive, true) = true AND acc.isActive = true AND ug.isActive = true)
                 OR
-                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
+                (COALESCE(:isActive, false) = false AND (acc.isActive = false OR ug.isActive = false))
             )
             AND (:login IS NULL OR acc.login = :login)
             AND (:phoneNumber IS NULL OR acc.phoneNumber = :phoneNumber)
@@ -83,9 +83,9 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
             JOIN c.account acc
             JOIN acc.userGroup ug
             WHERE (
-                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
+                (COALESCE(:isActive, true) = true AND acc.isActive = true AND ug.isActive = true)
                 OR
-                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
+                (COALESCE(:isActive, false) = false AND (acc.isActive = false OR ug.isActive = false))
             )
             AND (:login IS NULL OR acc.login = :login)
             AND (:phoneNumber IS NULL OR acc.phoneNumber = :phoneNumber)

@@ -36,7 +36,7 @@ public class GroupTaskController {
     private final GroupTaskService groupTaskService;
 
     @Operation(summary = "Получить список групп задач по группам пользователей (Только для пользователей с расширенными правами)")
-    @PreAuthorize("hasAction('GRAND_WORK_WITH_GROUP_TASK') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('GRAND_WORK_WITH_GROUP_TASK') or @security.hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<List<GroupTaskResponseDTO>> getByUserGroups(
             @RequestParam Integer creatorGroupId,
@@ -49,10 +49,11 @@ public class GroupTaskController {
     @Operation(summary = "Получить список групп задач по группе создателя из авторизации. Получение списка задач созданные вашей группой на другую конкретную группу")
     @GetMapping("/to/{executorGroupId}")
     public ResponseEntity<List<GroupTaskResponseDTO>> getExecutorGroupTasksFromMyGroup(
-            @PathVariable Integer executorGroupId, 
-            @AuthenticationPrincipal AppUserDetails currentUser, 
+            @PathVariable Integer executorGroupId,
+            @AuthenticationPrincipal AppUserDetails currentUser,
             @RequestParam(defaultValue = "true") Boolean isActive) {
-        return ResponseEntity.ok(groupTaskService.getByGroups(currentUser.getUserGroup().getId(), executorGroupId, isActive, currentUser));
+        return ResponseEntity.ok(groupTaskService.getByGroups(currentUser.getUserGroup().getId(), executorGroupId,
+                isActive, currentUser));
     }
 
     @Operation(summary = "Получить список групп задач которые группа может назначить. Стандартный вывод при создании задачи")
@@ -61,17 +62,23 @@ public class GroupTaskController {
             @PathVariable Integer creatorGroupId,
             @AuthenticationPrincipal AppUserDetails currentUser,
             @RequestParam(defaultValue = "true") Boolean isActive) {
-        return ResponseEntity.ok(groupTaskService.getByGroups(creatorGroupId, currentUser.getUserGroup().getId(), isActive, currentUser));
+        return ResponseEntity.ok(groupTaskService.getByGroups(creatorGroupId, currentUser.getUserGroup().getId(),
+                isActive, currentUser));
     }
 
     @Operation(summary = "Получить группу задач по ID")
     @GetMapping("/{id}")
-    public ResponseEntity<GroupTaskResponseDTO> getOne(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<GroupTaskResponseDTO> getOne(@PathVariable Integer id,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(groupTaskService.getOne(id, currentUser));
     }
 
     @Operation(summary = "Создать группу задач")
-    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_GROUP_TASK', 'GRAND_WORK_WITH_GROUP_TASK') or hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('BASE_WORK_WITH_GROUP_TASK')
+            or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
+            or @security.hasRole('ADMIN')
+                """)
     @PostMapping
     public ResponseEntity<GroupTaskResponseDTO> create(@Valid @RequestBody GroupTaskRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -80,26 +87,40 @@ public class GroupTaskController {
     }
 
     @Operation(summary = "Обновить группу задач")
-    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_GROUP_TASK', 'GRAND_WORK_WITH_GROUP_TASK', 'NON_SAFE_UPDATE_GROUP_TASK') or hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('BASE_WORK_WITH_GROUP_TASK')
+            or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
+            or @security.hasAction('NON_SAFE_UPDATE_GROUP_TASK')
+            or @security.hasRole('ADMIN')
+                """)
     @PutMapping("/{id}")
     public ResponseEntity<GroupTaskResponseDTO> update(
             @PathVariable Integer id,
-            @Valid @RequestBody GroupTaskUpdateRequestDTO dto, 
-            @AuthenticationPrincipal AppUserDetails currentUser, 
+            @Valid @RequestBody GroupTaskUpdateRequestDTO dto,
+            @AuthenticationPrincipal AppUserDetails currentUser,
             @RequestParam(defaultValue = "false") Boolean confirm) {
         return ResponseEntity.ok(groupTaskService.update(id, dto, currentUser, confirm));
     }
 
     @Operation(summary = "Безопасное удаление группы задач")
-    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_GROUP_TASK', 'GRAND_WORK_WITH_GROUP_TASK') or hasRole('ADMIN')")
+    @PreAuthorize("""
+            @security.hasAction('BASE_WORK_WITH_GROUP_TASK')
+            or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
+            or @security.hasRole('ADMIN')
+                """)
     @PatchMapping("/safe-delete/{id}")
-    public ResponseEntity<Void> safeDelete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
+    public ResponseEntity<Void> safeDelete(@PathVariable Integer id,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
         groupTaskService.safeDelete(id, currentUser);
         return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Восстановление после безопасного удаления")
-    @PreAuthorize("hasAnyAction('BASE_WORK_WITH_GROUP_TASK', 'GRAND_WORK_WITH_GROUP_TASK') or hasRole('ADMIN')")
+    @PreAuthorize("""
+        @security.hasAction('BASE_WORK_WITH_GROUP_TASK') 
+        or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK') 
+        or @security.hasRole('ADMIN')    
+            """)
     @PatchMapping("/restore/{id}")
     public ResponseEntity<Void> restore(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         groupTaskService.restore(id, currentUser);
@@ -107,9 +128,11 @@ public class GroupTaskController {
     }
 
     @Operation(summary = "Безвозвратно удалить группу задач")
-    @PreAuthorize("hasAction('CAN_PERMANENT_DELETE_GROUP_TASK') or hasRole('ADMIN')")
+    @PreAuthorize("@security.hasAction('CAN_PERMANENT_DELETE_GROUP_TASK') or @security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> permanentDelete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser, @RequestParam(defaultValue = "false") Boolean confirm) {
+    public ResponseEntity<Void> permanentDelete(@PathVariable Integer id,
+            @AuthenticationPrincipal AppUserDetails currentUser,
+            @RequestParam(defaultValue = "false") Boolean confirm) {
         groupTaskService.permanentDelete(id, currentUser, confirm);
         return ResponseEntity.noContent().build();
     }

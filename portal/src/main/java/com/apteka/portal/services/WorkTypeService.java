@@ -126,18 +126,23 @@ public class WorkTypeService {
         }
 
         WorkType newWorkType = workTypeRepository.save(workTypeBuilder.isActive(true).build());
+        WorkTypeResponseDTO response = WorkTypeResponseDTO.from(newWorkType);
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
+                    var cache = cacheManager.getCache(CacheNames.WORK_TYPE);
+                    if (cache != null) {
+                        cache.put(newWorkType.getId(), response);
+                    }
                     var signal = new SseEventNames.WorkTypeSignalDTO(newWorkType.getGroupTask().getId(),
                             SseSignalTypes.CREATED);
                     sseController.broadcastNotification(SseEventNames.REFRESH_WORK_TYPES, signal);
                 }
             });
         }
-        return WorkTypeResponseDTO.from(newWorkType);
+        return response;
     }
 
     @Transactional
