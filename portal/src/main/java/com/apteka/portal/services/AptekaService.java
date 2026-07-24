@@ -80,7 +80,9 @@ public class AptekaService {
     public Page<AptekaResponseDTO> getAll(Pageable pageable, boolean isActive, AppUserDetails currentUser) {
         aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
         Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
-        return aptekaRepository.findAll(isActive, validatedPageable).map(AptekaResponseDTO::from);
+        Integer scopeGroupId = aptekaSecurityService.canSelectAllAptekas(currentUser)
+                ? null : currentUser.getUserGroup().getId();
+        return aptekaRepository.findAll(isActive, scopeGroupId, validatedPageable).map(AptekaResponseDTO::from);
     }
 
     @Transactional(readOnly = true)
@@ -88,6 +90,7 @@ public class AptekaService {
         aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
         Apteka apteka = aptekaRepository.findByIdWithAccount(id, isActive)
                 .orElseThrow(() -> new AptekaNotFoundException(id));
+        aptekaSecurityService.validateCanSelectApteka(currentUser, apteka.getAccount().getUserGroup().getId());
         return AptekaResponseDTO.from(apteka);
     }
 
@@ -96,8 +99,10 @@ public class AptekaService {
             AppUserDetails currentUser) {
         aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
         Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
+        Integer scopeGroupId = aptekaSecurityService.canSelectAllAptekas(currentUser)
+                ? dto.groupId() : currentUser.getUserGroup().getId();
         return aptekaRepository.filter(dto.login(),
-                dto.groupId(),
+                scopeGroupId,
                 dto.number(),
                 dto.phoneNumber(),
                 isActive,
@@ -140,6 +145,7 @@ public class AptekaService {
                 .isActive(true)
                 .build();
 
+        apteka.setAptekaName(userGroup.getName() + " " + apteka.getNumber());
         apteka.setAccount(account);
         aptekaRepository.save(apteka);
         Integer userGroupId = account.getUserGroup().getId();

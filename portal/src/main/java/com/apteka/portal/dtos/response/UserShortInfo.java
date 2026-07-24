@@ -21,7 +21,8 @@ public record UserShortInfo(
                 String displayName = Optional.ofNullable(task.getCreator().getUserGroup())
                         .map(ug -> ug.getName() + " " + task.getCreator().getApteka().getNumber())
                         .orElse(task.getCreator().getLogin());
-                return new UserShortInfo(task.getCreator().getId(), UserType.CLIENT, displayName);
+                // AUDIT-FIX: P-11 — Preserve the pharmacy account type in short task identities.
+                return new UserShortInfo(task.getCreator().getId(), UserType.APTEKA, displayName);
             }
         }
         return null;
@@ -37,7 +38,8 @@ public record UserShortInfo(
                 String displayName = Optional.ofNullable(task.getAssigner().getUserGroup())
                         .map(ug -> ug.getName() + " " + task.getAssigner().getApteka().getNumber())
                         .orElse(task.getAssigner().getLogin());
-                return new UserShortInfo(task.getAssigner().getId(), UserType.CLIENT, displayName);
+                // AUDIT-FIX: P-11 — Preserve the pharmacy account type in short task identities.
+                return new UserShortInfo(task.getAssigner().getId(), UserType.APTEKA, displayName);
             }
         }
         return null;

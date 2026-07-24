@@ -23,6 +23,7 @@ public interface AptekaRepository extends JpaRepository<Apteka, UUID> {
                 OR
                 (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
             )
+            AND (:groupId IS NULL OR ug.id = :groupId)
             """, 
             countQuery = """
             SELECT count(a) FROM Apteka a
@@ -33,9 +34,10 @@ public interface AptekaRepository extends JpaRepository<Apteka, UUID> {
                 (:isActive = true AND acc.isActive = true AND ug.isActive = true)
                 OR
                 (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
-            )          
+            )
+            AND (:groupId IS NULL OR ug.id = :groupId)
             """)
-    Page<Apteka> findAll(@Param("isActive") boolean isActive, Pageable pageable);
+    Page<Apteka> findAll(@Param("isActive") boolean isActive, @Param("groupId") Integer groupId, Pageable pageable);
 
     @Query("""
             SELECT a FROM Apteka a

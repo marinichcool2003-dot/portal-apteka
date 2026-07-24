@@ -21,39 +21,36 @@ import com.apteka.portal.dtos.response.news.NewsResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.NewsService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@Tag(name = "Новости")
 @RestController
 @RequestMapping("/api/v1/news")
 @RequiredArgsConstructor
 public class NewsController {
     private final NewsService newsService;
 
-    @Operation(summary = "Получить список новостей определенной группы")
     @GetMapping("/by-user-group/{id}")
-    public ResponseEntity<List<NewsResponseDTO>> getByUserGroup(@PathVariable Integer id) {
-        return ResponseEntity.ok(newsService.getByUserGroup(id));
+    public ResponseEntity<List<NewsResponseDTO>> getByUserGroup(@PathVariable Integer id,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(newsService.getByUserGroup(id, currentUser));
     }
 
-    @Operation(summary = "Получить новость по id")
     @GetMapping("/{id}")
-    public ResponseEntity<NewsResponseDTO> getOne(@PathVariable Integer id) {
-        return ResponseEntity.ok(newsService.getOne(id));
+
+    public ResponseEntity<NewsResponseDTO> getOne(@PathVariable Integer id,
+            @AuthenticationPrincipal AppUserDetails currentUser) {
+        return ResponseEntity.ok(newsService.getOne(id, currentUser));
     }
 
-    @Operation(summary = "Создать новость")
     @PreAuthorize("@security.hasAction('NEWS_WORK') or @security.hasAction('NEWS_WORK_ALL_GROUPS') or @security.hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<NewsResponseDTO> create(@RequestBody NewsRequestDTO dto,
+    public ResponseEntity<NewsResponseDTO> create(@Valid @RequestBody NewsRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(newsService.create(dto, currentUser));
     }
 
-    @Operation(summary = "Обновить новость")
     @PreAuthorize("""
             @security.hasAction('UPDATE_ALL_NEWS_IN_GROUP')
             or @security.hasAction('UPDATE_ALL_NEWS_CREATE_GROUP')
@@ -61,12 +58,11 @@ public class NewsController {
             or @security.hasRole('ADMIN')
                 """)
     @PutMapping("/{id}")
-    public ResponseEntity<NewsResponseDTO> update(@PathVariable Integer id, @RequestBody NewsUpdateRequestDTO dto,
+    public ResponseEntity<NewsResponseDTO> update(@PathVariable Integer id, @Valid @RequestBody NewsUpdateRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(newsService.update(id, dto, currentUser));
     }
 
-    @Operation(summary = "Удалить новость")
     @PreAuthorize("""
             @security.hasAction('DELETE_ALL_NEWS_CREATE_GROUP')
             or @security.hasAction('DELETE_ALL_NEWS_IN_GROUP')

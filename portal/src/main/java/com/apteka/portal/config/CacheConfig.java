@@ -1,5 +1,10 @@
 package com.apteka.portal.config;
 
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
@@ -12,18 +17,17 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 
+import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
+import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
+import com.apteka.portal.dtos.response.WorkTypeResponseDTO;
+import com.apteka.portal.dtos.response.mainpagelink.MainPageLinkResponseDTO;
+import com.apteka.portal.dtos.response.usergroup.UserGroupResponseDTO;
 import com.apteka.portal.models.CacheNames;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
-
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,57 +37,61 @@ import lombok.extern.slf4j.Slf4j;
 public class CacheConfig implements CachingConfigurer {
 
     @Bean
-    public RedisCacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
-
-        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
-                .allowIfSubType("java.util.")
-                .allowIfSubType("com.apteka.portal.dtos.")
-                .build();
-
-        ObjectMapper objectMapper = new ObjectMapper()
-                .findAndRegisterModules()
-                .activateDefaultTyping(
-                        ptv,
-                        ObjectMapper.DefaultTyping.NON_FINAL,
-                        JsonTypeInfo.As.PROPERTY);
-
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
-
+    public RedisCacheManager redisCacheManager(
+            RedisConnectionFactory connectionFactory,
+            @org.springframework.beans.factory.annotation.Value("${app.cache.key-prefix:portal:v2:}") String cacheKeyPrefix) {
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         RedisCacheConfiguration defaultConfiguration = RedisCacheConfiguration.defaultCacheConfig()
                 .disableCachingNullValues()
                 .entryTtl(Duration.ofHours(1))
-                .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer));
+                .prefixCacheNameWith(cacheKeyPrefix);
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
 
-        RedisCacheConfiguration userGroupConfig = defaultConfiguration.entryTtl(Duration.ofDays(3));
-        cacheConfigurations.put(CacheNames.USER_GROUPS_LIST, userGroupConfig);
-        cacheConfigurations.put(CacheNames.USER_GROUPS_VISIBLE, userGroupConfig);
-        cacheConfigurations.put(CacheNames.USER_GROUP, userGroupConfig);
+        cacheConfigurations.put(CacheNames.USER_GROUP,
+                cacheConfiguration(defaultConfiguration, Duration.ofDays(3), objectMapper, UserGroupResponseDTO.class));
+        cacheConfigurations.put(CacheNames.USER_GROUPS_LIST,
+                listCacheConfiguration(defaultConfiguration, Duration.ofDays(3), objectMapper, UserGroupResponseDTO.class));
+        cacheConfigurations.put(CacheNames.USER_GROUPS_VISIBLE,
+                listCacheConfiguration(defaultConfiguration, Duration.ofDays(3), objectMapper, UserGroupResponseDTO.class));
+        cacheConfigurations.put(CacheNames.GROUP_TASK,
+                cacheConfiguration(defaultConfiguration, Duration.ofDays(3), objectMapper, GroupTaskResponseDTO.class));
+        cacheConfigurations.put(CacheNames.GROUP_TASKS_BY_GROUP,
+                listCacheConfiguration(defaultConfiguration, Duration.ofDays(3), objectMapper, GroupTaskResponseDTO.class));
+        cacheConfigurations.put(CacheNames.WORK_TYPE,
+                cacheConfiguration(defaultConfiguration, Duration.ofDays(3), objectMapper, WorkTypeResponseDTO.class));
+        cacheConfigurations.put(CacheNames.WORK_TYPES_BY_GROUP,
+                listCacheConfiguration(defaultConfiguration, Duration.ofDays(3), objectMapper, WorkTypeResponseDTO.class));
+        cacheConfigurations.put(CacheNames.GROUPS_USER_STATS,
+                listCacheConfiguration(defaultConfiguration, Duration.ofSeconds(30), objectMapper, DepartmentTaskStatsDTO.class));
+        cacheConfigurations.put(CacheNames.GROUP_USER_STATS,
+                cacheConfiguration(defaultConfiguration, Duration.ofSeconds(30), objectMapper, DepartmentTaskStatsDTO.class));
+        cacheConfigurations.put(CacheNames.MAIN_PAGE_LINKS,
+                listCacheConfiguration(defaultConfiguration, Duration.ofDays(30), objectMapper, MainPageLinkResponseDTO.class));
+        cacheConfigurations.put(CacheNames.MAIN_PAGE_LINKS_BY_GROUP,
+                listCacheConfiguration(defaultConfiguration, Duration.ofDays(30), objectMapper, MainPageLinkResponseDTO.class));
 
-        RedisCacheConfiguration groupTaskConfig = defaultConfiguration.entryTtl(Duration.ofDays(3));
-        cacheConfigurations.put(CacheNames.GROUP_TASK, groupTaskConfig);
-        cacheConfigurations.put(CacheNames.GROUP_TASKS_BY_GROUP, groupTaskConfig);
-
-        RedisCacheConfiguration workTypeConfig = defaultConfiguration.entryTtl(Duration.ofDays(3));
-        cacheConfigurations.put(CacheNames.WORK_TYPE, workTypeConfig);
-        cacheConfigurations.put(CacheNames.WORK_TYPES_BY_GROUP, workTypeConfig);
-
-        RedisCacheConfiguration groupsStatsConfig = defaultConfiguration.entryTtl(Duration.ofSeconds(30));
-        cacheConfigurations.put(CacheNames.GROUPS_USER_STATS, groupsStatsConfig);
-
-        RedisCacheConfiguration userStatsConfig = defaultConfiguration.entryTtl(Duration.ofSeconds(10));
-        cacheConfigurations.put(CacheNames.USER_STATS, userStatsConfig);
-
-        RedisCacheConfiguration mainPageLinks= defaultConfiguration.entryTtl(Duration.ofDays(30));
-        cacheConfigurations.put(CacheNames.MAIN_PAGE_LINKS_BY_GROUP, mainPageLinks);
-        cacheConfigurations.put(CacheNames.MAIN_PAGE_LINKS, mainPageLinks);
-        
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfiguration)
                 .withInitialCacheConfigurations(cacheConfigurations)
                 .build();
+    }
+
+
+    private RedisCacheConfiguration cacheConfiguration(RedisCacheConfiguration defaultConfiguration, Duration ttl,
+            ObjectMapper objectMapper, Class<?> dtoType) {
+        JavaType javaType = objectMapper.getTypeFactory().constructType(dtoType);
+        return defaultConfiguration.entryTtl(ttl)
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new Jackson2JsonRedisSerializer<>(objectMapper, javaType)));
+    }
+
+    private RedisCacheConfiguration listCacheConfiguration(RedisCacheConfiguration defaultConfiguration, Duration ttl,
+            ObjectMapper objectMapper, Class<?> dtoType) {
+        JavaType javaType = objectMapper.getTypeFactory().constructCollectionType(List.class, dtoType);
+        return defaultConfiguration.entryTtl(ttl)
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new Jackson2JsonRedisSerializer<>(objectMapper, javaType)));
     }
 
     @Override
@@ -93,22 +101,33 @@ public class CacheConfig implements CachingConfigurer {
 
             @Override
             public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
-                log.error("Ошибка чтения Redis cache {}: {}", cache.getName(), exception.getMessage());
+                log.error("Redis cache read failed: cache={}, key={}, exception={}",
+                        cache.getName(), key, exception.getClass().getName(), exception);
+                try {
+                    cache.evict(key);
+                    log.info("Evicted corrupted cache entry: {}:{}", cache.getName(), key);
+                } catch (Exception e) {
+                    log.error("Failed to evict cache entry: cache={}, key={}, exception={}",
+                            cache.getName(), key, e.getClass().getName(), e);
+                }
             }
 
             @Override
             public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
-                log.error("Ошибка записи Redis cache {}: {}", cache.getName(), exception.getMessage());
+                log.error("Redis cache write failed: cache={}, key={}, exception={}",
+                        cache.getName(), key, exception.getClass().getName(), exception);
             }
 
             @Override
             public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
-                log.error("Ошибка удаления Redis cache {}: {}", cache.getName(), exception.getMessage());
+                log.error("Redis cache eviction failed: cache={}, key={}, exception={}",
+                        cache.getName(), key, exception.getClass().getName(), exception);
             }
 
             @Override
             public void handleCacheClearError(RuntimeException exception, Cache cache) {
-                log.error("Ошибка очистки Redis cache {}: {}", cache.getName(), exception.getMessage());
+                log.error("Redis cache clear failed: cache={}, exception={}",
+                        cache.getName(), exception.getClass().getName(), exception);
             }
         };
     }

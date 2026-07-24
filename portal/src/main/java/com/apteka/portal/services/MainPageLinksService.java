@@ -63,7 +63,7 @@ public class MainPageLinksService {
         return MainPageLinkResponseDTO.from(mainPageLink);
     }
 
-    @Cacheable(value = CacheNames.MAIN_PAGE_LINKS, key = "'active_only'", condition = "isActive == true", sync = true)
+    @Cacheable(value = CacheNames.MAIN_PAGE_LINKS, key = "'active_only'", sync = true)
     @Transactional(readOnly = true)
     public List<MainPageLinkResponseDTO> getAll() {
         return mainPageLinkRepository.findAll().stream().map(MainPageLinkResponseDTO::from).toList();

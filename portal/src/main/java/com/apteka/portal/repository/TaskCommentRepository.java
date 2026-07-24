@@ -8,6 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.apteka.portal.models.TaskComment;
 
 public interface TaskCommentRepository extends JpaRepository<TaskComment, Long> {
-    @EntityGraph(attributePaths = {"task"})
+    @EntityGraph(attributePaths = {"task", "account", "account.client", "account.apteka"})
     List<TaskComment> findByTaskId(Long taskId);
 }

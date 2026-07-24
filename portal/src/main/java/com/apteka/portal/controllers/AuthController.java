@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,8 +17,6 @@ import com.apteka.portal.dtos.response.AuthResponseDTO;
 import com.apteka.portal.exceptions.InvalidRefreshTokenException;
 import com.apteka.portal.services.AuthService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -26,7 +25,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@Tag(name = "Работа с авторизацией")
 public class AuthController {
     private final AuthService authService;
     private final CookieUtils cookieUtils;
@@ -40,7 +38,11 @@ public class AuthController {
     @Value("${jwt.refresh.expiration-with-remember}")
     private long jwtRefreshExpirationWithRemember;
 
-    @Operation(summary = "Авторизация")
+    @GetMapping("/csrf")
+    public ResponseEntity<Void> csrfBootstrap() {
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/login")
     public ResponseEntity<Void> login(@Valid @RequestBody LoginRequestDTO dto, HttpServletResponse response) {
         AuthResponseDTO authDTO = authService.login(dto);
@@ -55,7 +57,6 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Обновление токенов")
     @PostMapping("/refresh")
     public ResponseEntity<Void> refresh(HttpServletRequest request, HttpServletResponse response) {
         String oldRefreshToken = cookieUtils.extractToken(request, CookieUtils.REFRESH_TOKEN_COOKIE);
@@ -83,7 +84,6 @@ public class AuthController {
         }
     }
 
-    @Operation(summary = "Выход из системы")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = cookieUtils.extractToken(request, CookieUtils.REFRESH_TOKEN_COOKIE);
@@ -92,7 +92,6 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    @Operation(summary = "Выход из всех систем где был авторизован пользователь (для будущих микросервисов)")
     @PostMapping("/invalidate-all")
     public ResponseEntity<Void> invalidateAllSessions(Authentication authentication, HttpServletResponse response) {
         String username = authentication.getName();

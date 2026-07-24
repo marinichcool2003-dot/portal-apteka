@@ -32,7 +32,10 @@ public class AsyncConfig {
         executor.setThreadNamePrefix("Audit-");
         executor.setKeepAliveSeconds(60);
         
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setRejectedExecutionHandler((task, pool) -> {
+            log.warn("Audit task rejected: active={}, queueSize={}", pool.getActiveCount(), pool.getQueue().size());
+            new ThreadPoolExecutor.AbortPolicy().rejectedExecution(task, pool);
+        });
         
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);

@@ -37,6 +37,16 @@ public class NewsSecurityService {
         throw new AccessDeniedException("У вас нет доступа для работы с новостями");
     }
 
+    public void validateCanSelect(AppUserDetails currentUser, Integer newsGroupId) {
+        if (currentUser.hasRole(UserRole.ADMIN)
+                || currentUser.hasAction(AccountAction.NEWS_WORK_ALL_GROUPS)
+                || (sameGroupWithGroupWhereNews(currentUser, newsGroupId)
+                        && currentUser.hasAction(AccountAction.NEWS_WORK))) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на просмотр новостей этой группы");
+    }
+
     public void validateCanUpdate(AppUserDetails currentUser, News news) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;

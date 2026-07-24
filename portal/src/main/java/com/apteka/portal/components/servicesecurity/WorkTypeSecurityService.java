@@ -23,6 +23,29 @@ public class WorkTypeSecurityService {
 
     private final TaskRepository taskRepository;
 
+    public void validateCanSelect(WorkType workType, AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN) || currentUser.hasAction(AccountAction.GRAND_WORK_WITH_WORK_TYPE)) {
+            return;
+        }
+        boolean hasRelation = sameGroup(currentUser, workType.getGroupTask().getCreatorGroup()) || 
+                sameGroup(currentUser, workType.getGroupTask().getIntendedGroup());
+
+        if (hasRelation) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на просмотр данного вида работ!");
+    }
+
+    public void validateCanSelectGroupTask(GroupTask groupTask, AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)
+                || currentUser.hasAction(AccountAction.GRAND_WORK_WITH_WORK_TYPE)
+                || sameGroup(currentUser, groupTask.getCreatorGroup())
+                || sameGroup(currentUser, groupTask.getIntendedGroup())) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на просмотр данного типа задач!");
+    }
+
     public void validateCanWorkWorkType(AppUserDetails currentUser, UserGroup userGroup) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;

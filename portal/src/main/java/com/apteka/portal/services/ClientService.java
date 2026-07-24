@@ -217,12 +217,18 @@ public class ClientService {
 
         clientSecurityService.validateCanCreateClient(currentUser, userGroup);
 
+        Client.ClientBuilder clientBuilder = Client.builder();
+
         String cleanLogin = loginValidator.getCleanLogin(dto.login());
         validateLogin(dto.login());
         String normalizedName = fullNameValidator.getCleanFullName(dto.fullName());
         passwordValidator.validatePassword(dto.password(), true);
         String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
-        String cleanExtensionNumber = phoneNumberValidator.getCleanExtensionNumber(dto.extensionNumber());
+
+        if (StringUtils.hasText(dto.extensionNumber())) {
+            String cleanExtensionNumber = phoneNumberValidator.getCleanExtensionNumber(dto.extensionNumber());
+            clientBuilder.extensionNumber(cleanExtensionNumber);
+        } 
 
         UserRole role = UserRole.fromCode(dto.roleCode());
         clientSecurityService.canGiveRole(currentUser, role);
@@ -233,9 +239,8 @@ public class ClientService {
         Account.AccountBuilder accountBuilder = Account.builder().userRole(role).userGroup(userGroup).isActive(true);
         clientSecurityService.canAddActions(actions, currentUser, accountBuilder.build());
 
-        Client newClient = Client.builder()
+        Client newClient = clientBuilder
                 .fullName(normalizedName)
-                .extensionNumber(cleanExtensionNumber)
                 .avatarURL(uploadAvatarDir.concat(uploadAvatarPictureName))
                 .createdBy(currentUser.getDisplayName())
                 .build();

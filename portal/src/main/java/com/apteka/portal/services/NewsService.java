@@ -42,14 +42,17 @@ public class NewsService {
     private final SseController sseController;
 
     @Transactional(readOnly = true)
-    public List<NewsResponseDTO> getByUserGroup(Integer userGroupId) {
+    public List<NewsResponseDTO> getByUserGroup(Integer userGroupId, AppUserDetails currentUser) {
+        newsSecurityService.validateCanSelect(currentUser, userGroupId);
         return newsRepository.findByUserGroupId(userGroupId).stream().map(NewsResponseDTO::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public NewsResponseDTO getOne(Integer id) {
-        return newsRepository.findById(id).map(NewsResponseDTO::from)
+    public NewsResponseDTO getOne(Integer id, AppUserDetails currentUser) {
+        News news = newsRepository.findById(id)
                 .orElseThrow(() -> new NewsNotFoundException("Новость не найдена"));
+        newsSecurityService.validateCanSelect(currentUser, news.getUserGroup().getId());
+        return NewsResponseDTO.from(news);
     }
 
     @Transactional

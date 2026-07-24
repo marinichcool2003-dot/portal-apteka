@@ -22,13 +22,33 @@ import com.apteka.portal.models.TaskStatus;
 
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
 
+	// AUDIT-FIX: N+1 — Fetch all account subtype data needed by filtered task list DTO mapping.
 	@EntityGraph(attributePaths = {
 			"workType",
+			"workType.groupTask",
 			"creator",
-			"assigner"
+			"creator.client",
+			"creator.apteka",
+			"assigner",
+			"assigner.client",
+			"assigner.apteka"
 	})
 	@Override
 	Page<Task> findAll(Specification<Task> spec, Pageable pageable);
+
+	// AUDIT-FIX: N+1 — Fetch all account subtype data needed by task list DTO mapping.
+	@EntityGraph(attributePaths = {
+			"workType",
+			"workType.groupTask",
+			"creator",
+			"creator.client",
+			"creator.apteka",
+			"assigner",
+			"assigner.client",
+			"assigner.apteka"
+	})
+	@Override
+	Page<Task> findAll(Pageable pageable);
 
 	@Query("""
 			SELECT DISTINCT t FROM Task t

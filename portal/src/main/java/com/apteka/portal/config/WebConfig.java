@@ -12,8 +12,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer{
 
-    @Value("${app.default.react.host}")
-    private String reactHost;
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
 
     @Value("${app.default.avatars.upload.dir}")
     private String uploadAvatarsDir;
@@ -31,11 +31,18 @@ public class WebConfig implements WebMvcConfigurer{
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins(reactHost, "http://192.168.200.201:5173")
-                        .allowedMethods("GET","POST","PUT","DELETE","OPTIONS")
-                        .allowedHeaders("*")
+                        .allowedOrigins(splitAllowedOrigins())
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                        .allowedHeaders("X-XSRF-TOKEN", "Content-Type", "Authorization")
                         .allowCredentials(true);
             }
         };
+    }
+
+    private String[] splitAllowedOrigins() {
+        return java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toArray(String[]::new);
     }
 }

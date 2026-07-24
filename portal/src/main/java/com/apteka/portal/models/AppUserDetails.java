@@ -3,7 +3,6 @@ package com.apteka.portal.models;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -17,7 +16,7 @@ import lombok.ToString;
 
 @Setter
 @Getter
-@ToString
+@ToString(exclude = {"password", "actions"})
 public class AppUserDetails implements UserDetails {
 
     private final String login;
@@ -47,9 +46,7 @@ public class AppUserDetails implements UserDetails {
             this.displayName = client.getFullName();
         } else if (currentType == UserType.APTEKA) {
             Apteka apteka = account.getApteka();
-            String groupName = Optional.ofNullable(account.getUserGroup())
-                .map(UserGroup::getName).orElse("БЕЗ ГРУППЫ");
-            this.displayName = groupName + " " + apteka.getNumber();
+            this.displayName = apteka.getAptekaName();
             this.role = UserRole.APTEKA;
             this.actions = Set.of();
         } else {

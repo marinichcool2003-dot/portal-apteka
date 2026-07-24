@@ -11,11 +11,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.web.csrf.InvalidCsrfTokenException;
+import org.springframework.security.web.csrf.MissingCsrfTokenException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.AptekaCreateException;
@@ -224,8 +227,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IOException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleIOException(IOException e) {
-        log.error("Ошибка загрузки аватарки: {}", e.getMessage());
-        String errorMessage = "Ошибка! Картинка не загрузилась: " + e.getMessage();
+        log.error("Ошибка загрузки аватарки", e);
+        String errorMessage = "Ошибка! Картинка не загрузилась.";
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
@@ -429,11 +432,21 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
     }
 
+    @ExceptionHandler({ MissingCsrfTokenException.class, InvalidCsrfTokenException.class })
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse handleCsrfException(AccessDeniedException e) {
+        log.warn("CSRF rejected: {}", e.getClass().getSimpleName());
+        return new ErrorResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "Ошибка CSRF: сначала выполните GET /api/v1/auth/csrf, затем передайте cookie XSRF-TOKEN и такой же заголовок X-XSRF-TOKEN. Для защищённых методов также нужен логин (cookie X-Access-Token).",
+                System.currentTimeMillis());
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErrorResponse handleAccessDeniedException(AccessDeniedException e) {
-        log.warn("Доступ запрещен: {}", e.getMessage());
-        String errorMessage = "Ошибка! Доступ запрещен: " + e.getMessage();
+        log.warn("Доступ запрещен", e);
+        String errorMessage = "Ошибка! Доступ запрещен. Проверьте, что вы вошли (POST /api/v1/auth/login) и cookie X-Access-Token отправляется вместе с запросом.";
         return new ErrorResponse(HttpStatus.FORBIDDEN.value(), errorMessage, System.currentTimeMillis());
     }
 
@@ -508,6 +521,15 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 errorMessage,
+                System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleNoResourceFound(NoResourceFoundException e) {
+        return new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "Ресурс не найден",
                 System.currentTimeMillis());
     }
 

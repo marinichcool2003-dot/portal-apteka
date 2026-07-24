@@ -11,6 +11,7 @@ import com.apteka.portal.models.UserRole;
 
 public record AptekaResponseDTO(
     UUID id,
+    String aptekaName,
     String login,
     AdressResponseDTO adress,
     UserRole role,
@@ -26,6 +27,7 @@ public record AptekaResponseDTO(
         if (account == null) {
             return new AptekaResponseDTO(
                 apteka.getId(),
+                apteka.getAptekaName(),
                 null,
                 address != null ? new AdressResponseDTO(address.getCity(), address.getStreet(), address.getHouse(), address.getFiasId()) : null, 
                 null, 
@@ -44,6 +46,7 @@ public record AptekaResponseDTO(
 
         return new AptekaResponseDTO(
             apteka.getId(),
+            apteka.getAptekaName(),
             account.getLogin(),
             address != null ? new AdressResponseDTO(address.getCity(), address.getStreet(), address.getHouse(), address.getFiasId()) : null,
             apteka.getRole(),

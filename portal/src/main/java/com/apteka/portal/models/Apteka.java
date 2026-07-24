@@ -36,6 +36,9 @@ public class Apteka {
     @Column(name = "number", nullable = false)
     private Integer number;
 
+    @Column(name = "apteka_name")
+    private String aptekaName;
+
     @OneToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @MapsId
     @JoinColumn(name = "id")

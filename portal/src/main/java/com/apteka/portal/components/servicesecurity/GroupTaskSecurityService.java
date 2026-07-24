@@ -39,6 +39,15 @@ public class GroupTaskSecurityService {
         throw new AccessDeniedException("У вас нет доступа работать с типами задач в данной группе!");
     }
 
+    public void validateCanSelect(GroupTask groupTask, AppUserDetails currentUser) {
+        boolean isSameGroup = sameGroup(currentUser, groupTask.getCreatorGroup()) 
+                || sameGroup(currentUser, groupTask.getIntendedGroup());
+        boolean hasGrand = currentUser.hasRole(UserRole.ADMIN) || currentUser.hasAction(AccountAction.GRAND_WORK_WITH_GROUP_TASK);
+        if (!isSameGroup && !hasGrand) {
+            throw new AccessDeniedException("У вас нет прав на просмотр данного типа задач!");
+        }
+    }
+
     public void validateGroupTaskUpdate(AppUserDetails currentUser,
             GroupTask groupTask,
             boolean nameChanged,

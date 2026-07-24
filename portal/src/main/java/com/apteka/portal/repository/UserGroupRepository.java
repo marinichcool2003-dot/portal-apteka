@@ -4,15 +4,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.UserGroup;
 
 public interface UserGroupRepository extends JpaRepository<UserGroup, Integer> {
+
+    Optional<UserGroup> findByIdAndIsActive(Integer id, Boolean isActive);
+
     Optional<UserGroup> findByName(String name);
 
     boolean existsByName(String name);
@@ -36,8 +37,7 @@ public interface UserGroupRepository extends JpaRepository<UserGroup, Integer> {
             """)
     boolean isGroupVisibleToAnother(@Param("currentUserGroupId") Integer currentUserGroupId,
             @Param("targetGroupId") Integer targetGroupId, @Param("isActive") boolean isActive);
-
-    @Cacheable(value = CacheNames.USER_GROUP, key = "#id", unless = "!#result.isPresent() || !#result.get().isActive()", sync = true)
+            
     @Query("SELECT g FROM UserGroup g WHERE g.id = :id")
     Optional<UserGroup> findByIdAndCache(@Param("id") Integer id);
 }

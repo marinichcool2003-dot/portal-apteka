@@ -32,7 +32,7 @@ public class PhoneNumberValidator {
     }
 
     public String getCleanExtensionNumber(String extensionNumber) {
-        if (extensionNumber == null || extensionNumber.isBlank()) {
+        if (extensionNumber.isEmpty()) {
             throw new InvalidPhoneNumberException("Добавочный номер телефона не может быть пустым");
         }
         if (extensionNumber.length() > 20) {

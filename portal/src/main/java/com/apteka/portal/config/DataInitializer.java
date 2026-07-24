@@ -3,7 +3,9 @@ package com.apteka.portal.config;
 import com.apteka.portal.repository.UserGroupRepository;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class DataInitializer implements CommandLineRunner {
+@ConditionalOnProperty(name = "app.data-initializer.enabled", havingValue = "true", matchIfMissing = true)
+public class DataInitializer implements ApplicationRunner {
     private final UserGroupRepository userGroupRepository;
     private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
@@ -31,8 +34,7 @@ public class DataInitializer implements CommandLineRunner {
     private String adminPassword;
 
     @Override
-    public void run(String... args) throws Exception {
-
+    public void run(ApplicationArguments args) throws Exception {
         String adminGroupName = "Группа администраторов";
         UserGroup adminGroup;
 
@@ -42,7 +44,7 @@ public class DataInitializer implements CommandLineRunner {
             userGroupRepository.save(adminGroup);
         } else {
             adminGroup = userGroupRepository.findByName(adminGroupName)
-                .orElseThrow(() -> new RuntimeException("Критическая ошибка: Группа не найдена"));
+                    .orElseThrow(() -> new RuntimeException("Критическая ошибка: Группа не найдена"));
         }
 
         if (!clientRepository.existsByAccount_Login(adminLogin)) {
@@ -60,10 +62,9 @@ public class DataInitializer implements CommandLineRunner {
                     .isActive(true)
                     .client(admin)
                     .build();
-            
+
             admin.setAccount(account);
             clientRepository.save(admin);
         }
-
     }
 }

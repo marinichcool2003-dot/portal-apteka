@@ -17,18 +17,14 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.SseEventNames;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/sse")
-@Tag(name = "Уведомления (SSE)")
 @Slf4j
 public class SseController {
     private final Map<String, SseEmitter> emiters = new ConcurrentHashMap<>();
 
-    @Operation(summary = "Подключение к потоку уведомлений")
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(Authentication authentication) {
 

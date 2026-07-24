@@ -16,6 +16,7 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
     @Query("SELECT a FROM Account a WHERE a.id = :id")
     Optional<Account> findByIdWithUserGroup(@Param("id") UUID id);
 
+    @EntityGraph(attributePaths = {"userGroup", "client", "apteka", "actions"})
     Optional<Account> findByLogin(String login);
 
     @Query("SELECT COUNT(a) FROM Account a WHERE a.userGroup.id = :userGroupId")

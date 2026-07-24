@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,7 +12,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Component
+@Slf4j
 public class AvatarService {
 
     @Value("${app.default.avatars.upload.dir}")
@@ -32,7 +36,9 @@ public class AvatarService {
 
         deleteClientAvatarIfExists(clientId);
 
-        Files.write(path, file.getBytes());
+        try (var inputStream = file.getInputStream()) {
+            Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
+        }
 
         return "/avatars/" + fileName;
     }
@@ -48,7 +54,9 @@ public class AvatarService {
 
         deleteUserGroupAvatarIfExists(userGroupId);
 
-        Files.write(path, file.getBytes());
+        try (var inputStream = file.getInputStream()) {
+            Files.copy(inputStream, path, StandardCopyOption.REPLACE_EXISTING);
+        }
 
         return "/avatars/" + fileName;
     }
@@ -59,11 +67,12 @@ public class AvatarService {
                     .forEach(p -> {
                         try {
                             Files.delete(p);
-                        } catch (IOException ignored) {
+                        } catch (IOException e) {
+                            log.warn("Failed to delete user-group avatar {}", p, e);
                         }
                     });
         } catch (IOException e) {
-
+            log.warn("Failed to list user-group avatars for deletion", e);
         }
     }
 
@@ -73,11 +82,12 @@ public class AvatarService {
                     .forEach(p -> {
                         try {
                             Files.delete(p);
-                        } catch (IOException ignored) {
+                        } catch (IOException e) {
+                            log.warn("Failed to delete client avatar {}", p, e);
                         }
                     });
         } catch (IOException e) {
-
+            log.warn("Failed to list client avatars for deletion", e);
         }
     }
 

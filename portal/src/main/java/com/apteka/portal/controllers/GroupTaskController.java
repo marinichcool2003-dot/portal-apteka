@@ -23,19 +23,15 @@ import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.GroupTaskService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("api/v1/group-tasks")
 @RequiredArgsConstructor
-@Tag(name = "Группы задач")
 public class GroupTaskController {
     private final GroupTaskService groupTaskService;
 
-    @Operation(summary = "Получить список групп задач по группам пользователей (Только для пользователей с расширенными правами)")
     @PreAuthorize("@security.hasAction('GRAND_WORK_WITH_GROUP_TASK') or @security.hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<List<GroupTaskResponseDTO>> getByUserGroups(
@@ -46,7 +42,6 @@ public class GroupTaskController {
         return ResponseEntity.ok(groupTaskService.getByGroups(creatorGroupId, executorGroupId, isActive, currentUser));
     }
 
-    @Operation(summary = "Получить список групп задач по группе создателя из авторизации. Получение списка задач созданные вашей группой на другую конкретную группу")
     @GetMapping("/to/{executorGroupId}")
     public ResponseEntity<List<GroupTaskResponseDTO>> getExecutorGroupTasksFromMyGroup(
             @PathVariable Integer executorGroupId,
@@ -56,7 +51,6 @@ public class GroupTaskController {
                 isActive, currentUser));
     }
 
-    @Operation(summary = "Получить список групп задач которые группа может назначить. Стандартный вывод при создании задачи")
     @GetMapping("/from/{creatorGroupId}")
     public ResponseEntity<List<GroupTaskResponseDTO>> getCreatorGroupTasksFromMyGroup(
             @PathVariable Integer creatorGroupId,
@@ -66,14 +60,12 @@ public class GroupTaskController {
                 isActive, currentUser));
     }
 
-    @Operation(summary = "Получить группу задач по ID")
     @GetMapping("/{id}")
     public ResponseEntity<GroupTaskResponseDTO> getOne(@PathVariable Integer id,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(groupTaskService.getOne(id, currentUser));
     }
 
-    @Operation(summary = "Создать группу задач")
     @PreAuthorize("""
             @security.hasAction('BASE_WORK_WITH_GROUP_TASK')
             or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
@@ -86,7 +78,6 @@ public class GroupTaskController {
                 .body(groupTaskService.create(dto, currentUser));
     }
 
-    @Operation(summary = "Обновить группу задач")
     @PreAuthorize("""
             @security.hasAction('BASE_WORK_WITH_GROUP_TASK')
             or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
@@ -102,7 +93,6 @@ public class GroupTaskController {
         return ResponseEntity.ok(groupTaskService.update(id, dto, currentUser, confirm));
     }
 
-    @Operation(summary = "Безопасное удаление группы задач")
     @PreAuthorize("""
             @security.hasAction('BASE_WORK_WITH_GROUP_TASK')
             or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
@@ -115,7 +105,6 @@ public class GroupTaskController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Восстановление после безопасного удаления")
     @PreAuthorize("""
         @security.hasAction('BASE_WORK_WITH_GROUP_TASK') 
         or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK') 
@@ -127,7 +116,6 @@ public class GroupTaskController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Безвозвратно удалить группу задач")
     @PreAuthorize("@security.hasAction('CAN_PERMANENT_DELETE_GROUP_TASK') or @security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> permanentDelete(@PathVariable Integer id,

@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS account_actions (
 CREATE TABLE IF NOT EXISTS apteka (
     id UUID PRIMARY KEY,
     number INT NOT NULL,
+    apteka_name VARCHAR(30) NOT NULL,
     address_id BIGINT,
     created_by VARCHAR(50),
     created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -2,8 +2,6 @@ package com.apteka.portal.controllers;
 
 import com.apteka.portal.services.WorkTypeService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -33,11 +31,9 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/work-types")
 @RequiredArgsConstructor
-@Tag(name = "Виды работ")
 public class WorkTypeController {
     private final WorkTypeService workTypeService;
 
-    @Operation(summary = "Получить список видов работ по группе задач")
     @GetMapping("/by-group-task/{groupTaskId}")
     public ResponseEntity<List<WorkTypeResponseDTO>> getByGroupTask(@PathVariable Integer groupTaskId,
             @AuthenticationPrincipal AppUserDetails currentUser,
@@ -45,14 +41,12 @@ public class WorkTypeController {
         return ResponseEntity.ok(workTypeService.getByGroupTask(groupTaskId, currentUser, isActive));
     }
 
-    @Operation(summary = "Получить вид работы по ID")
     @GetMapping("/{id}")
     public ResponseEntity<WorkTypeResponseDTO> getOne(@PathVariable Integer id,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(workTypeService.getOne(id, currentUser));
     }
 
-    @Operation(summary = "Создать новый вид работы")
     @PreAuthorize("@security.hasAction('BASE_WORK_WITH_WORK_TYPE') or @security.hasAction('GRAND_WORK_WITH_WORK_TYPE') or @security.hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<WorkTypeResponseDTO> create(@Valid @RequestBody WorkTypeRequestDTO dto,
@@ -61,7 +55,6 @@ public class WorkTypeController {
                 .body(workTypeService.create(dto, currentUser));
     }
 
-    @Operation(summary = "Обновить вид работы")
     @PreAuthorize("""
             @security.hasAction('BASE_WORK_WITH_WORK_TYPE')
             or @security.hasAction('GRAND_WORK_WITH_WORK_TYPE')
@@ -75,7 +68,6 @@ public class WorkTypeController {
         return ResponseEntity.ok().body(workTypeService.update(id, dto, currentUser, confirm));
     }
 
-    @Operation(summary = "Безопасно удалить вид работы")
     @PreAuthorize("@security.hasAction('BASE_WORK_WITH_WORK_TYPE') or @security.hasAction('GRAND_WORK_WITH_WORK_TYPE') or @security.hasRole('ADMIN')")
     @PatchMapping("/safe-delete/{id}")
     public ResponseEntity<Void> safeDelete(@PathVariable Integer id,
@@ -84,7 +76,6 @@ public class WorkTypeController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Восстановить вид работы")
     @PreAuthorize("@security.hasAction('BASE_WORK_WITH_WORK_TYPE') or @security.hasAction('GRAND_WORK_WITH_WORK_TYPE') or @security.hasRole('ADMIN')")
     @PatchMapping("/restore/{id}")
     public ResponseEntity<Void> restore(@PathVariable Integer id,
@@ -93,7 +84,6 @@ public class WorkTypeController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Безвозвратно удалить вид работы")
     @PreAuthorize("@security.hasAction('CAN_PERMANENT_DELETE_WORK_TYPE') or @security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> permanentDelete(@PathVariable Integer id,

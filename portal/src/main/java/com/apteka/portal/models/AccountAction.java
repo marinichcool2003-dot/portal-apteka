@@ -58,7 +58,7 @@ public enum AccountAction {
     CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE("CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE", "Возвращение учетной записи пользователя после удаления", LevelAction.CRITICAL),
     PERMANENT_DELETE_CLIENT("PERMANENT_DELETE_CLIENT", "Полное удаление учетной записи сотрудника либо безопасное по выбору", LevelAction.CRITICAL),
 
-    CAN_SELECT_NON_ACTIVE_GROUPS("CAN_SELECT_NON_ACTIVE_GROUPS", "Возможность просматривать все неактивные группы", LevelAction.HIGH),
+    CAN_SELECT_ALL_NON_ACTIVE_GROUPS("CAN_SELECT_ALL_NON_ACTIVE_GROUPS", "Возможность просматривать все неактивные группы", LevelAction.HIGH),
     CAN_SELECT_ALL_ACTIVE_GROUPS("CAN_SELECT_ALL_ACTIVE_GROUPS", "Возможность просматривать все активные группы", LevelAction.MEDIUM),
     CAN_CREATE_USER_GROUP("CAN_CREATE_USER_GROUP", "Возможность создавать отделы", LevelAction.HIGH),
     CAN_UPDATE_SELF_USER_GROUP("CAN_UPDATE_SELF_USER_GROUP", "Возможность обновлять собственную группу", LevelAction.HIGH),

@@ -52,6 +52,23 @@ public class TaskSecurityService {
         throw new AccessDeniedException("вы не можете просмотреть данную задачу");
     }
 
+    public void validateCanSelectAllTaskStats(AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)
+                || currentUser.hasAction(AccountAction.CAN_SELECT_ANOTHER_GROUP_TASKS)) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на просмотр статистики всех групп");
+    }
+
+    public void validateCanSelectGroupTaskStats(Integer userGroupId, AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)
+                || currentUser.hasAction(AccountAction.CAN_SELECT_ANOTHER_GROUP_TASKS)
+                || Objects.equals(currentUser.getUserGroup().getId(), userGroupId)) {
+            return;
+        }
+        throw new AccessDeniedException("У вас нет прав на просмотр статистики этой группы");
+    }
+
     public void validateCanCreateTask(Account assigner, WorkType workType, AppUserDetails currentUser) {
         if (!isActiveValidator.isWorkTypeActive(workType)) {
             throw new AccessDeniedException("Нельзя создать задачу с неактивным видом работ");

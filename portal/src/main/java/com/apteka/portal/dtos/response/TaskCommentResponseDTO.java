@@ -1,7 +1,5 @@
 package com.apteka.portal.dtos.response;
 
-import java.util.Optional;
-
 import com.apteka.portal.models.TaskComment;
 import com.apteka.portal.models.UserType;
 
@@ -20,11 +18,9 @@ public record TaskCommentResponseDTO(
             type = UserType.CLIENT;
             authorName = taskComments.getAccount().getClient().getFullName();
             authorId = taskComments.getAccount().getId();
-        } else if (taskComments.getAccount().getClient() != null) {
+        } else if (taskComments.getAccount().getApteka() != null) {
             type = UserType.APTEKA;
-            authorName = Optional.ofNullable(taskComments.getAccount().getUserGroup())
-                    .map(ug -> ug.getName() + " " + taskComments.getAccount().getApteka().getNumber())
-                    .orElse(taskComments.getAccount().getLogin());
+            authorName = taskComments.getAccount().getApteka().getAptekaName();
             authorId = taskComments.getAccount().getId();
         }
         return new TaskCommentResponseDTO(

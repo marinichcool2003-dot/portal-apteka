@@ -28,7 +28,7 @@ public class UserGroupSecurityService {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
-        if (currentUser.hasAction(AccountAction.CAN_SELECT_NON_ACTIVE_GROUPS)) {
+        if (currentUser.hasAction(AccountAction.CAN_SELECT_ALL_NON_ACTIVE_GROUPS)) {
             return;
         }
         throw new AccessDeniedException("Вы не можете просматривать удалённые группы");

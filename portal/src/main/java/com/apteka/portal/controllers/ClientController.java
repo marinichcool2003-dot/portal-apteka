@@ -29,8 +29,6 @@ import com.apteka.portal.dtos.response.client.ClientWithStatsDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.ClientService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 import com.apteka.portal.dtos.request.AccountUpdateRequestDTO;
@@ -44,11 +42,9 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/clients")
 @RequiredArgsConstructor
-@Tag(name = "Пользователи")
 public class ClientController {
     private final ClientService clientService;
 
-    @Operation(summary = "Получить список сотрудников")
     @GetMapping
     public ResponseEntity<Page<ClientResponseDTO>> getAll(@AuthenticationPrincipal AppUserDetails currentUser,
             Pageable pageable,
@@ -56,26 +52,22 @@ public class ClientController {
         return ResponseEntity.ok(clientService.getAll(currentUser, pageable, isActive));
     }
 
-    @Operation(summary = "Получить сотрудника по ID")
     @GetMapping("/{id}")
     public ResponseEntity<ClientResponseDTO> getOne(@PathVariable UUID id,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(clientService.getOne(id, currentUser));
     }
 
-    @Operation(summary = "Получить текущего сотрудника")
     @GetMapping("/me")
     public ResponseEntity<ClientResponseDTO> getMe(@AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(clientService.getOne(currentUser.getInternalId(), currentUser));
     }
 
-    @Operation(summary = "Получить статистику задач текущего сотрудника")
     @GetMapping("/my-stats")
     public ResponseEntity<TaskStatsDTO> getMyStats(@AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(clientService.getMyStats(currentUser));
     }
 
-    @Operation(summary = "Получить сотрудников по группе")
     @GetMapping("/by-user-group/{userGroupId}")
     public ResponseEntity<Page<ClientResponseDTO>> getByGroup(@PathVariable Integer userGroupId,
             @AuthenticationPrincipal AppUserDetails currentUser, Pageable pageable,
@@ -83,7 +75,6 @@ public class ClientController {
         return ResponseEntity.ok(clientService.getByGroup(userGroupId, currentUser, pageable, isActive));
     }
 
-    @Operation(summary = "Получить статистику сотрудников по задачам")
     @GetMapping("/by-user-group/task-number/{userGroupId}")
     @PreAuthorize("@security.hasAction('CAN_SELECT_CLIENT_STATS_IN_GROUP') or @security.hasAction('CAN_SELECT_CLIENT_STATS_GRAND') or @security.hasRole('ADMIN')")
     public ResponseEntity<List<ClientWithStatsDTO>> getWithNumberOfTask(@PathVariable Integer userGroupId,
@@ -92,14 +83,12 @@ public class ClientController {
         return ResponseEntity.ok(clientService.getWithNumberOfTask(userGroupId, currentUser, isActive));
     }
 
-    @Operation(summary = "Фильтр сотрудников")
     @GetMapping("/filter")
     public ResponseEntity<Page<ClientResponseDTO>> filter(@ModelAttribute ClientFilterRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser, Pageable pageable) {
         return ResponseEntity.ok(clientService.filter(dto, currentUser, pageable));
     }
 
-    @Operation(summary = "Создать сотрудника")
     @PreAuthorize("@security.hasAction('CREATE_CLIENT_IN_GROUP') or @security.hasAction('CREATE_CLIENT_GRAND') or @security.hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ClientResponseDTO> create(@Valid @RequestBody ClientCreateRequestDTO dto,
@@ -108,7 +97,6 @@ public class ClientController {
                 .body(clientService.create(dto, currentUser));
     }
 
-    @Operation(summary = "Обновить аккаунт сотрудника")
     @PreAuthorize("""
             @security.hasAction('UPDATE_CLIENT_ACCOUNT_IN_GROUP')
             or @security.hasAction('UPDATE_CLIENT_ACCOUNT_GRAND')
@@ -122,7 +110,6 @@ public class ClientController {
         return ResponseEntity.ok(clientService.updateAccount(id, dto, currentUser));
     }
 
-    @Operation(summary = "Обновить описание сотрудника")
     @PreAuthorize("""
             @security.hasAction('UPDATE_CLIENT_DESCRIPTION_IN_GROUP')
             or @security.hasAction('UPDATE_CLIENT_DESCRIPTION_GRAND')
@@ -137,14 +124,12 @@ public class ClientController {
         return ResponseEntity.ok(clientService.updateClientDescription(id, dto, currentUser));
     }
 
-    @Operation(summary = "Обновить свой профиль")
     @PutMapping("/update-profile")
     public ResponseEntity<ClientResponseDTO> updateProfile(@Valid ClientUpdatePersonalProfileRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {
         return ResponseEntity.ok(clientService.updatePersonalProfile(dto, currentUser));
     }
 
-    @Operation(summary = "Полное обновление сотрудника")
     @PreAuthorize("@security.hasAction('UPDATE_CLIENT_IN_GROUP_GRAND') or @security.hasAction('UPDATE_CLIENT_GRAND') or @security.hasRole('ADMIN')")
     @PutMapping("/update-all/{id}")
     public ResponseEntity<ClientResponseDTO> updateAll(@PathVariable UUID id,
@@ -153,7 +138,6 @@ public class ClientController {
         return ResponseEntity.ok(clientService.updateFullClient(id, dto, currentUser));
     }
 
-    @Operation(summary = "Добавить действия сотруднику")
     @PreAuthorize("""
             @security.hasAction('CAN_ADD_ACCOUNT_ACTIONS_IN_GROUP')
             or @security.hasAction('CAN_ADD_ACCOUNT_ACTIONS_GRAND')
@@ -168,7 +152,6 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Добавить действия сотруднику")
     @PreAuthorize("""
             @security.hasAction('CAN_REMOVE_ACCOUNT_ACTIONS_IN_GROUP')
             or @security.hasAction('CAN_REMOVE_ACCOUNT_ACTIONS_GRAND')
@@ -183,7 +166,6 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Безопасное удаление сотрудника")
     @PreAuthorize("""
             @security.hasAction('SAFE_DELETE_CLIENT_IN_GROUP')
             or @security.hasAction('SAFE_DELETE_CLIENT_GRAND')
@@ -196,7 +178,6 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Восстановление сотрудника после удаления")
     @PreAuthorize("@security.hasAction('CAN_ACTIVATE_CLIENT_AFTER_SAFE_DELETE') or @security.hasRole('ADMIN')")
     @PatchMapping("/restore-after-safe-delete/{id}")
     public ResponseEntity<Void> restore(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -204,7 +185,6 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Перманентное удаление сотрудника")
     @PreAuthorize("@security.hasAction('PERMANENT_DELETE_CLIENT') or @security.hasRole('ADMIN')")
     @DeleteMapping("/permanent-delete/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal AppUserDetails currentUser) {

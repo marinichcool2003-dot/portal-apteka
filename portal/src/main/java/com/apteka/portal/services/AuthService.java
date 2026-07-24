@@ -29,7 +29,7 @@ public class AuthService {
 
         String accessToken = jwtService.generateAccessToken(user);
 
-        RefreshToken refreshToken = refreshTokenService.create(user.getUsername(), dto.rememberMe());
+        RefreshToken refreshToken = refreshTokenService.createWithSession(user.getUsername(), dto.rememberMe());
 
         return new AuthResponseDTO(
                 accessToken,
@@ -44,9 +44,9 @@ public class AuthService {
 
         String newAccessToken = jwtService.generateAccessToken(user);
 
-        refreshTokenService.deleteByRefreshToken(token.getToken());
+        refreshTokenService.deleteByRefreshTokenFast(token.getToken());
 
-        RefreshToken newRefreshToken = refreshTokenService.create(token.getUsername(), token.isRememberMe());
+        RefreshToken newRefreshToken = refreshTokenService.createWithSession(token.getUsername(), token.isRememberMe());
         return new AuthResponseDTO(
                 newAccessToken,
                 newRefreshToken.getToken(),
@@ -54,7 +54,7 @@ public class AuthService {
     }
 
     public void logout(String refreshToken) {
-        refreshTokenService.deleteByRefreshToken(refreshToken);
+        refreshTokenService.deleteByRefreshTokenFast(refreshToken);
     }
 
     public void invalidateAllSession(String username) {

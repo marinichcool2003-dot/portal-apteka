@@ -5,22 +5,20 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import com.apteka.portal.components.TaskAuditService;
+import com.apteka.portal.components.SseAfterCommitPublisher;
+import com.apteka.portal.components.cache.SafeCacheService;
 import com.apteka.portal.components.servicesecurity.TaskSecurityService;
 import com.apteka.portal.components.validators.SortingValidator;
 import com.apteka.portal.components.validators.TypeNameValidator;
-import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
 import com.apteka.portal.dtos.request.task.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.request.task.TaskUpdateRequestDTO;
@@ -47,20 +45,18 @@ import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TaskService {
     private final TaskRepository taskRepository;
     private final WorkTypeRepository workTypeRepository;
-    private final TaskSecurityService taskSecurityService;
-    private final TaskAuditService taskAuditService;
-    private final TypeNameValidator typeNameValidator;
-    private final SseController sseController;
     private final AccountRepository accountRepository;
+    private final TaskSecurityService taskSecurityService;
+    private final TypeNameValidator typeNameValidator;
     private final SortingValidator sortingValidator;
+    private final TaskAuditService taskAuditService;
+    private final SseAfterCommitPublisher sseAfterCommitPublisher;
+    private final SafeCacheService safeCacheService;
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
             "creationDate",
@@ -109,17 +105,29 @@ public class TaskService {
         return fetchAndMapTasks(dto, validatedPageable);
     }
 
-    @Cacheable(value = CacheNames.GROUPS_USER_STATS, sync = true)
     @Transactional(readOnly = true)
-    public List<DepartmentTaskStatsDTO> getGroupsUserStats() {
-        return taskRepository.findGroupUserStats();
+    public List<DepartmentTaskStatsDTO> getGroupsUserStats(AppUserDetails currentUser) {
+        taskSecurityService.validateCanSelectAllTaskStats(currentUser);
+        var cached = safeCacheService.getList(CacheNames.GROUPS_USER_STATS, "all", DepartmentTaskStatsDTO.class);
+        if (cached.isPresent()) {
+            return cached.get();
+        }
+        List<DepartmentTaskStatsDTO> stats = taskRepository.findGroupUserStats();
+        safeCacheService.put(CacheNames.GROUPS_USER_STATS, "all", stats);
+        return stats;
     }
 
-    @Cacheable(value = CacheNames.GROUPS_USER_STATS, key = "#userGroupId", sync = true)
     @Transactional(readOnly = true)
-    public DepartmentTaskStatsDTO getGroupUserStats(Integer userGroupId) {
-        return taskRepository.findGroupUserStatsByGroup(userGroupId)
+    public DepartmentTaskStatsDTO getGroupUserStats(Integer userGroupId, AppUserDetails currentUser) {
+        taskSecurityService.validateCanSelectGroupTaskStats(userGroupId, currentUser);
+        var cached = safeCacheService.get(CacheNames.GROUP_USER_STATS, userGroupId, DepartmentTaskStatsDTO.class);
+        if (cached.isPresent()) {
+            return cached.get();
+        }
+        DepartmentTaskStatsDTO stats = taskRepository.findGroupUserStatsByGroup(userGroupId)
                 .orElseThrow(() -> new GroupUserNotFoundException(userGroupId));
+        safeCacheService.put(CacheNames.GROUP_USER_STATS, userGroupId, stats);
+        return stats;
     }
 
     @Transactional(readOnly = true)
@@ -192,15 +200,8 @@ public class TaskService {
 
         Task saved = taskRepository.save(task);
 
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    var event = new SseEventNames.TaskSignalsDTO(saved.getWorkType().getId(), SseSignalTypes.CREATED);
-                    sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
-                }
-            });
-        }
+        var event = new SseEventNames.TaskSignalsDTO(saved.getWorkType().getId(), SseSignalTypes.CREATED);
+        sseAfterCommitPublisher.publishAfterCommit(SseEventNames.REFRESH_TASKS, event);
         return TaskShortResponseDTO.from(saved);
     }
 
@@ -222,6 +223,7 @@ public class TaskService {
         }
 
         if (StringUtils.hasText(dto.description()) && !Objects.equals(task.getDescription(), dto.description())) {
+            taskSecurityService.valdiateCanUpdateDescriptionTask(task, currentUser);
             taskAuditService.logChange(task.getId(), currentUser, "описание", task.getDescription(), dto.description());
             task.setDescription(dto.description().strip());
             hasChange = true;
@@ -279,7 +281,7 @@ public class TaskService {
 
         if (hasChange) {
             var event = new SseEventNames.EntityUpdateSignalDTO(task.getId(), SseSignalTypes.UPDATED);
-            sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
+            sseAfterCommitPublisher.publishAfterCommit(SseEventNames.REFRESH_TASKS, event);
         }
 
         return TaskShortResponseDTO.from(task);
@@ -292,15 +294,8 @@ public class TaskService {
         taskSecurityService.validateCanPermanentDeleteTask(currentUser);
         taskRepository.delete(task);
 
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    var event = new SseEventNames.EntityUpdateSignalDTO(task.getWorkType().getId(),
-                            SseSignalTypes.DELETED);
-                    sseController.broadcastNotification(SseEventNames.REFRESH_TASKS, event);
-                }
-            });
-        }
+        var event = new SseEventNames.EntityUpdateSignalDTO(task.getWorkType().getId(),
+                SseSignalTypes.DELETED);
+        sseAfterCommitPublisher.publishAfterCommit(SseEventNames.REFRESH_TASKS, event);
     }
 }

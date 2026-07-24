@@ -23,19 +23,15 @@ import com.apteka.portal.dtos.response.mainpagelink.MainPageLinkResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.MainPageLinksService;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/main-page-links")
 @RequiredArgsConstructor
-@Tag(name = "Управление ссылками на главной странице")
 public class MainPageLinksController {
     private final MainPageLinksService mainPageLinksService;
 
-    @Operation(summary = "Получить ссылки по группе")
     @PreAuthorize("""
         @security.hasAction('CAN_SELECT_NON_ACTIVE_MAIN_PAGE_LINK') 
         or @security.hasAction('CREATE_MAIN_PAGE_LINK') 
@@ -52,20 +48,17 @@ public class MainPageLinksController {
         return ResponseEntity.ok(mainPageLinksService.getByGroup(groupId, isActive, currentUser));
     }
 
-    @Operation(summary = "Получить все ссылки (Вывод на главной странице)")
     @GetMapping
     public ResponseEntity<List<MainPageLinkResponseDTO>> getAll() {
         return ResponseEntity.ok(mainPageLinksService.getAll());
     }
 
-    @Operation(summary = "Создать ссылку")
     @PostMapping
     @PreAuthorize("@security.hasAction('CREATE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     public ResponseEntity<MainPageLinkResponseDTO> create(@Valid @RequestBody MainPageLinkRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(mainPageLinksService.create(dto));
     }
 
-    @Operation(summary = "Обновить ссылку")
     @PutMapping("/{id}")
     @PreAuthorize("@security.hasAction('UPDATE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     public ResponseEntity<MainPageLinkResponseDTO> update(@PathVariable Integer id,
@@ -73,7 +66,6 @@ public class MainPageLinksController {
         return ResponseEntity.ok(mainPageLinksService.update(id, dto, currentUser));
     }
 
-    @Operation(summary = "Безопасно удалить ссылку")
     @PatchMapping("/safe-delete/{id}")
     @PreAuthorize("@security.hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     public ResponseEntity<Void> safeDelete(@PathVariable Integer id) {
@@ -81,7 +73,6 @@ public class MainPageLinksController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Восстановить ссылку")
     @PatchMapping("/restore/{id}")
     @PreAuthorize("@security.hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     public ResponseEntity<Void> restore(@PathVariable Integer id) {
@@ -89,7 +80,6 @@ public class MainPageLinksController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Удалить ссылку")
     @DeleteMapping("/{id}")
     @PreAuthorize("@security.hasAction('DELETE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {

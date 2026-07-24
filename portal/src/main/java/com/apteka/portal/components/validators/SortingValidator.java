@@ -12,10 +12,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class SortingValidator {
     public Pageable validateAndFixSorting(Pageable pageable, Set<String> ALLOWED_SORT_FIELDS, Sort DEFAULT_SORT) {
+        int pageSize = Math.min(pageable.getPageSize(), 100);
         if (!pageable.getSort().isSorted()) {
             return PageRequest.of(
                     pageable.getPageNumber(),
-                    pageable.getPageSize(),
+                    pageSize,
                     DEFAULT_SORT);
         }
 
@@ -35,13 +36,13 @@ public class SortingValidator {
         if (hasInvalidField || validOrders.isEmpty()) {
             return PageRequest.of(
                     pageable.getPageNumber(),
-                    pageable.getPageSize(),
+                    pageSize,
                     DEFAULT_SORT);
         }
 
         return PageRequest.of(
                 pageable.getPageNumber(),
-                pageable.getPageSize(),
+                pageSize,
                 Sort.by(validOrders));
 
     }

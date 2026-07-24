@@ -1,6 +1,7 @@
 package com.apteka.portal.components.servicesecurity;
 
 import org.springframework.security.access.AccessDeniedException;
+import java.util.Objects;
 import org.springframework.stereotype.Component;
 
 import com.apteka.portal.models.AccountAction;
@@ -14,6 +15,30 @@ public class AptekaSecurityService {
         if (!isActive && !currentUser.hasRole(UserRole.ADMIN)) {
             throw new AccessDeniedException("Только администратор может видеть удалённые аптеки!");
         }
+    }
+
+    public void validateCanSelectApteka(AppUserDetails currentUser, Integer aptekaGroupId) {
+        if (currentUser.hasRole(UserRole.ADMIN)
+                || currentUser.hasAnyAction(
+                        AccountAction.UPDATE_ALL_APTEKA,
+                        AccountAction.UPDATE_APTEKA_ACCOUNT,
+                        AccountAction.UPDATE_APTEKA_DESCRIPTION,
+                        AccountAction.SAFE_DELETE_APTEKA,
+                        AccountAction.PERMANENT_DELETE_APTEKA)
+                || Objects.equals(currentUser.getUserGroup().getId(), aptekaGroupId)) {
+            return;
+        }
+        throw new AccessDeniedException("Вы можете просматривать аптеки только своей группы");
+    }
+
+    public boolean canSelectAllAptekas(AppUserDetails currentUser) {
+        return currentUser.hasRole(UserRole.ADMIN)
+                || currentUser.hasAnyAction(
+                        AccountAction.UPDATE_ALL_APTEKA,
+                        AccountAction.UPDATE_APTEKA_ACCOUNT,
+                        AccountAction.UPDATE_APTEKA_DESCRIPTION,
+                        AccountAction.SAFE_DELETE_APTEKA,
+                        AccountAction.PERMANENT_DELETE_APTEKA);
     }
 
     public void validateCanCreateApteka(AppUserDetails currentUser) {
