@@ -49,7 +49,7 @@ public interface AptekaRepository extends JpaRepository<Apteka, UUID> {
                 OR
                 (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
             )
-                """)
+            """)
     Optional<Apteka> findByIdWithAccount(@Param("id") UUID id, @Param("isActive") boolean isActive);
 
     boolean existsByAccount_Login(String login);

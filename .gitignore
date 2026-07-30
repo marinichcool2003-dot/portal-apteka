@@ -2,6 +2,8 @@ HELP.md
 target/
 portal/target/
 .mvn/wrapper/maven-wrapper.jar
+/.gigaide
+/.gigaide/gigaide.properties
 
 ### STS ###
 .apt_generated
