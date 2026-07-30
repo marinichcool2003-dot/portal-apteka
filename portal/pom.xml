@@ -120,16 +120,16 @@
 
 	<build>
 		<plugins>
-			<!-- 1. Настройка компиляции Kotlin и Java (Kotlin должен идти первым) -->
+			<!-- 1. Настройка компиляции Kotlin -->
 			<plugin>
 				<groupId>org.jetbrains.kotlin</groupId>
 				<artifactId>kotlin-maven-plugin</artifactId>
 				<version>${kotlin.version}</version>
 				<executions>
-					<!-- Запускаем Kotlin компилятор на фазе process-sources ДО компиляции Java -->
+					<!-- Код Kotlin компилируется ПЕРВЫМ на стандартной фазе compile -->
 					<execution>
 						<id>compile</id>
-						<phase>process-sources</phase>
+						<phase>compile</phase>
 						<goals>
 							<goal>compile</goal>
 						</goals>
@@ -140,10 +140,10 @@
 							</sourceDirs>
 						</configuration>
 					</execution>
-					<!-- Запускаем Kotlin тест-компилятор на фазе process-test-sources -->
+					<!-- Тесты Kotlin компилируются на фазе test-compile -->
 					<execution>
 						<id>test-compile</id>
-						<phase>process-test-sources</phase>
+						<phase>test-compile</phase>
 						<goals>
 							<goal>test-compile</goal>
 						</goals>
@@ -160,18 +160,24 @@
 						<plugin>spring</plugin>
 						<plugin>jpa</plugin>
 					</compilerPlugins>
+					<!-- Передаем Lombok компилятору Kotlin, чтобы он видел геттеры Java -->
+					<annotationProcessorPaths>
+						<annotationProcessorPath>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</annotationProcessorPath>
+					</annotationProcessorPaths>
 					<args>
 						<arg>-Xjsr305=strict</arg>
 					</args>
 				</configuration>
 				<dependencies>
-					<!-- Необходимая зависимость для плагина 'spring' (all-open) -->
 					<dependency>
 						<groupId>org.jetbrains.kotlin</groupId>
 						<artifactId>kotlin-maven-allopen</artifactId>
 						<version>${kotlin.version}</version>
 					</dependency>
-					<!-- Необходимая зависимость для плагина 'jpa' (no-arg) -->
 					<dependency>
 						<groupId>org.jetbrains.kotlin</groupId>
 						<artifactId>kotlin-maven-noarg</artifactId>
@@ -180,26 +186,47 @@
 				</dependencies>
 			</plugin>
 
-			<!-- 2. Java компилятор (отключаем его дефолтный запуск, чтобы не дублировать) -->
-			<!-- Исправленный ID дефолтной тест-компиляции (testCompile с большой буквы) -->
+			<!-- 2. Настройка компиляции Java (Включаем обратно!) -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.13.0</version>
 				<executions>
+					<!-- Заменяем дефолтную компиляцию Java, чтобы она шла строго ПОСЛЕ Kotlin -->
 					<execution>
 						<id>default-compile</id>
 						<phase>none</phase>
 					</execution>
 					<execution>
-						<id>default-testCompile</id> <!-- ВАЖНО: с большой буквы 'C' -->
+						<id>default-testCompile</id>
 						<phase>none</phase>
 					</execution>
-					<!-- ... остальные настройки компиляции и Lombok ... -->
+					<execution>
+						<id>java-compile</id>
+						<phase>compile</phase>
+						<goals>
+							<goal>compile</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>java-test-compile</id>
+						<phase>test-compile</phase>
+						<goals>
+							<goal>testCompile</goal>
+						</goals>
+					</execution>
 				</executions>
 				<configuration>
 					<source>${java.version}</source>
 					<target>${java.version}</target>
+					<!-- Настройка процессора Lombok для Java компилятора -->
+					<annotationProcessorPaths>
+						<annotationProcessorPath>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</annotationProcessorPath>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 
@@ -218,5 +245,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
 </project>
