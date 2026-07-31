@@ -70,7 +70,7 @@ public class GroupTaskController {
             @security.hasAction('BASE_WORK_WITH_GROUP_TASK')
             or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
             or @security.hasRole('ADMIN')
-                """)
+            """)
     @PostMapping
     public ResponseEntity<GroupTaskResponseDTO> create(@Valid @RequestBody GroupTaskRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -83,7 +83,7 @@ public class GroupTaskController {
             or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
             or @security.hasAction('NON_SAFE_UPDATE_GROUP_TASK')
             or @security.hasRole('ADMIN')
-                """)
+            """)
     @PutMapping("/{id}")
     public ResponseEntity<GroupTaskResponseDTO> update(
             @PathVariable Integer id,
@@ -97,7 +97,7 @@ public class GroupTaskController {
             @security.hasAction('BASE_WORK_WITH_GROUP_TASK')
             or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
             or @security.hasRole('ADMIN')
-                """)
+            """)
     @PatchMapping("/safe-delete/{id}")
     public ResponseEntity<Void> safeDelete(@PathVariable Integer id,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -106,10 +106,10 @@ public class GroupTaskController {
     }
 
     @PreAuthorize("""
-        @security.hasAction('BASE_WORK_WITH_GROUP_TASK') 
-        or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK') 
-        or @security.hasRole('ADMIN')    
-            """)
+        @security.hasAction('BASE_WORK_WITH_GROUP_TASK')
+        or @security.hasAction('GRAND_WORK_WITH_GROUP_TASK')
+        or @security.hasRole('ADMIN')
+        """)
     @PatchMapping("/restore/{id}")
     public ResponseEntity<Void> restore(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         groupTaskService.restore(id, currentUser);

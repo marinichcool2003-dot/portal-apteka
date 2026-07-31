@@ -1,3 +1,5 @@
+package com.apteka.portal.report
+
 import com.apteka.portal.dtos.response.usergroup.UserGroupShortResponseDTO
 import com.apteka.portal.report.dtos.request.ReportTaskByGroupRequestDTO
 import com.apteka.portal.report.dtos.response.kpi.ClientTaskReportDTO
@@ -53,7 +55,7 @@ class ReportService(private var reportRepository: ReportRepository) {
 
             val groupKey = UserGroupTaskReportDTO(
                 userGroup = UserGroupShortResponseDTO(groupId, groupName),
-                userGroupTaskReport = TaskUserGroupCompleteReportDTO(
+                taskUserGroupCompleteReport = TaskUserGroupCompleteReportDTO(
                     totalTask = totalGroupTasks,
                     completedTask = closedGroupTasks,
                     deniedTask = deniedGroupTasks,

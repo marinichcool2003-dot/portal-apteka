@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import com.apteka.portal.models.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -34,13 +35,6 @@ import com.apteka.portal.exceptions.DuplicateAptekaFullNameException;
 import com.apteka.portal.exceptions.DuplicateAptekaLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
-import com.apteka.portal.models.Account;
-import com.apteka.portal.models.Address;
-import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.Apteka;
-import com.apteka.portal.models.SseEventNames;
-import com.apteka.portal.models.SseSignalTypes;
-import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.AccountRepository;
 import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.repository.UserGroupRepository;
@@ -139,6 +133,7 @@ public class AptekaService {
         Account account = Account.builder()
                 .login(cleanLogin)
                 .password(passwordEncoder.encode(dto.password()))
+                .userRole(UserRole.APTEKA)
                 .phoneNumber(cleanPhoneNumber)
                 .userGroup(userGroup)
                 .apteka(apteka)

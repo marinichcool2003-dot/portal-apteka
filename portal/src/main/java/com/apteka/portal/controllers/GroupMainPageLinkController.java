@@ -33,14 +33,14 @@ public class GroupMainPageLinkController {
     private final GroupMainPageLinksService groupMainPageLinksService;
 
     @PreAuthorize("""
-        @security.hasAction('CAN_SELECT_NON_ACTIVE_MAIN_PAGE_LINK') 
-        or @security.hasAction('CREATE_MAIN_PAGE_LINK') 
-        or @security.hasAction('UPDATE_MAIN_PAGE_LINK') 
-        or @security.hasAction('SAFE_DELETE_MAIN_PAGE_LINK') 
-        or @security.hasAction('CAN_ACTIVATE_MAIN_PAGE_LINK_AFTER_SAFE_DELETE') 
-        or @security.hasAction('PERMANENT_DELETE_MAIN_PAGE_LINK') 
-        or @security.hasRole('ADMIN')    
-            """)
+        @security.hasAction('CAN_SELECT_NON_ACTIVE_MAIN_PAGE_LINK')
+        or @security.hasAction('CREATE_MAIN_PAGE_LINK')
+        or @security.hasAction('UPDATE_MAIN_PAGE_LINK')
+        or @security.hasAction('SAFE_DELETE_MAIN_PAGE_LINK')
+        or @security.hasAction('CAN_ACTIVATE_MAIN_PAGE_LINK_AFTER_SAFE_DELETE')
+        or @security.hasAction('PERMANENT_DELETE_MAIN_PAGE_LINK')
+        or @security.hasRole('ADMIN')
+        """)
     @GetMapping("/get-all")
     public ResponseEntity<List<GroupMainPageLinksResponseDTO>> getAll(
             @RequestParam(defaultValue = "true") Boolean isActive,

@@ -4,5 +4,5 @@ import com.apteka.portal.dtos.response.usergroup.UserGroupShortResponseDTO
 
 data class UserGroupTaskReportDTO(
     val userGroup: UserGroupShortResponseDTO,
-    val userGroupTaskReport: TaskUserGroupCompleteReportDTO
+    val taskUserGroupCompleteReport: TaskUserGroupCompleteReportDTO
     )

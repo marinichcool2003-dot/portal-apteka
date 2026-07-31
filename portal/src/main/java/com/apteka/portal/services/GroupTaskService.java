@@ -72,7 +72,7 @@ public class GroupTaskService {
                 .map(GroupTaskResponseDTO::from)
                 .toList();
 
-        if (Boolean.TRUE.equals(isActive) && allTasksAreTrulyActive) {
+        if (isActive && allTasksAreTrulyActive) {
             safeCacheService.put(CacheNames.GROUP_TASKS_BY_GROUP, cacheKey, response);
         }
 

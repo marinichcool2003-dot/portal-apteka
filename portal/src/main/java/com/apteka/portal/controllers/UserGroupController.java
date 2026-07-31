@@ -45,6 +45,11 @@ public class UserGroupController {
         return ResponseEntity.ok(userGroupService.getOne(id, currentUser, isActive));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<UserGroupResponseDTO> getOneWithVisibleGroups(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser, @RequestParam(defaultValue = "true") Boolean isActive) {
+        return ResponseEntity.ok();
+    }
+
     @GetMapping("/visible")
     public ResponseEntity<List<UserGroupResponseDTO>> getWithVisible(@AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(userGroupService.getWithVisible(currentUser));

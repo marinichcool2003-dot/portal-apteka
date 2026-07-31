@@ -1,6 +1,5 @@
 package com.apteka.portal.report
 
-import ReportService
 import com.apteka.portal.models.AppUserDetails
 import com.apteka.portal.report.dtos.request.ReportTaskByGroupRequestDTO
 import com.apteka.portal.report.dtos.request.ReportTimeRequestDTO

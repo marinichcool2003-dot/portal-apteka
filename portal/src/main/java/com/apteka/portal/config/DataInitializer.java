@@ -17,6 +17,9 @@ import com.apteka.portal.repository.ClientRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -34,19 +37,32 @@ public class DataInitializer implements ApplicationRunner {
     private String adminPassword;
 
     @Override
+    @Transactional // Обязательно добавляем для работы ленивой инициализации и автоматического UPDATE
     public void run(ApplicationArguments args) throws Exception {
         String adminGroupName = "Группа администраторов";
-        UserGroup adminGroup;
 
-        if (!userGroupRepository.existsByName(adminGroupName)) {
-            log.info("Группа администраторов не найдена. Запуск процесса создания...");
-            adminGroup = UserGroup.builder().name(adminGroupName).isActive(true).build();
-            userGroupRepository.save(adminGroup);
-        } else {
-            adminGroup = userGroupRepository.findByName(adminGroupName)
-                    .orElseThrow(() -> new RuntimeException("Критическая ошибка: Группа не найдена"));
-        }
+        // 1. Получаем или создаем группу администраторов (без избыточных save)
+        UserGroup adminGroup = userGroupRepository.findByName(adminGroupName)
+                .orElseGet(() -> {
+                    log.info("Группа администраторов не найдена. Запуск процесса создания...");
 
+                    UserGroup newGroup = UserGroup.builder()
+                            .name(adminGroupName)
+                            .isActive(true)
+                            .build();
+
+                    // Сохраняем и принудительно отправляем в БД, чтобы сгенерировался ID
+                    UserGroup saved = userGroupRepository.saveAndFlush(newGroup);
+
+                    // Устанавливаем связь на саму себя
+                    saved.setVisibleGroups(Set.of(saved));
+
+                    // Благодаря @Transactional, метод save() здесь второй раз вызывать НЕ нужно!
+                    // Hibernate сам сделает UPDATE перед коммитом транзакции.
+                    return saved;
+                });
+
+        // 2. Получаем или создаем аккаунт администратора
         if (!clientRepository.existsByAccount_Login(adminLogin)) {
             log.info("Начальный администратор не найден. Запуск процесса создания...");
 
@@ -64,6 +80,8 @@ public class DataInitializer implements ApplicationRunner {
                     .build();
 
             admin.setAccount(account);
+
+            // Сохраняем клиента (вместе с ним по каскаду сохранится и Account)
             clientRepository.save(admin);
         }
     }
