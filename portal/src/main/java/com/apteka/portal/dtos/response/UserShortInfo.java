@@ -4,10 +4,16 @@ import java.util.Optional;
 
 import com.apteka.portal.models.Task;
 import com.apteka.portal.models.UserType;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+// AUDIT-FIX: @Schema Swagger RU
+@Schema(description = "Краткая информация о пользователе")
 public record UserShortInfo(
+        @Schema(description = "Идентификатор")
         Object id,
+        @Schema(description = "Тип пользователя")
         UserType type,
+        @Schema(description = "Отображаемое имя")
         String displayName) {
 
     public static UserShortInfo resolveCreator(Task task) {

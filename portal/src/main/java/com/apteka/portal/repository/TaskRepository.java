@@ -22,7 +22,6 @@ import com.apteka.portal.models.TaskStatus;
 
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
 
-	// AUDIT-FIX: N+1 — Fetch all account subtype data needed by filtered task list DTO mapping.
 	@EntityGraph(attributePaths = {
 			"workType",
 			"workType.groupTask",
@@ -36,7 +35,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 	@Override
 	Page<Task> findAll(Specification<Task> spec, Pageable pageable);
 
-	// AUDIT-FIX: N+1 — Fetch all account subtype data needed by task list DTO mapping.
 	@EntityGraph(attributePaths = {
 			"workType",
 			"workType.groupTask",

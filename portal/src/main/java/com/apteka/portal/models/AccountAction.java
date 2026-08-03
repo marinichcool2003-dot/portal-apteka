@@ -2,9 +2,11 @@ package com.apteka.portal.models;
 
 import com.apteka.portal.exceptions.UnknowActionException;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+@Schema(description = "Действие (право) учётной записи")
 @Getter
 @AllArgsConstructor
 public enum AccountAction {
@@ -20,7 +22,7 @@ public enum AccountAction {
     CREATE_APTEKA("CREATE_APTEKA", "Создание учетных записей аптек", LevelAction.MEDIUM),
     UPDATE_ALL_APTEKA("UPDATE_APTEKA", "Изменение всех данных учетных записей аптек", LevelAction.HIGH),
     UPDATE_APTEKA_ACCOUNT("UPDATE_APTEKA_ACCOUNT", "Изменение аккаунта и данных для входа аптеки", LevelAction.HIGH),
-    UPDATE_APTEKA_DESCRIPTION("UPDATE_APTEKA_DESCRIPTION", "Изменение описания аптек", LevelAction.MEDIUM), 
+    UPDATE_APTEKA_DESCRIPTION("UPDATE_APTEKA_DESCRIPTION", "Изменение описания аптек", LevelAction.MEDIUM),
     SAFE_DELETE_APTEKA("SAFE_DELETE_APTEKA", "Безопасное удаление учетной записи аптеки", LevelAction.MEDIUM),
     PERMANENT_DELETE_APTEKA("PERMANENT_DELETE_APTEKA", "Полное удаление учетной записи аптеки или безопасное при необходимости", LevelAction.CRITICAL),
 
@@ -97,11 +99,11 @@ public enum AccountAction {
 
     CAN_CHANGE_STATUS_TASK_IN_GROUP("CAN_CHANGE_STATUS_TASK_IN_GROUP", "Возможность менять статус неназначенных задач в вашей группе", LevelAction.LOW),
     CAN_CHANGE_STATUS_TASK_ASSIGNED_IN_GROUP("CAN_CHANGE_STATUS_TASK_ASSIGNED_IN_GROUP", "Возможность менять статус назначенных задач в вашей группе", LevelAction.MEDIUM),
-    
+
     CAN_ADD_TITLE_BEFORE_ASSIGNED("CAN_UPDATE_TITLE_BEFORE_ASSIGNED", "Возможность изменять заголовок задач до их распределения", LevelAction.LOW),
     CAN_FULL_UPDATE_TITLE_BEFORE_ASSIGNED("CAN_FULL_IPDATE_TITLE_BEFORE_ASSIGNED", "Возможность полностью изменять заголовок задач до распределения", LevelAction.MEDIUM),
     CAN_UPDATE_ALL_TASK("CAN_UPDATE_TASK", "Возможность полностью изменять задачи", LevelAction.HIGH),
-    
+
     CAN_PERMANENT_DELETE_TASK("CAN_PERMANENT_DELETE_TASK", "Возможность полностью удалить задачу", LevelAction.HIGH);
 
 
@@ -111,10 +113,15 @@ public enum AccountAction {
     private final LevelAction level;
 
     @AllArgsConstructor
+    @Schema(description = "Уровень критичности действия")
     public enum LevelAction {
+        @Schema(description = "Низкий")
         LOW(1),
+        @Schema(description = "Средний")
         MEDIUM(2),
+        @Schema(description = "Высокий")
         HIGH(3),
+        @Schema(description = "Критический")
         CRITICAL(4);
         private final int level;
 

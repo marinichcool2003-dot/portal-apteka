@@ -19,7 +19,8 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("API портал Социальных аптек")
                         .version("1.0.0")
-                        .description("Документация тестового проекта"))
+                        // AUDIT-FIX: уточнение описания API на русском
+                        .description("REST API портала Социальных аптек. Документация эндпоинтов, схем и перечислений на русском языке."))
                 .components(new Components()
                         // 1. Схема для Access токена в куках
                         .addSecuritySchemes("AccessCookie", new SecurityScheme()

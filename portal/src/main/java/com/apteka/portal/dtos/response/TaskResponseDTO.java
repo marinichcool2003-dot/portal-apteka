@@ -6,22 +6,34 @@ import java.util.List;
 import java.util.Optional;
 
 import com.apteka.portal.models.Task;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+// AUDIT-FIX: @Schema Swagger RU
+@Schema(description = "Полный ответ с данными задачи")
 public record TaskResponseDTO(
+        @Schema(description = "Идентификатор")
         Long id,
+        @Schema(description = "Заголовок")
         String title,
+        @Schema(description = "Описание")
         String description,
+        @Schema(description = "Дата создания")
         Instant creationDate,
+        @Schema(description = "Дата обновления")
         Instant updatedDate,
+        @Schema(description = "Дата закрытия")
         Instant closingDate,
+        @Schema(description = "Статус задачи")
         String status,
-
+        @Schema(description = "Тип работ")
         WorkTypeResponseDTO workType,
-
+        @Schema(description = "Создатель задачи")
         UserShortInfo createdBy,
+        @Schema(description = "Исполнитель задачи")
         UserShortInfo assignedBy,
-
+        @Schema(description = "Комментарии к задаче")
         List<TaskCommentResponseDTO> comments,
+        @Schema(description = "Изображения задачи")
         List<TaskPictureResponseDTO> pictures) {
         
     public static TaskResponseDTO from(Task task) {

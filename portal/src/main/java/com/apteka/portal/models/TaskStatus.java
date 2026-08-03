@@ -2,15 +2,21 @@ package com.apteka.portal.models;
 
 import com.apteka.portal.exceptions.UnknowTaskStatusException;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+@Schema(description = "Статус задачи")
 @AllArgsConstructor
 @Getter
 public enum TaskStatus {
+    @Schema(description = "Открыта")
     OPEN("OPEN", "Открыта", "Задача открыта"),
+    @Schema(description = "Закрыта")
     CLOSED("CLOSED", "Закрыта", "Задача выполнена"),
+    @Schema(description = "Отклонена")
     DENIED("DENIED", "Отклонена", "Задача отклонена"),
+    @Schema(description = "В процессе")
     PROCESSED("PROCESSED", "В процессе", "Задача в процессе выполнения");
 
     private final String code;

@@ -1,13 +1,14 @@
 package com.apteka.portal.report.dtos.response.aptekaproblems
 
 import io.swagger.v3.oas.annotations.media.Schema
+import java.util.UUID
 
-@Schema(description = "Агрегация задач аптеки по категории (group_task)")
-data class TaskAptekaGroupTaskReportDTO(
-    @Schema(description = "Идентификатор категории задач")
-    val groupTaskId: Int,
-    @Schema(description = "Наименование категории задач")
-    val groupTaskName: String,
+@Schema(description = "Отчёт по основным проблемам конкретной аптеки")
+data class TaskAptekaReportDTO(
+    @Schema(description = "Идентификатор аптеки")
+    val aptekaId: UUID,
+    @Schema(description = "Наименование аптеки")
+    val aptekaName: String,
 
     @Schema(description = "Всего задач")
     val totalTasks: Long,
@@ -19,9 +20,9 @@ data class TaskAptekaGroupTaskReportDTO(
     val percentCompletedTasks: Double,
     @Schema(description = "Процент отклонённых")
     val percentDeniedTasks: Double,
-    @Schema(description = "Доля от всех задач периода, %")
+    @Schema(description = "Доля задач аптеки от всех задач периода, %")
     val percentAll: Double,
 
-    @Schema(description = "Виды работ внутри категории")
-    val workTypes: List<TaskAptekaWorkTypeReportDTO>
+    @Schema(description = "Категории задач (group_task)")
+    val groupTasks: List<TaskAptekaGroupTaskReportDTO>
 )

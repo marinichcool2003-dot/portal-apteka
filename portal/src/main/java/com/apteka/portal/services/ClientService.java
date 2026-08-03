@@ -44,6 +44,7 @@ import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.DuplicateClientLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
+import com.apteka.portal.exceptions.InvalidGroupUserException;
 import com.apteka.portal.exceptions.UserHaveActiveTasksException;
 import com.apteka.portal.models.Account;
 import com.apteka.portal.models.AccountAction;
@@ -53,6 +54,7 @@ import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.UserGroup;
+import com.apteka.portal.models.UserGroupType;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.AccountRepository;
 import com.apteka.portal.repository.ClientRepository;
@@ -88,15 +90,15 @@ public class ClientService {
     private String uploadAvatarPictureName;
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
-        "account.userGroup.id",
-        "fullName",
-        "createdAt",
-        "updatedAt"
+            "account.userGroup.id",
+            "fullName",
+            "createdAt",
+            "updatedAt"
     );
 
     private static final Sort DEFAULT_SORT = Sort.by(
-        Sort.Order.asc("account.userGroup.id"),
-        Sort.Order.asc("fullName")
+            Sort.Order.asc("account.userGroup.id"),
+            Sort.Order.asc("fullName")
     );
 
     @Transactional(readOnly = true)
@@ -146,7 +148,7 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public Page<ClientResponseDTO> getByGroup(Integer userGroupId, AppUserDetails currentUser, Pageable pageable,
-            Boolean isActive) {
+                                              Boolean isActive) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
 
         UserGroup userGroup = userGroupRepository.findById(userGroupId)
@@ -163,7 +165,7 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public List<ClientWithStatsDTO> getWithNumberOfTask(Integer userGroupId, AppUserDetails currentUser,
-            Boolean isActive) {
+                                                        Boolean isActive) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
 
         UserGroup userGroup = userGroupRepository.findById(userGroupId)
@@ -199,13 +201,13 @@ public class ClientService {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
         Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
         return clientRepository.filter(
-                validatedPageable,
-                dto.login(),
-                dto.phoneNumber(),
-                dto.groupId(),
-                true,
-                dto.fullName(),
-                dto.extensionNumber())
+                        validatedPageable,
+                        dto.login(),
+                        dto.phoneNumber(),
+                        dto.groupId(),
+                        true,
+                        dto.fullName(),
+                        dto.extensionNumber())
                 .map(ClientResponseDTO::from);
     }
 
@@ -214,6 +216,9 @@ public class ClientService {
 
         UserGroup userGroup = userGroupRepository.findById(dto.groupClientId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.groupClientId()));
+        if (userGroup.getGroupType() != UserGroupType.EMPLOYEE_GROUP) {
+            throw new InvalidGroupUserException("Сотрудника можно привязать только к группе типа «Группа сотрудников»");
+        }
 
         clientSecurityService.validateCanCreateClient(currentUser, userGroup);
 
@@ -228,7 +233,7 @@ public class ClientService {
         if (StringUtils.hasText(dto.extensionNumber())) {
             String cleanExtensionNumber = phoneNumberValidator.getCleanExtensionNumber(dto.extensionNumber());
             clientBuilder.extensionNumber(cleanExtensionNumber);
-        } 
+        }
 
         UserRole role = UserRole.fromCode(dto.roleCode());
         clientSecurityService.canGiveRole(currentUser, role);
@@ -318,7 +323,7 @@ public class ClientService {
 
     @Transactional
     public ClientResponseDTO updateClientDescription(UUID id, ClientUpdateDescriptionRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                     AppUserDetails currentUser) {
         UpdateClientResponseDTO responseDTO = updateClientDescriptionInner(id, dto, currentUser);
         Client client = responseDTO.client();
         boolean hasChange = responseDTO.hasChange();
@@ -343,7 +348,7 @@ public class ClientService {
 
     @Transactional
     public ClientResponseDTO updatePersonalProfile(ClientUpdatePersonalProfileRequestDTO dto,
-            AppUserDetails currentUser) throws IOException {
+                                                   AppUserDetails currentUser) throws IOException {
         ClientInnerResponseDTO responseDTO = updateProfile(currentUser.getInternalId(), dto, currentUser);
 
         boolean hasChange = responseDTO.hasChange();
@@ -398,8 +403,8 @@ public class ClientService {
         clientSecurityService.validateCanUpdateFullClient(currentUser, account);
 
         ClientInnerResponseDTO responseDTO = updateProfile(id, new ClientUpdatePersonalProfileRequestDTO(
-                dto.accountUpdateRequestDTO(),
-                dto.clientUpdateRequestDTO(), dto.avatar()),
+                        dto.accountUpdateRequestDTO(),
+                        dto.clientUpdateRequestDTO(), dto.avatar()),
                 currentUser);
 
         boolean hasChange = responseDTO.hasChange();
@@ -575,21 +580,21 @@ public class ClientService {
     }
 
     private record ClientInnerResponseDTO(Client client, boolean hasChange, boolean needsLogout,
-            boolean isOnlyForCurrent, String oldLogin) {
+                                          boolean isOnlyForCurrent, String oldLogin) {
     }
 
     private record UpdateAccountResponseWithOldLoginDTO(UpdateAccountResponseDTO accountResponseDTO, String oldLogin) {
     }
 
     private record UpdateAccountResponseDTO(Account account, boolean hasChange, boolean needsLogout,
-            boolean isOnlyForCurrent) {
+                                            boolean isOnlyForCurrent) {
     }
 
     private record UpdateClientResponseDTO(Client client, boolean hasChange) {
     }
 
     private UpdateAccountResponseWithOldLoginDTO updateAccountInner(UUID id, AccountUpdateRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                                    AppUserDetails currentUser) {
         Account account = accountRepository.findByIdWithUserGroup(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.validateCanUpdateClientAccount(currentUser, account);
@@ -633,7 +638,7 @@ public class ClientService {
     }
 
     private ClientInnerResponseDTO updateProfile(UUID id, ClientUpdatePersonalProfileRequestDTO dto,
-            AppUserDetails currentUser)
+                                                 AppUserDetails currentUser)
             throws IOException {
 
         UpdateAccountResponseWithOldLoginDTO accountResponseDTO = updateAccountInner(id,
@@ -659,7 +664,7 @@ public class ClientService {
     }
 
     private UpdateAccountResponseDTO updateUserGroup(Account account, Integer userGroupId, boolean hasChange,
-            boolean needsLogout, boolean isOnlyForCurrent) {
+                                                     boolean needsLogout, boolean isOnlyForCurrent) {
         UUID accountId = account.getId();
         boolean haveActiveTasks = taskRepository.existsByAccountIdAndStatus(accountId,
                 Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
@@ -668,6 +673,9 @@ public class ClientService {
         }
         UserGroup userGroup = userGroupRepository.findById(userGroupId)
                 .orElseThrow(() -> new GroupUserNotFoundException(userGroupId));
+        if (userGroup.getGroupType() != UserGroupType.EMPLOYEE_GROUP) {
+            throw new InvalidGroupUserException("Сотрудника можно привязать только к группе типа «Группа сотрудников»");
+        }
         if (!Objects.equals(account.getUserGroup().getId(), userGroup.getId())) {
             account.setUserGroup(userGroup);
             hasChange = true;
@@ -679,7 +687,7 @@ public class ClientService {
     }
 
     private UpdateClientResponseDTO updateClientDescriptionInner(UUID id, ClientUpdateDescriptionRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                                 AppUserDetails currentUser) {
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.validateCanUpdateClientDescription(currentUser, client);

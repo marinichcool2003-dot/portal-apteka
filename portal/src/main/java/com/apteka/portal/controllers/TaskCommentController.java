@@ -19,27 +19,33 @@ import com.apteka.portal.dtos.response.TaskCommentResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.TaskCommentService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Комментарии к задачам", description = "Просмотр и создание комментариев к задачам")
 @RestController
-@RequestMapping("api/v1/task-comments")
+@RequestMapping("/api/v1/task-comments")
 @RequiredArgsConstructor
 public class TaskCommentController {
     private final TaskCommentService taskCommentService;
 
+    @Operation(summary = "Комментарии задачи", description = "Возвращает список комментариев указанной задачи.")
     @GetMapping("/by-task/{taskId}")
     public ResponseEntity<List<TaskCommentResponseDTO>> getByTask(@PathVariable Long taskId,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(taskCommentService.getByTask(taskId, currentUser));
     }
 
+    @Operation(summary = "Получить комментарий по ID", description = "Возвращает один комментарий по идентификатору.")
     @GetMapping("/{id}")
     public ResponseEntity<TaskCommentResponseDTO> getOne(@PathVariable Long id,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(taskCommentService.getOne(id, currentUser));
     }
 
+    @Operation(summary = "Создать комментарий", description = "Добавляет новый комментарий к задаче.")
     @PostMapping
     public ResponseEntity<TaskCommentResponseDTO> create(@Valid @RequestBody TaskCommentRequestDTO dto,
             @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -47,6 +53,7 @@ public class TaskCommentController {
                 .body(taskCommentService.create(dto, currentUser));
     }
 
+    @Operation(summary = "Удалить комментарий", description = "Удаляет комментарий. Доступно только администратору.")
     @PreAuthorize("@security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails currentUser) {

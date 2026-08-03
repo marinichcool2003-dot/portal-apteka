@@ -24,38 +24,54 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.apteka.portal.dtos.request.usergroup.UserGroupRequestDTO;
 import com.apteka.portal.models.AppUserDetails;
+import com.apteka.portal.models.UserGroupType;
 import com.apteka.portal.services.UserGroupService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Группы пользователей", description = "Управление группами пользователей: аптечные и сотрудники")
 @RestController
-@RequestMapping("api/v1/user-groups")
+@RequestMapping("/api/v1/user-groups")
 @RequiredArgsConstructor
 public class UserGroupController {
     private final UserGroupService userGroupService;
 
+    @Operation(
+            summary = "Список групп пользователей",
+            description = "Возвращает группы с фильтром по активности. Фильтр type: APTEKA_GROUP / EMPLOYEE_GROUP / без параметра = все."
+    )
     @PreAuthorize("@security.hasAction('CAN_SELECT_ALL_ACTIVE_GROUPS') or @security.hasAction('CAN_SELECT_ALL_NON_ACTIVE_GROUPS') or @security.hasRole('ADMIN')")
     @GetMapping
-    public ResponseEntity<List<UserGroupResponseDTO>> getAll(@AuthenticationPrincipal AppUserDetails currentUser, @RequestParam(defaultValue = "true") Boolean isActive) {
-        return ResponseEntity.ok(userGroupService.findByActive(currentUser, isActive));
+    // AUDIT-FIX: фильтр ?type=APTEKA_GROUP|EMPLOYEE_GROUP (null = все)
+    public ResponseEntity<List<UserGroupResponseDTO>> getAll(
+            @AuthenticationPrincipal AppUserDetails currentUser,
+            @RequestParam(defaultValue = "true") Boolean isActive,
+            @RequestParam(required = false) UserGroupType type) {
+        return ResponseEntity.ok(userGroupService.findByActive(currentUser, isActive, type));
     }
 
+    @Operation(summary = "Получить группу по ID", description = "Возвращает данные одной группы пользователей.")
     @GetMapping("/{id}")
     public ResponseEntity<UserGroupResponseDTO> getOne(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser, @RequestParam(defaultValue = "true") Boolean isActive) {
         return ResponseEntity.ok(userGroupService.getOne(id, currentUser, isActive));
     }
 
+    @Operation(summary = "Видимые группы для группы", description = "Возвращает краткий список групп, видимых указанной группе пользователей.")
     @GetMapping("/get-visible-group-for/{id}")
     public ResponseEntity<List<UserGroupShortResponseDTO>> getVisibleGroups(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
         return  ResponseEntity.ok(userGroupService.getVisibleGroups(id, currentUser));
     }
 
+    @Operation(summary = "Видимые группы текущего пользователя", description = "Возвращает группы, видимые текущему пользователю, с полными данными.")
     @GetMapping("/visible")
     public ResponseEntity<List<UserGroupResponseDTO>> getWithVisible(@AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(userGroupService.getWithVisible(currentUser));
     }
 
+    @Operation(summary = "Создать группу", description = "Создаёт новую группу пользователей.")
     @PreAuthorize("@security.hasAction('CAN_CREATE_USER_GROUP') or @security.hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<UserGroupResponseDTO> create(@Valid @RequestBody UserGroupRequestDTO dto,
@@ -64,6 +80,7 @@ public class UserGroupController {
                 .body(userGroupService.create(dto, currentUser));
     }
 
+    @Operation(summary = "Обновить группу", description = "Обновляет данные группы пользователей.")
     @PreAuthorize("@security.hasAction('CAN_UPDATE_SELF_USER_GROUP') or @security.hasAction('CAN_UPDATE_USER_GROUP') or @security.hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<UserGroupResponseDTO> update(@PathVariable Integer id,
@@ -72,6 +89,7 @@ public class UserGroupController {
         return ResponseEntity.ok(userGroupService.update(id, dto, currentUser));
     }
 
+    @Operation(summary = "Мягкое удаление группы", description = "Деактивирует группу пользователей (safe delete).")
     @PreAuthorize("@security.hasAction('SAFE_DELETE_USER_GROUP') or @security.hasRole('ADMIN')")
     @PatchMapping("/safe-delete/{id}")
     public ResponseEntity<Void> safeDelete(@PathVariable Integer id,
@@ -80,6 +98,7 @@ public class UserGroupController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Восстановить группу", description = "Восстанавливает группу после мягкого удаления.")
     @PreAuthorize("@security.hasAction('CAN_ACTIVATE_USER_GROUP_AFTER_SAFE_DELETE') or @security.hasRole('ADMIN')")
     @PatchMapping("/restore/{id}")
     public ResponseEntity<Void> restoreAfterSafeDelete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
@@ -87,6 +106,7 @@ public class UserGroupController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Полное удаление группы", description = "Безвозвратно удаляет группу. Параметр confirm подтверждает удаление.")
     @PreAuthorize("@security.hasAction('PERMANENT_DELETE_USER_GROUP') or @security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser,

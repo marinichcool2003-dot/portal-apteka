@@ -35,6 +35,7 @@ import com.apteka.portal.exceptions.DuplicateAptekaFullNameException;
 import com.apteka.portal.exceptions.DuplicateAptekaLoginException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
+import com.apteka.portal.exceptions.InvalidGroupUserException;
 import com.apteka.portal.repository.AccountRepository;
 import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.repository.UserGroupRepository;
@@ -90,7 +91,7 @@ public class AptekaService {
 
     @Transactional(readOnly = true)
     public Page<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto, Pageable pageable, boolean isActive,
-            AppUserDetails currentUser) {
+                                          AppUserDetails currentUser) {
         aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
         Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
         Integer scopeGroupId = aptekaSecurityService.canSelectAllAptekas(currentUser)
@@ -114,6 +115,9 @@ public class AptekaService {
         passwordValidator.validatePassword(dto.password(), false);
         UserGroup userGroup = userGroupRepository.findById(dto.groupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
+        if (userGroup.getGroupType() != UserGroupType.APTEKA_GROUP) {
+            throw new InvalidGroupUserException("Аптеку можно привязать только к группе типа «Группа аптек»");
+        }
         validateAptekaNumberInGroup(dto.number(), dto.groupId());
         String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
 
@@ -237,7 +241,7 @@ public class AptekaService {
 
     @Transactional
     public AptekaResponseDTO updateDescription(UUID id, AptekaUpdateDescriptionRequestDTO dto,
-            AppUserDetails currentUser) {
+                                               AppUserDetails currentUser) {
         aptekaSecurityService.validateCanUpdateDescriptionApteka(currentUser);
 
         Apteka apteka = aptekaRepository.findById(id)
@@ -307,11 +311,11 @@ public class AptekaService {
     }
 
     private final record UpdateAptekaAccountResponseDTO(boolean hasChange, boolean needsLogout,
-            String oldLogin) {
+                                                        String oldLogin) {
     }
 
     private UpdateAptekaAccountResponseDTO updateAptekaAccount(Account account, AccountUpdateRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                               AppUserDetails currentUser) {
         aptekaSecurityService.validateCanUpdateAccountApteka(currentUser);
         Apteka apteka = account.getApteka();
 
@@ -350,6 +354,9 @@ public class AptekaService {
         if (dto.groupId() != null && dto.groupId() > 0) {
             UserGroup userGroup = userGroupRepository.findById(dto.groupId())
                     .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
+            if (userGroup.getGroupType() != UserGroupType.APTEKA_GROUP) {
+                throw new InvalidGroupUserException("Аптеку можно привязать только к группе типа «Группа аптек»");
+            }
             if (!Objects.equals(userGroup.getId(), account.getUserGroup().getId())) {
                 validateAptekaNumberInGroup(apteka.getNumber(), dto.groupId());
                 account.setUserGroup(userGroup);
@@ -363,8 +370,8 @@ public class AptekaService {
     }
 
     private UpdateAptekaDescriptionResponseDTO updateAptekaDescription(Apteka apteka,
-            AptekaUpdateDescriptionRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                                       AptekaUpdateDescriptionRequestDTO dto,
+                                                                       AppUserDetails currentUser) {
         aptekaSecurityService.validateCanUpdateDescriptionApteka(currentUser);
 
         Account account = apteka.getAccount();

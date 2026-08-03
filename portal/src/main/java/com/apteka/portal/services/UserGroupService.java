@@ -38,6 +38,7 @@ import com.apteka.portal.models.CacheNames;
 import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.UserGroup;
+import com.apteka.portal.models.UserGroupType;
 import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.UserGroupRepository;
 
@@ -60,13 +61,13 @@ public class UserGroupService {
     @Value("${app.default.avatars.upload.picture.group}")
     private String uploadAvatarPictureName;
 
-    @Cacheable(value = CacheNames.USER_GROUPS_LIST, key = "'active_user_groups'", condition = "#isActive", sync = true)
+    @Cacheable(value = CacheNames.USER_GROUPS_LIST, key = "'active_user_groups_' + (#type != null ? #type.name() : 'ALL')", condition = "#isActive", sync = true)
     @Transactional(readOnly = true)
-    public List<UserGroupResponseDTO> findByActive(AppUserDetails currentUser, Boolean isActive) {
+    public List<UserGroupResponseDTO> findByActive(AppUserDetails currentUser, Boolean isActive, UserGroupType type) {
         if (Boolean.FALSE.equals(isActive)) {
             userGroupSecurityService.canSelectNonActive(currentUser);
         }
-        return userGroupRepository.findByIsActive(isActive).stream()
+        return userGroupRepository.findByIsActiveAndGroupType(isActive, type).stream()
                 .map(UserGroupResponseDTO::from)
                 .toList();
     }
@@ -156,9 +157,14 @@ public class UserGroupService {
     public UserGroupResponseDTO create(UserGroupRequestDTO dto, AppUserDetails currentUser) throws IOException {
         if (!StringUtils.hasText(dto.name()))
             throw new InvalidGroupUserException("Группа пользователя не может быть пустой!");
+        if (dto.groupType() == null) {
+            throw new InvalidGroupUserException("Тип группы не может быть пустым!");
+        }
         String cleanName = typeNameValidator.getCleanName(dto.name());
         validateNameGroup(cleanName, null);
-        UserGroup.UserGroupBuilder savedGroupBuilder = UserGroup.builder().name(cleanName);
+        UserGroup.UserGroupBuilder savedGroupBuilder = UserGroup.builder()
+                .name(cleanName)
+                .groupType(dto.groupType());
 
         if (StringUtils.hasText(dto.phoneNumber())) {
             String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
@@ -259,6 +265,11 @@ public class UserGroupService {
                 upGroup.getVisibleGroups().addAll(requestVisibleGroups);
                 hasChange = true;
             }
+        }
+
+        if (dto.groupType() != null && dto.groupType() != upGroup.getGroupType()) {
+            upGroup.setGroupType(dto.groupType());
+            hasChange = true;
         }
 
         UserGroupResponseDTO response = UserGroupResponseDTO.from(upGroup);

@@ -46,6 +46,7 @@ import com.apteka.portal.exceptions.InvalidFullNameException;
 import com.apteka.portal.exceptions.InvalidClientPasswordException;
 import com.apteka.portal.exceptions.InvalidGroupMainPageLinksNameException;
 import com.apteka.portal.exceptions.InvalidGroupTaskException;
+import com.apteka.portal.exceptions.InvalidGroupUserException;
 import com.apteka.portal.exceptions.InvalidLoginException;
 import com.apteka.portal.exceptions.InvalidMainPageLinkNameException;
 import com.apteka.portal.exceptions.InvalidRefreshTokenException;
@@ -270,6 +271,15 @@ public class GlobalExceptionHandler {
         log.warn("Группа сотрудников уже существует: {}", e.getMessage());
         String errorMessage = "Ошибка! Группа сотрудников уже существует: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    // AUDIT-FIX: явная обработка некорректного типа/данных группы пользователей
+    @ExceptionHandler(InvalidGroupUserException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidGroupUserException(InvalidGroupUserException e) {
+        log.warn("Некорректные данные группы пользователей: {}", e.getMessage());
+        String errorMessage = "Ошибка! " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
     @ExceptionHandler(InvalidRefreshTokenException.class)

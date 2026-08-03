@@ -49,6 +49,8 @@ public class DataInitializer implements ApplicationRunner {
                     UserGroup newGroup = UserGroup.builder()
                             .name(adminGroupName)
                             .isActive(true)
+                            // AUDIT-FIX: группа администраторов — группа сотрудников
+                            .groupType(com.apteka.portal.models.UserGroupType.EMPLOYEE_GROUP)
                             .build();
 
                     // Сохраняем и принудительно отправляем в БД, чтобы сгенерировался ID

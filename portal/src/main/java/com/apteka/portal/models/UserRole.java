@@ -2,15 +2,21 @@ package com.apteka.portal.models;
 
 import com.apteka.portal.exceptions.UnknowRoleException;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+@Schema(description = "Роль пользователя")
 @Getter
 @AllArgsConstructor
 public enum UserRole {
+    @Schema(description = "Администратор")
     ADMIN("ADMIN", "Администратор", 3),
+    @Schema(description = "Босс")
     BOSS("BOSS", "Босс", 2),
+    @Schema(description = "Сотрудник")
     USER("USER", "Сотрудник", 1),
+    @Schema(description = "Аптека")
     APTEKA("APTEKA", "Аптека", 0);
 
     private final String code;

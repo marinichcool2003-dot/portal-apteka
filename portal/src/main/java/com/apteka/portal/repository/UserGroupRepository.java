@@ -32,13 +32,21 @@ public interface UserGroupRepository extends JpaRepository<UserGroup, Integer> {
     List<UserGroup> findByIsActive(boolean isActive);
 
     @Query("""
+            SELECT g FROM UserGroup g
+            WHERE g.isActive = :isActive
+              AND (:groupType IS NULL OR g.groupType = :groupType)
+            """)
+    List<UserGroup> findByIsActiveAndGroupType(@Param("isActive") boolean isActive,
+                                               @Param("groupType") com.apteka.portal.models.UserGroupType groupType);
+
+    @Query("""
              SELECT COUNT(vg) > 0 FROM UserGroup g
              JOIN g.visibleGroups vg
              WHERE g.id = :currentUserGroupId AND vg.id = :targetGroupId AND vg.isActive = :isActive
             """)
     boolean isGroupVisibleToAnother(@Param("currentUserGroupId") Integer currentUserGroupId,
-            @Param("targetGroupId") Integer targetGroupId, @Param("isActive") boolean isActive);
-            
+                                    @Param("targetGroupId") Integer targetGroupId, @Param("isActive") boolean isActive);
+
     @Query("SELECT g FROM UserGroup g WHERE g.id = :id")
     Optional<UserGroup> findByIdAndCache(@Param("id") Integer id);
 }
