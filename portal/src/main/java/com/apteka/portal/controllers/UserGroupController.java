@@ -6,6 +6,7 @@ import com.apteka.portal.dtos.response.usergroup.UserGroupResponseDTO;
 import java.io.IOException;
 import java.util.List;
 
+import com.apteka.portal.dtos.response.usergroup.UserGroupShortResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,9 +46,9 @@ public class UserGroupController {
         return ResponseEntity.ok(userGroupService.getOne(id, currentUser, isActive));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<UserGroupResponseDTO> getOneWithVisibleGroups(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser, @RequestParam(defaultValue = "true") Boolean isActive) {
-        return ResponseEntity.ok();
+    @GetMapping("/get-visible-group-for/{id}")
+    public ResponseEntity<List<UserGroupShortResponseDTO>> getVisibleGroups(@PathVariable Integer id, @AuthenticationPrincipal AppUserDetails currentUser) {
+        return  ResponseEntity.ok(userGroupService.getVisibleGroups(id, currentUser));
     }
 
     @GetMapping("/visible")

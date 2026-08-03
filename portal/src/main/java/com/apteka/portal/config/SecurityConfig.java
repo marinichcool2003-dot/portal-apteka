@@ -48,7 +48,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         .requestMatchers("/openapi.yaml", "/openapi/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/webjars/**").permitAll()
-                        .requestMatchers("/v3/api-docs/swagger-config").permitAll()
+                        .requestMatchers("/v3/api-docs", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/avatars/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

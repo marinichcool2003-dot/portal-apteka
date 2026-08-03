@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.apteka.portal.dtos.response.usergroup.UserGroupShortResponseDTO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -111,6 +112,31 @@ public class UserGroupService {
         }
 
         return response;
+    }
+
+    @Transactional
+    public List<UserGroupShortResponseDTO> getVisibleGroups(Integer id, AppUserDetails currentUser) {
+        Integer currentUserGroupId = Optional.ofNullable(currentUser.getUserGroup())
+                .map(UserGroup::getId)
+                .orElseThrow(() -> new GroupUserNotFoundException("Группа текущего пользователя не привязана!"));
+
+        if (!currentUserGroupId.equals(id)) {
+
+            boolean isVisible = userGroupRepository.isGroupVisibleToAnother(currentUserGroupId, id, true);
+            if (!currentUser.hasRole(UserRole.ADMIN) &&
+                    !currentUser.hasAnyAction(AccountAction.CAN_SELECT_ALL_ACTIVE_GROUPS,
+                            AccountAction.CAN_SELECT_ALL_NON_ACTIVE_GROUPS)
+                    &&
+                    !isVisible) {
+                throw new GroupUserNotFoundException("У вас нет прав на просмотр этой группы или она не существует");
+            }
+        }
+
+        UserGroup group = userGroupRepository.findByIdAndIsActive(id, true)
+                .orElseThrow(() -> new GroupUserNotFoundException(id));
+
+        return userGroupRepository.findVisibleGroupsIncludingSelf(id)
+                .stream().map(UserGroupShortResponseDTO::from).toList();
     }
 
     @Cacheable(value = CacheNames.USER_GROUPS_VISIBLE, key = "#currentUser.userGroup != null ? #currentUser.userGroup.id : 'anonymous'", sync = true)
