@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS group_user (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),
+    group_type VARCHAR(32) NOT NULL,
     is_active BOOLEAN DEFAULT true
 );
 
@@ -162,3 +163,4 @@ CREATE TABLE IF NOT EXISTS main_page_links (
     updated_by VARCHAR(50),
     is_active BOOLEAN DEFAULT true
 );
+

@@ -3,6 +3,7 @@ package com.apteka.portal.services;
 import java.util.List;
 import java.util.Objects;
 
+import com.apteka.portal.models.*;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,12 +21,6 @@ import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.exceptions.DuplicateGroupTaskException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
-import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.CacheNames;
-import com.apteka.portal.models.GroupTask;
-import com.apteka.portal.models.SseEventNames;
-import com.apteka.portal.models.SseSignalTypes;
-import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.repository.GroupTaskRepository;
 import com.apteka.portal.repository.UserGroupRepository;
 
@@ -45,8 +40,9 @@ public class GroupTaskService {
     @Transactional(readOnly = true)
     public List<GroupTaskResponseDTO> getByGroups(Integer creatorGroupId, Integer intendedGroupId, Boolean isActive,
             AppUserDetails currentUser) {
-
-        groupTaskSecurityService.validateGroupVisibility(creatorGroupId, intendedGroupId);
+        if (!currentUser.hasRole(UserRole.ADMIN)) {
+            groupTaskSecurityService.validateGroupVisibility(creatorGroupId, intendedGroupId);
+        }
         String cacheKey = creatorGroupId + ":" + intendedGroupId;
 
         if (Boolean.TRUE.equals(isActive)) {
