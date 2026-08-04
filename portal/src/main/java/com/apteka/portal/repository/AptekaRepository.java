@@ -56,41 +56,79 @@ public interface AptekaRepository extends JpaRepository<Apteka, UUID> {
 
     boolean existsByAccount_UserGroup_IdAndNumber(Integer userGroupName, Integer number);
 
-    @Query(value = """
+//    @Query(value = """
+//            SELECT a FROM Apteka a
+//            JOIN FETCH a.account acc
+//            JOIN FETCH acc.userGroup ug
+//            JOIN FETCH a.address add
+//            WHERE (
+//                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
+//                OR
+//                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
+//            )
+//            AND (:login IS NULL OR LOWER(acc.login) LIKE LOWER(CONCAT(:login, '%')))
+//            AND (:groupId IS NULL OR ug.id = :groupId)
+//            AND (:number IS NULL OR a.number = :number)
+//            AND (:phoneNumber IS NULL OR LOWER(acc.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
+//            AND (:city IS NULL OR add.city = :city)
+//            AND (:street IS NULL OR add.street = :street)
+//            """, countQuery = """
+//            SELECT count(a) FROM Apteka a
+//            JOIN a.account acc
+//            JOIN acc.userGroup ug
+//            JOIN a.address add
+//            WHERE (
+//                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
+//                OR
+//                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
+//            )
+//            AND (:login IS NULL OR LOWER(acc.login) LIKE LOWER(CONCAT(:login, '%')))
+//            AND (:groupId IS NULL OR ug.id = :groupId)
+//            AND (:number IS NULL OR a.number = :number)
+//            AND (:phoneNumber IS NULL OR LOWER(acc.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
+//            AND (:city IS NULL OR add.city = :city)
+//            AND (:street IS NULL OR add.street = :street)
+//            """)
+//    Page<Apteka> filter(@Param("login") String login, @Param("groupId") Integer groupId,
+//            @Param("number") Integer number, @Param("phoneNumber") String phoneNumber,
+//            @Param("isActive") boolean isActive, @Param("city") String city, @Param("street") String street,
+//            Pageable pageable);
+
+    @Query("""
             SELECT a FROM Apteka a
             JOIN FETCH a.account acc
             JOIN FETCH acc.userGroup ug
             JOIN FETCH a.address add
-            WHERE (
-                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
-                OR
-                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
-            )
-            AND (:login IS NULL OR LOWER(acc.login) LIKE LOWER(CONCAT(:login, '%')))
+            WHERE acc.isActive = true
+            AND ug.isActive = true
+            AND (:login IS NULL OR acc.login LIKE CONCAT(:login, '%'))
             AND (:groupId IS NULL OR ug.id = :groupId)
             AND (:number IS NULL OR a.number = :number)
-            AND (:phoneNumber IS NULL OR LOWER(acc.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
-            AND (:city IS NULL OR add.city = :city)
-            AND (:street IS NULL OR add.street = :street)
-            """, countQuery = """
-            SELECT count(a) FROM Apteka a
-            JOIN a.account acc
-            JOIN acc.userGroup ug
-            JOIN a.address add
-            WHERE (
-                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
-                OR
-                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
-            )
-            AND (:login IS NULL OR LOWER(acc.login) LIKE LOWER(CONCAT(:login, '%')))
-            AND (:groupId IS NULL OR ug.id = :groupId)
-            AND (:number IS NULL OR a.number = :number)
-            AND (:phoneNumber IS NULL OR LOWER(acc.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
+            AND (:phoneNumber IS NULL OR acc.phoneNumber LIKE CONCAT('%', :phoneNumber, '%'))
             AND (:city IS NULL OR add.city = :city)
             AND (:street IS NULL OR add.street = :street)
             """)
-    Page<Apteka> filter(@Param("login") String login, @Param("groupId") Integer groupId,
-            @Param("number") Integer number, @Param("phoneNumber") String phoneNumber,
-            @Param("isActive") boolean isActive, @Param("city") String city, @Param("street") String street,
-            Pageable pageable);
+    Page<Apteka> filterActive(@Param("login") String login, @Param("groupId") Integer groupId,
+                              @Param("number") Integer number, @Param("phoneNumber") String phoneNumber,
+                              @Param("city") String city, @Param("street") String street,
+                              Pageable pageable);
+
+    @Query("""
+            SELECT a FROM Apteka a
+            JOIN FETCH a.account acc
+            JOIN FETCH acc.userGroup ug
+            JOIN FETCH a.address add
+            WHERE acc.isActive = false
+            AND ug.isActive = false
+            AND (:login IS NULL OR acc.login LIKE CONCAT(:login, '%'))
+            AND (:groupId IS NULL OR ug.id = :groupId)
+            AND (:number IS NULL OR a.number = :number)
+            AND (:phoneNumber IS NULL OR acc.phoneNumber LIKE CONCAT('%', :phoneNumber, '%'))
+            AND (:city IS NULL OR add.city = :city)
+            AND (:street IS NULL OR add.street = :street)
+            """)
+    Page<Apteka> filterNonActive(@Param("login") String login, @Param("groupId") Integer groupId,
+                              @Param("number") Integer number, @Param("phoneNumber") String phoneNumber,
+                              @Param("city") String city, @Param("street") String street,
+                              Pageable pageable);
 }

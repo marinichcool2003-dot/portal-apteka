@@ -53,7 +53,7 @@ public class MainPageLinksController {
     }
 
     @Operation(summary = "Список ссылок", description = "Возвращает все активные ссылки главной страницы, доступные текущему пользователю.")
-    @GetMapping
+    @GetMapping("/links")
     public ResponseEntity<List<MainPageLinkResponseDTO>> getAll() {
         return ResponseEntity.ok(mainPageLinksService.getAll());
     }

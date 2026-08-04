@@ -33,7 +33,6 @@ class ReportService(private var reportRepository: ReportRepository) {
         return getGroupedTaskReports(flatRows)
     }
 
-    // AUDIT-FIX: отчёт основных проблем аптек за период
     fun getAptekaProblemsReport(reportTimeRequestDTO: ReportTimeRequestDTO): List<TaskAptekaGroupReportDTO> {
         val flatRows = reportRepository.getAptekaProblemsReport(
             reportTimeRequestDTO.startDate,
@@ -42,7 +41,6 @@ class ReportService(private var reportRepository: ReportRepository) {
         return groupAptekaProblems(flatRows)
     }
 
-    // AUDIT-FIX: отчёт основных проблем аптек по группе
     fun getAptekaProblemsReportByGroup(reportTaskByGroupRequestDTO: ReportTaskByGroupRequestDTO): List<TaskAptekaGroupReportDTO> {
         val flatRows = reportRepository.getAptekaProblemsReportByGroup(
             reportTaskByGroupRequestDTO.startDate,
@@ -82,7 +80,6 @@ class ReportService(private var reportRepository: ReportRepository) {
             val countAllTaskPct = if (countAllTask > 0) (totalGroupTasks.toDouble() * 100.0) / countAllTask else 0.0
 
             val groupKey = UserGroupTaskReportDTO(
-                // AUDIT-FIX: UserGroupShortResponseDTO теперь включает groupType; для KPI сотрудников — EMPLOYEE_GROUP
                 userGroup = UserGroupShortResponseDTO(groupId, groupName, UserGroupType.EMPLOYEE_GROUP),
                 taskUserGroupCompleteReport = TaskUserGroupCompleteReportDTO(
                     totalTask = totalGroupTasks,
@@ -97,7 +94,6 @@ class ReportService(private var reportRepository: ReportRepository) {
         }.toMap()
     }
 
-    // AUDIT-FIX: группировка flat → Group → Apteka → GroupTask → WorkType
     private fun groupAptekaProblems(flatRows: List<FlatTaskAptekaByGroupsDTO>): List<TaskAptekaGroupReportDTO> {
         if (flatRows.isEmpty()) {
             return emptyList()

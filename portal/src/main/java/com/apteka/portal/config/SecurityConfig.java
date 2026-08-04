@@ -45,6 +45,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/sse/subscribe").authenticated()
+                        .requestMatchers("/api/v1/main-page-links/links").permitAll()
                         .requestMatchers("/api/v1/auth/csrf", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         .requestMatchers("/openapi.yaml", "/openapi/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/webjars/**").permitAll()

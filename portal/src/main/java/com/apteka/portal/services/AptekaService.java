@@ -92,15 +92,24 @@ public class AptekaService {
     @Transactional(readOnly = true)
     public Page<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto, Pageable pageable, boolean isActive,
                                           AppUserDetails currentUser) {
-        aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
+
         Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
         Integer scopeGroupId = aptekaSecurityService.canSelectAllAptekas(currentUser)
                 ? dto.groupId() : currentUser.getUserGroup().getId();
-        return aptekaRepository.filter(dto.login(),
+        if(!isActive) {
+            aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, false);
+            return aptekaRepository.filterNonActive(dto.login(),
+                    scopeGroupId,
+                    dto.number(),
+                    dto.phoneNumber(),
+                    dto.city(),
+                    dto.street(),
+                    validatedPageable).map(AptekaResponseDTO::from);
+        }
+        return aptekaRepository.filterActive(dto.login(),
                 scopeGroupId,
                 dto.number(),
                 dto.phoneNumber(),
-                isActive,
                 dto.city(),
                 dto.street(),
                 validatedPageable).map(AptekaResponseDTO::from);
