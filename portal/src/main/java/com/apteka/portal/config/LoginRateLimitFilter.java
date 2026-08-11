@@ -39,13 +39,21 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         this.redisTemplate = redisTemplate;
     }
 
+    private static final List<String> RATE_LIMITED_PATHS = List.of(
+            "/api/v1/auth/login",
+            "/api/v1/auth/employee/password-reset/request",
+            "/api/v1/auth/employee/password-reset/confirm",
+            "/api/v1/auth/apteka/code-login/request",
+            "/api/v1/auth/apteka/code-login/confirm");
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        if ("/api/v1/auth/login".equals(request.getRequestURI())) {
+        // AUDIT-FIX: rate limit для login и OTP endpoints
+        if (RATE_LIMITED_PATHS.contains(request.getRequestURI())) {
             String ip = getClientIp(request);
-            String redisKey = "rate:login:" + ip;
+            String redisKey = "rate:login:" + request.getRequestURI() + ":" + ip;
 
             try {
                 Long currentRequests = redisTemplate.execute(

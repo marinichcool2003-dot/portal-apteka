@@ -102,7 +102,13 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
             @Param("fullName") String fullName,
             @Param("extensionNumber") String extensionNumber);
 
-    @Query("SELECT c FROM Client c WHERE c.id = :id")
+    @Query("""
+            SELECT c FROM Client c
+            LEFT JOIN FETCH c.account acc
+            LEFT JOIN FETCH acc.userGroup ug
+            LEFT JOIN FETCH acc.actions act
+            WHERE c.id = :id
+            """)
     @EntityGraph(attributePaths = { "account", "account.userGroup" })
     Optional<Client> findByIdWithAccount(UUID id);
 

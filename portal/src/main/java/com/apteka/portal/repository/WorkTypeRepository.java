@@ -39,7 +39,7 @@ public interface WorkTypeRepository extends JpaRepository<WorkType, Integer> {
             JOIN FETCH w.groupTask gt
             JOIN FETCH gt.creatorGroup cg
             JOIN FETCH gt.intendedGroup ig
-            WHERE gt.id = :groupTaskId 
+            WHERE gt.id = :groupTaskId
             AND (
                 (:isActive = true AND w.isActive = true AND gt.isActive = true AND cg.isActive = true AND ig.isActive = true)
                 OR
@@ -49,4 +49,6 @@ public interface WorkTypeRepository extends JpaRepository<WorkType, Integer> {
             """)
     List<WorkType> findByGroupTaskIdAndIsActive(@Param("groupTaskId") Integer groupTaskId,
             @Param("isActive") Boolean isActive);
+
+    Optional<WorkType> findByNameAndGroupTaskId(String name, Integer groupTaskId);
 }

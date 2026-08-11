@@ -23,15 +23,19 @@ import com.apteka.portal.dtos.response.mainpagelink.GroupMainPageLinksResponseDT
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.GroupMainPageLinksService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Группы ссылок главной страницы", description = "Управление группами ссылок на главной странице")
 @RestController
 @RequestMapping("/api/v1/groups-main-page-links")
 @RequiredArgsConstructor
 public class GroupMainPageLinkController {
     private final GroupMainPageLinksService groupMainPageLinksService;
 
+    @Operation(summary = "Список групп ссылок", description = "Возвращает все группы ссылок главной страницы с фильтром по активности.")
     @PreAuthorize("""
         @security.hasAction('CAN_SELECT_NON_ACTIVE_MAIN_PAGE_LINK')
         or @security.hasAction('CREATE_MAIN_PAGE_LINK')
@@ -48,12 +52,14 @@ public class GroupMainPageLinkController {
         return ResponseEntity.ok(groupMainPageLinksService.getAll(isActive, currentUser));
     }
 
+    @Operation(summary = "Создать группу ссылок", description = "Создаёт новую группу ссылок главной страницы.")
     @PreAuthorize("@security.hasAction('CREATE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<GroupMainPageLinksResponseDTO> create(@Valid @RequestBody GroupMainPageLinksRequestDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(groupMainPageLinksService.create(dto));
     }
 
+    @Operation(summary = "Обновить группу ссылок", description = "Обновляет данные группы ссылок главной страницы.")
     @PreAuthorize("@security.hasAction('UPDATE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<GroupMainPageLinksResponseDTO> update(@PathVariable Integer id,
@@ -61,6 +67,7 @@ public class GroupMainPageLinkController {
         return ResponseEntity.ok(groupMainPageLinksService.update(id, dto, currentUser));
     }
 
+    @Operation(summary = "Мягкое удаление группы ссылок", description = "Деактивирует группу ссылок (safe delete).")
     @PatchMapping("/safe-delete/{id}")
     @PreAuthorize("@security.hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     public ResponseEntity<Void> safeDelete(@PathVariable Integer id) {
@@ -68,6 +75,7 @@ public class GroupMainPageLinkController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Восстановить группу ссылок", description = "Восстанавливает группу ссылок после мягкого удаления.")
     @PatchMapping("/restore/{id}")
     @PreAuthorize("@security.hasAction('SAFE_DELETE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     public ResponseEntity<Void> restore(@PathVariable Integer id) {
@@ -75,6 +83,7 @@ public class GroupMainPageLinkController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "Полное удаление группы ссылок", description = "Безвозвратно удаляет группу ссылок главной страницы.")
     @PreAuthorize("@security.hasAction('DELETE_MAIN_PAGE_LINK') or @security.hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> permanentDelete(@PathVariable Integer id) {

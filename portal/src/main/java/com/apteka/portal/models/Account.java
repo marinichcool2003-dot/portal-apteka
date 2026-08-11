@@ -40,6 +40,9 @@ public class Account {
     @Column(name = "login", nullable = false, unique = true, length = 50)
     private String login;
 
+    @Column(name = "email", nullable = false, unique = true, length = 255)
+    private String email;
+
     @Column(name = "password", nullable = false, length = 100)
     private String password;
 
@@ -56,14 +59,20 @@ public class Account {
     @Column(name = "role")
     private UserRole userRole;
 
-    @Builder.Default
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection
     @Enumerated(EnumType.STRING)
     @CollectionTable(name = "account_actions", joinColumns = @JoinColumn(name = "account_id"))
     @Column(name = "action", nullable = false)
     private Set<AccountAction> actions = new HashSet<>();
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    public Set<AccountAction> getActions() {
+        if (actions == null) {
+            actions = new HashSet<>();
+        }
+        return actions;
+    }
+
+    @ManyToOne
     @JoinColumn(name = "group_id", nullable = false)
     private UserGroup userGroup;
 

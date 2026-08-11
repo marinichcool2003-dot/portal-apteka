@@ -1,33 +1,35 @@
 package com.apteka.portal.services;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import com.apteka.portal.models.*;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.StringUtils;
 
 import com.apteka.portal.components.cache.SafeCacheService;
 import com.apteka.portal.components.servicesecurity.GroupTaskSecurityService;
 import com.apteka.portal.components.validators.IsActiveValidator;
 import com.apteka.portal.components.validators.TypeNameValidator;
 import com.apteka.portal.controllers.SseController;
+import com.apteka.portal.dtos.request.grouptask.GroupTaskBulkToAptekaRequestDTO;
 import com.apteka.portal.dtos.request.grouptask.GroupTaskRequestDTO;
 import com.apteka.portal.dtos.request.grouptask.GroupTaskUpdateRequestDTO;
+import com.apteka.portal.dtos.response.GroupTaskBulkToAptekaResponseDTO;
+import com.apteka.portal.dtos.response.GroupTaskBulkToAptekaResponseDTO.GroupTaskBulkItemResultDTO;
 import com.apteka.portal.dtos.response.GroupTaskResponseDTO;
 import com.apteka.portal.exceptions.DuplicateGroupTaskException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.GroupTaskNotFoundException;
-import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.CacheNames;
-import com.apteka.portal.models.GroupTask;
-import com.apteka.portal.models.SseEventNames;
-import com.apteka.portal.models.SseSignalTypes;
-import com.apteka.portal.models.UserGroup;
+import com.apteka.portal.exceptions.InvalidGroupTaskException;
 import com.apteka.portal.repository.GroupTaskRepository;
 import com.apteka.portal.repository.UserGroupRepository;
+import com.apteka.portal.repository.WorkTypeRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 public class GroupTaskService {
     private final GroupTaskRepository groupTaskRepository;
     private final UserGroupRepository userGroupRepository;
+    private final WorkTypeRepository workTypeRepository;
     private final GroupTaskSecurityService groupTaskSecurityService;
     private final SafeCacheService safeCacheService;
     private final TypeNameValidator typeNameValidator;
@@ -45,8 +48,9 @@ public class GroupTaskService {
     @Transactional(readOnly = true)
     public List<GroupTaskResponseDTO> getByGroups(Integer creatorGroupId, Integer intendedGroupId, Boolean isActive,
             AppUserDetails currentUser) {
-
-        groupTaskSecurityService.validateGroupVisibility(creatorGroupId, intendedGroupId);
+        if (!currentUser.hasRole(UserRole.ADMIN)) {
+            groupTaskSecurityService.validateGroupVisibility(creatorGroupId, intendedGroupId);
+        }
         String cacheKey = creatorGroupId + ":" + intendedGroupId;
 
         if (Boolean.TRUE.equals(isActive)) {
@@ -108,7 +112,7 @@ public class GroupTaskService {
     @Transactional
     public GroupTaskResponseDTO create(GroupTaskRequestDTO dto, AppUserDetails currentUser) {
 
-        groupTaskSecurityService.validateGroupVisibility(dto.creatorGroupId(), dto.intendedGroupId());
+        groupTaskSecurityService.validateGroupVisibility(dto.creatorGroupId(), dto.intendedGroupId(), currentUser);
 
         UserGroup creatorGroup = userGroupRepository.findById(dto.creatorGroupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.creatorGroupId()));
@@ -146,10 +150,111 @@ public class GroupTaskService {
     }
 
     @Transactional
+    public GroupTaskBulkToAptekaResponseDTO createBulkToApteka(GroupTaskBulkToAptekaRequestDTO dto,
+            AppUserDetails currentUser) {
+        String cleanName = typeNameValidator.getCleanName(dto.name());
+        List<UserGroup> intendedGroups = resolveAptekaIntendedGroups(dto.creatorGroupId(), currentUser);
+        UserGroup creatorGroup = userGroupRepository.findById(dto.creatorGroupId())
+                .orElseThrow(() -> new GroupUserNotFoundException(dto.creatorGroupId()));
+        groupTaskSecurityService.validateCanWorkGroupTask(currentUser, creatorGroup);
+
+        List<GroupTaskBulkItemResultDTO> items = new ArrayList<>();
+        int created = 0;
+        int skipped = 0;
+
+        for (UserGroup intended : intendedGroups) {
+            if (groupTaskRepository.existsByNameAndCreatorGroupIdAndIntendedGroupId(
+                    cleanName, creatorGroup.getId(), intended.getId())) {
+                GroupTask existing = groupTaskRepository
+                        .findByGroupsAndIsActive(creatorGroup.getId(), intended.getId(), true)
+                        .stream()
+                        .filter(gt -> Objects.equals(gt.getName(), cleanName))
+                        .findFirst()
+                        .orElse(null);
+                Integer existingId = existing != null ? existing.getId() : null;
+                items.add(new GroupTaskBulkItemResultDTO(
+                        intended.getId(), intended.getName(), existingId, "SKIPPED"));
+                skipped++;
+                continue;
+            }
+
+            GroupTask saved = groupTaskRepository.save(GroupTask.builder()
+                    .name(cleanName)
+                    .creatorGroup(creatorGroup)
+                    .intendedGroup(intended)
+                    .isActive(true)
+                    .build());
+
+            if (dto.workTypes() != null) {
+                for (var wtItem : dto.workTypes()) {
+                    createWorkTypeOnGroupTask(saved, wtItem);
+                }
+            }
+
+            items.add(new GroupTaskBulkItemResultDTO(
+                    intended.getId(), intended.getName(), saved.getId(), "CREATED"));
+            created++;
+
+            final Integer gtId = saved.getId();
+            final Integer creatorId = creatorGroup.getId();
+            final Integer intendedId = intended.getId();
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        safeCacheService.evict(CacheNames.GROUP_TASKS_BY_GROUP, creatorId + ":" + intendedId);
+                        safeCacheService.evict(CacheNames.WORK_TYPES_BY_GROUP, gtId);
+                    }
+                });
+            }
+        }
+
+        final Integer creatorId = creatorGroup.getId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    var signal = new SseEventNames.GroupTaskSignalDTO(creatorId, null, SseSignalTypes.CREATED);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_GROUP_TASKS, signal);
+                    sseController.broadcastNotification(SseEventNames.REFRESH_WORK_TYPES,
+                            new SseEventNames.WorkTypeSignalDTO(null, SseSignalTypes.CREATED));
+                }
+            });
+        }
+
+        return new GroupTaskBulkToAptekaResponseDTO(cleanName, creatorGroup.getId(), created, skipped, items);
+    }
+
+    @Transactional
     public GroupTaskResponseDTO update(Integer id, GroupTaskUpdateRequestDTO dto, AppUserDetails currentUser,
-            Boolean confirm) {
+            Boolean confirm, Boolean syncToAllIntended) {
         GroupTask upGroup = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
+        String oldName = upGroup.getName();
+        Integer creatorId = upGroup.getCreatorGroup().getId();
+
+        GroupTaskResponseDTO primary = updateOne(upGroup, dto, currentUser, confirm);
+
+        if (Boolean.TRUE.equals(syncToAllIntended) && dto.name() != null) {
+            String newCleanName = typeNameValidator.getCleanName(dto.name());
+            if (!Objects.equals(oldName, newCleanName)) {
+                List<GroupTask> siblings = groupTaskRepository.findSiblingAptekaGroupTasks(creatorId, oldName, true);
+                for (GroupTask sibling : siblings) {
+                    if (Objects.equals(sibling.getId(), id)) {
+                        continue;
+                    }
+                    GroupTaskUpdateRequestDTO siblingDto = new GroupTaskUpdateRequestDTO(
+                            newCleanName, null, null);
+                    updateOne(sibling, siblingDto, currentUser, confirm);
+                }
+            }
+        }
+
+        return primary;
+    }
+
+    private GroupTaskResponseDTO updateOne(GroupTask upGroup, GroupTaskUpdateRequestDTO dto,
+            AppUserDetails currentUser, Boolean confirm) {
         String oldCacheKey = upGroup.getCreatorGroup().getId() + ":" + upGroup.getIntendedGroup().getId();
 
         boolean nameChange = false;
@@ -217,9 +322,24 @@ public class GroupTaskService {
     }
 
     @Transactional
-    public void safeDelete(Integer id, AppUserDetails currentUser) {
+    public void safeDelete(Integer id, AppUserDetails currentUser, Boolean syncToAllIntended) {
         GroupTask deletedGroup = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
+        String name = deletedGroup.getName();
+        Integer creatorId = deletedGroup.getCreatorGroup().getId();
+
+        safeDeleteOne(deletedGroup, currentUser);
+
+        if (Boolean.TRUE.equals(syncToAllIntended)) {
+            for (GroupTask sibling : groupTaskRepository.findSiblingAptekaGroupTasks(creatorId, name, true)) {
+                if (!Objects.equals(sibling.getId(), id)) {
+                    safeDeleteOne(sibling, currentUser);
+                }
+            }
+        }
+    }
+
+    private void safeDeleteOne(GroupTask deletedGroup, AppUserDetails currentUser) {
         groupTaskSecurityService.validateCanWorkGroupTask(currentUser, deletedGroup.getCreatorGroup());
         if (isActiveValidator.isGroupTaskActive(deletedGroup)) {
             deletedGroup.setActive(false);
@@ -241,9 +361,24 @@ public class GroupTaskService {
     }
 
     @Transactional
-    public void restore(Integer id, AppUserDetails currentUser) {
+    public void restore(Integer id, AppUserDetails currentUser, Boolean syncToAllIntended) {
         GroupTask restoredGroup = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
+        String name = restoredGroup.getName();
+        Integer creatorId = restoredGroup.getCreatorGroup().getId();
+
+        restoreOne(restoredGroup, currentUser);
+
+        if (Boolean.TRUE.equals(syncToAllIntended)) {
+            for (GroupTask sibling : groupTaskRepository.findSiblingAptekaGroupTasks(creatorId, name, false)) {
+                if (!Objects.equals(sibling.getId(), id)) {
+                    restoreOne(sibling, currentUser);
+                }
+            }
+        }
+    }
+
+    private void restoreOne(GroupTask restoredGroup, AppUserDetails currentUser) {
         groupTaskSecurityService.validateCanWorkGroupTask(currentUser, restoredGroup.getCreatorGroup());
 
         if (!isActiveValidator.isGroupTaskActive(restoredGroup)) {
@@ -265,9 +400,29 @@ public class GroupTaskService {
     }
 
     @Transactional
-    public void permanentDelete(Integer id, AppUserDetails currentUser, Boolean confirm) {
+    public void permanentDelete(Integer id, AppUserDetails currentUser, Boolean confirm, Boolean syncToAllIntended) {
         GroupTask deletedGroupTask = groupTaskRepository.findById(id)
                 .orElseThrow(() -> new GroupTaskNotFoundException(id));
+        String name = deletedGroupTask.getName();
+        Integer creatorId = deletedGroupTask.getCreatorGroup().getId();
+
+        List<GroupTask> toDelete = new ArrayList<>();
+        toDelete.add(deletedGroupTask);
+        if (Boolean.TRUE.equals(syncToAllIntended)) {
+            for (GroupTask sibling : groupTaskRepository.findSiblingAptekaGroupTasks(creatorId, name, null)) {
+                if (!Objects.equals(sibling.getId(), id)) {
+                    toDelete.add(sibling);
+                }
+            }
+        }
+
+        for (GroupTask gt : toDelete) {
+            permanentDeleteOne(gt, confirm);
+        }
+    }
+
+    private void permanentDeleteOne(GroupTask deletedGroupTask, Boolean confirm) {
+        Integer id = deletedGroupTask.getId();
         groupTaskSecurityService.validateCanPermanentDelete(deletedGroupTask, confirm);
         groupTaskRepository.deleteById(id);
 
@@ -289,6 +444,59 @@ public class GroupTaskService {
                 }
             });
         }
+    }
+
+    List<UserGroup> resolveAptekaIntendedGroups(Integer creatorGroupId, AppUserDetails currentUser) {
+        UserGroup creator = userGroupRepository.findByIdWithVisibleGroups(creatorGroupId)
+                .orElseThrow(() -> new GroupUserNotFoundException(creatorGroupId));
+
+        if (creator.getGroupType() != UserGroupType.EMPLOYEE_GROUP) {
+            throw new InvalidGroupTaskException(
+                    "Массовое создание на аптеки доступно только для группы типа EMPLOYEE_GROUP");
+        }
+
+        groupTaskSecurityService.validateCanWorkGroupTask(currentUser, creator);
+
+        if (creator.getVisibleGroups() == null || creator.getVisibleGroups().isEmpty()) {
+            throw new InvalidGroupTaskException("У отдела нет видимых групп аптек (visibleGroups)");
+        }
+
+        List<UserGroup> result = new ArrayList<>();
+        for (UserGroup visible : creator.getVisibleGroups()) {
+            if (!visible.isActive() || visible.getGroupType() != UserGroupType.APTEKA_GROUP) {
+                continue;
+            }
+            groupTaskSecurityService.validateGroupVisibility(creator.getId(), visible.getId(), currentUser);
+            result.add(visible);
+        }
+
+        if (result.isEmpty()) {
+            throw new InvalidGroupTaskException("Нет видимых активных групп аптек (APTEKA_GROUP) для массового создания");
+        }
+        return result;
+    }
+
+    private void createWorkTypeOnGroupTask(GroupTask groupTask,
+            GroupTaskBulkToAptekaRequestDTO.GroupTaskBulkWorkTypeItemDTO wtItem) {
+        String cleanName = typeNameValidator.getCleanName(wtItem.name());
+        if (workTypeRepository.existsByNameAndGroupTaskId(cleanName, groupTask.getId())) {
+            return;
+        }
+        TaskPriority priority = StringUtils.hasText(wtItem.priorityCode())
+                ? TaskPriority.fromCode(wtItem.priorityCode())
+                : TaskPriority.LOW;
+        WorkType.WorkTypeBuilder builder = WorkType.builder()
+                .groupTask(groupTask)
+                .name(cleanName)
+                .priority(priority)
+                .isActive(true);
+        if (StringUtils.hasText(wtItem.wiki_link())) {
+            builder.wikiLink(wtItem.wiki_link());
+        }
+        if (StringUtils.hasText(wtItem.commentForCreator())) {
+            builder.commentForCreator(wtItem.commentForCreator());
+        }
+        workTypeRepository.save(builder.build());
     }
 
     private void validateGroupTaskName(String cleanName, Integer creatorGroupId, Integer intendedGroupId) {

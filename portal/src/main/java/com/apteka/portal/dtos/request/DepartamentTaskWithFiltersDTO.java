@@ -7,14 +7,25 @@ import com.apteka.portal.models.TaskStatus;
 
 import jakarta.validation.constraints.Positive;
 import lombok.Builder;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 @Builder(toBuilder = true)
+@Schema(description = "Фильтры задач подразделения")
 public record DepartamentTaskWithFiltersDTO(
-        @Positive(message = "Группа пользователей должна быть больше нуля") Integer groupId,
+        @Schema(description = "Идентификатор группы-исполнителя (GroupTask.creatorGroup)")
+        @Positive(message = "Группа пользователей должна быть больше нуля") Integer assignerGroupId,
+        @Schema(description = "Идентификатор группы-создателя задачи (GroupTask.intendedGroup)")
+        @Positive(message = "Группа-создатель задачи должна быть больше нуля") Integer creatorGroupId,
+        @Schema(description = "Идентификатор создателя задачи")
         UUID creatorId,
+        @Schema(description = "Идентификатор исполнителя задачи")
         UUID assignerId,
+        @Schema(description = "Статус задачи")
         TaskStatus status,
+        @Schema(description = "Приоритет задачи")
         TaskPriority priority,
+        @Schema(description = "Идентификатор типа работ")
         @Positive(message = "Идентификатор вида работ должен быть больше нуля") Integer workTypeId,
+        @Schema(description = "Идентификатор группы задач")
         @Positive(message = "Идентификатор типа задач должен быть больше нуля")Integer groupTaskId) {
 }

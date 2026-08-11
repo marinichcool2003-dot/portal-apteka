@@ -53,8 +53,9 @@ public class UserGroupSecurityService {
             throw new AccessDeniedException("Группа уже удалена");
         }
 
+        // AUDIT-FIX: пустая группа без строк статистики не «не найдена» — иначе safe-delete новых групп падает 404
         DepartmentTaskStatsDTO stats = taskRepository.findGroupUserStatsByGroup(userGroup.getId())
-                .orElseThrow(() -> new GroupUserNotFoundException(userGroup.getId()));
+                .orElseGet(() -> new DepartmentTaskStatsDTO(userGroup.getId(), userGroup.getName(), 0, 0, 0, 0));
         if (stats.openTasks() > 0) {
             throw new AccessDeniedException("У группы ещё имеются активные задачи, удаление запрещено");
         }
@@ -87,12 +88,13 @@ public class UserGroupSecurityService {
             if (confirm) {
                 return;
             }
-            DepartmentTaskStatsDTO stats = taskRepository.findGroupUserStatsByGroup(userGroup.getId())
-                    .orElseThrow(() -> new GroupUserNotFoundException(userGroup.getId()));
-            Integer usersCount = accountRepository.countByUserGroupId(userGroup.getId());
-            if (stats.totalTasks() == 0 && usersCount == 0 && !confirm) {
-                return;
-            }
+        // AUDIT-FIX: пустая группа без статистики — нулевые счётчики, не 404
+        DepartmentTaskStatsDTO stats = taskRepository.findGroupUserStatsByGroup(userGroup.getId())
+                .orElseGet(() -> new DepartmentTaskStatsDTO(userGroup.getId(), userGroup.getName(), 0, 0, 0, 0));
+        Integer usersCount = accountRepository.countByUserGroupId(userGroup.getId());
+        if (stats.totalTasks() == 0 && usersCount == 0 && !confirm) {
+            return;
+        }
             if (stats.totalTasks() > 0 && !confirm) {
                 throw new AccessDeniedException("У группы имеются задачи сохраненные в базе!");
             }

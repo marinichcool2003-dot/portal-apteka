@@ -23,8 +23,11 @@ import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.TaskPictureService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Изображения задач", description = "Загрузка и скачивание изображений, прикреплённых к задачам")
 @RestController
 @RequestMapping("/api/v1/task-pictures")
 @RequiredArgsConstructor
@@ -32,6 +35,7 @@ public class TaskPictureController {
 
     private final TaskPictureService taskPictureService;
 
+    @Operation(summary = "Загрузить изображение к задаче", description = "Загружает файл изображения и привязывает его к указанной задаче (multipart/form-data).")
     @PostMapping(value = "/upload-to-task/{taskId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<TaskPictureResponseDTO> uploadPicture(
             @PathVariable Long taskId,
@@ -42,6 +46,7 @@ public class TaskPictureController {
                 .body(taskPictureService.uploadPicture(taskId, file, currentUser));
     }
 
+    @Operation(summary = "Скачать изображение", description = "Возвращает файл изображения задачи по идентификатору картинки.")
     @GetMapping("/{pictureId}")
     public ResponseEntity<Resource> getPicture(@PathVariable Long pictureId,
             @AuthenticationPrincipal AppUserDetails currentUser) throws IOException {

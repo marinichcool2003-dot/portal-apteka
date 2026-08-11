@@ -18,19 +18,25 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.AptekaCreateException;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
+import com.apteka.portal.exceptions.AptekaTaskRatingAlreadyExistsException;
+import com.apteka.portal.exceptions.AptekaTaskRatingEditLimitExceededException;
+import com.apteka.portal.exceptions.AptekaTaskRatingNotFoundException;
 import com.apteka.portal.exceptions.AsyncCommentException;
 import com.apteka.portal.exceptions.AvtorCommentNotInputException;
 import com.apteka.portal.exceptions.BlockChangeIfNotActuallyTaskException;
 import com.apteka.portal.exceptions.ClientBelongsToAnotherGroupException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
+import com.apteka.portal.exceptions.CreatorHasNoAptekaException;
 import com.apteka.portal.exceptions.DuplicateAptekaFullNameException;
 import com.apteka.portal.exceptions.DuplicateAptekaLoginException;
 import com.apteka.portal.exceptions.DuplicateClientLoginException;
+import com.apteka.portal.exceptions.DuplicateEmailException;
 import com.apteka.portal.exceptions.DuplicateGroupTaskException;
 import com.apteka.portal.exceptions.DuplicateGroupUserException;
 import com.apteka.portal.exceptions.DuplicateWorkTypeNameException;
@@ -46,7 +52,10 @@ import com.apteka.portal.exceptions.InvalidFullNameException;
 import com.apteka.portal.exceptions.InvalidClientPasswordException;
 import com.apteka.portal.exceptions.InvalidGroupMainPageLinksNameException;
 import com.apteka.portal.exceptions.InvalidGroupTaskException;
+import com.apteka.portal.exceptions.InvalidGroupUserException;
+import com.apteka.portal.exceptions.InvalidEmailException;
 import com.apteka.portal.exceptions.InvalidLoginException;
+import com.apteka.portal.exceptions.InvalidOtpException;
 import com.apteka.portal.exceptions.InvalidMainPageLinkNameException;
 import com.apteka.portal.exceptions.InvalidRefreshTokenException;
 import com.apteka.portal.exceptions.InvalidTaskDescriptionException;
@@ -55,10 +64,13 @@ import com.apteka.portal.exceptions.InvalidWorkTypeNameException;
 import com.apteka.portal.exceptions.MainPageLinkAlreadyExistsException;
 import com.apteka.portal.exceptions.MainPageLinkNotFoundException;
 import com.apteka.portal.exceptions.NewsNotFoundException;
+import com.apteka.portal.exceptions.OtpCooldownException;
+import com.apteka.portal.exceptions.OtpMaxAttemptsExceededException;
 import com.apteka.portal.exceptions.SelfDeleteException;
 import com.apteka.portal.exceptions.TaskCommentNotFoundException;
 import com.apteka.portal.exceptions.TaskNotFoundException;
 import com.apteka.portal.exceptions.TaskPictureNotFoundException;
+import com.apteka.portal.exceptions.TaskRatingInvalidStatusException;
 import com.apteka.portal.exceptions.UnknowRoleException;
 import com.apteka.portal.exceptions.UnknowTaskPriorityException;
 import com.apteka.portal.exceptions.UnknowTaskStatusException;
@@ -94,6 +106,46 @@ public class GlobalExceptionHandler {
         log.error("Аптека не найдена: {}", e.getMessage(), e);
         String errorMessage = "Ошибка! Аптека не найдена: " + e.getMessage();
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(AptekaTaskRatingNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleAptekaTaskRatingNotFoundException(AptekaTaskRatingNotFoundException e) {
+        log.error("Оценка аптеки не найдена: {}", e.getMessage(), e);
+        String errorMessage = "Ошибка! " + e.getMessage();
+        return new ErrorResponse(HttpStatus.NOT_FOUND.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(AptekaTaskRatingAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleAptekaTaskRatingAlreadyExistsException(AptekaTaskRatingAlreadyExistsException e) {
+        log.warn("Оценка уже существует: {}", e.getMessage());
+        String errorMessage = "Ошибка! " + e.getMessage();
+        return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(AptekaTaskRatingEditLimitExceededException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleAptekaTaskRatingEditLimitExceededException(AptekaTaskRatingEditLimitExceededException e) {
+        log.warn("Превышен лимит редактирования оценки: {}", e.getMessage());
+        String errorMessage = "Ошибка! " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(TaskRatingInvalidStatusException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleTaskRatingInvalidStatusException(TaskRatingInvalidStatusException e) {
+        log.warn("Неверный статус задачи для оценки: {}", e.getMessage());
+        String errorMessage = "Ошибка! " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(CreatorHasNoAptekaException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleCreatorHasNoAptekaException(CreatorHasNoAptekaException e) {
+        log.warn("Создатель задачи без аптеки: {}", e.getMessage());
+        String errorMessage = "Ошибка! " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
     @ExceptionHandler(BadCredentialsException.class)
@@ -160,6 +212,14 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
+    @ExceptionHandler(InvalidEmailException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidEmailException(InvalidEmailException e) {
+        log.warn("Ошибка email: {}", e.getMessage());
+        String errorMessage = "Ошибка! Ошибка email: " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
+    }
+
     @ExceptionHandler(UnknowTaskPriorityException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleUnknowTaskPriorityException(UnknowTaskPriorityException e) {
@@ -216,6 +276,34 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
     }
 
+    @ExceptionHandler(DuplicateEmailException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleDuplicateEmailException(DuplicateEmailException e) {
+        log.warn("Email уже используется: {}", e.getMessage());
+        return new ErrorResponse(HttpStatus.CONFLICT.value(), "Ошибка! " + e.getMessage(), System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(InvalidOtpException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidOtpException(InvalidOtpException e) {
+        log.warn("Неверный OTP: {}", e.getMessage());
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), e.getMessage(), System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(OtpCooldownException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    public ErrorResponse handleOtpCooldownException(OtpCooldownException e) {
+        log.warn("OTP cooldown: {}", e.getMessage());
+        return new ErrorResponse(HttpStatus.TOO_MANY_REQUESTS.value(), e.getMessage(), System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(OtpMaxAttemptsExceededException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleOtpMaxAttemptsExceededException(OtpMaxAttemptsExceededException e) {
+        log.warn("OTP max attempts: {}", e.getMessage());
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), e.getMessage(), System.currentTimeMillis());
+    }
+
     @ExceptionHandler(DuplicateWorkTypeNameException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleDublicateWorkTypeNameException(DuplicateWorkTypeNameException e) {
@@ -270,6 +358,14 @@ public class GlobalExceptionHandler {
         log.warn("Группа сотрудников уже существует: {}", e.getMessage());
         String errorMessage = "Ошибка! Группа сотрудников уже существует: " + e.getMessage();
         return new ErrorResponse(HttpStatus.CONFLICT.value(), errorMessage, System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(InvalidGroupUserException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleInvalidGroupUserException(InvalidGroupUserException e) {
+        log.warn("Некорректные данные группы пользователей: {}", e.getMessage());
+        String errorMessage = "Ошибка! " + e.getMessage();
+        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), errorMessage, System.currentTimeMillis());
     }
 
     @ExceptionHandler(InvalidRefreshTokenException.class)
@@ -445,8 +541,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErrorResponse handleAccessDeniedException(AccessDeniedException e) {
-        log.warn("Доступ запрещен", e);
-        String errorMessage = "Ошибка! Доступ запрещен. Проверьте, что вы вошли (POST /api/v1/auth/login) и cookie X-Access-Token отправляется вместе с запросом.";
+        log.warn("Доступ запрещен: {}", e.getMessage());
+        String errorMessage = "Ошибка! Доступ запрещен: " + e.getMessage();
         return new ErrorResponse(HttpStatus.FORBIDDEN.value(), errorMessage, System.currentTimeMillis());
     }
 
@@ -530,6 +626,16 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
                 "Ресурс не найден",
+                System.currentTimeMillis());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.warn("Некорректный тип параметра {}: {}", e.getName(), e.getMessage());
+        return new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "Ошибка! Некорректное значение параметра '" + e.getName() + "'.",
                 System.currentTimeMillis());
     }
 

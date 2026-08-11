@@ -2,6 +2,7 @@ package com.apteka.portal.services;
 
 import com.apteka.portal.components.validators.IsActiveValidator;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -9,6 +10,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.apteka.portal.dtos.response.client.ClientResponseWithActionsDTO;
+import com.apteka.portal.repository.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +32,7 @@ import com.apteka.portal.dtos.request.client.ClientFilterRequestDTO;
 import com.apteka.portal.dtos.request.client.ClientUpdateFullRequestDTO;
 import com.apteka.portal.dtos.request.client.ClientUpdatePersonalProfileRequestDTO;
 import com.apteka.portal.dtos.request.client.ClientUpdateDescriptionRequestDTO;
+import com.apteka.portal.components.validators.EmailValidator;
 import com.apteka.portal.components.validators.FullNameValidator;
 import com.apteka.portal.components.validators.LoginValidator;
 import com.apteka.portal.components.validators.PasswordValidator;
@@ -36,6 +40,7 @@ import com.apteka.portal.components.validators.PhoneNumberValidator;
 import com.apteka.portal.components.validators.SortingValidator;
 import com.apteka.portal.controllers.SseController;
 import com.apteka.portal.dtos.response.AssignedStatsDTO;
+import com.apteka.portal.dtos.response.AccountActionResponseDTO;
 import com.apteka.portal.dtos.response.CreatedStatsDTO;
 import com.apteka.portal.dtos.response.TaskStatsDTO;
 import com.apteka.portal.dtos.response.client.ClientResponseDTO;
@@ -43,7 +48,9 @@ import com.apteka.portal.dtos.response.client.ClientWithStatsDTO;
 import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.ClientNotFoundException;
 import com.apteka.portal.exceptions.DuplicateClientLoginException;
+import com.apteka.portal.exceptions.DuplicateEmailException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
+import com.apteka.portal.exceptions.InvalidGroupUserException;
 import com.apteka.portal.exceptions.UserHaveActiveTasksException;
 import com.apteka.portal.models.Account;
 import com.apteka.portal.models.AccountAction;
@@ -53,11 +60,8 @@ import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.TaskStatus;
 import com.apteka.portal.models.UserGroup;
+import com.apteka.portal.models.UserGroupType;
 import com.apteka.portal.models.UserRole;
-import com.apteka.portal.repository.AccountRepository;
-import com.apteka.portal.repository.ClientRepository;
-import com.apteka.portal.repository.TaskRepository;
-import com.apteka.portal.repository.UserGroupRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -75,6 +79,7 @@ public class ClientService {
     private final ClientSecurityService clientSecurityService;
     private final PasswordValidator passwordValidator;
     private final LoginValidator loginValidator;
+    private final EmailValidator emailValidator;
     private final FullNameValidator fullNameValidator;
     private final PhoneNumberValidator phoneNumberValidator;
     private final AccountRepository accountRepository;
@@ -88,15 +93,15 @@ public class ClientService {
     private String uploadAvatarPictureName;
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
-        "account.userGroup.id",
-        "fullName",
-        "createdAt",
-        "updatedAt"
+            "account.userGroup.id",
+            "fullName",
+            "createdAt",
+            "updatedAt"
     );
 
     private static final Sort DEFAULT_SORT = Sort.by(
-        Sort.Order.asc("account.userGroup.id"),
-        Sort.Order.asc("fullName")
+            Sort.Order.asc("account.userGroup.id"),
+            Sort.Order.asc("fullName")
     );
 
     @Transactional(readOnly = true)
@@ -113,7 +118,7 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public ClientResponseDTO getOne(UUID id, AppUserDetails currentUser) {
+    public ClientResponseWithActionsDTO getOne(UUID id, AppUserDetails currentUser) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
         Client client = clientRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
@@ -122,7 +127,7 @@ public class ClientService {
         if (!isActiveValidator.isAccountActive(account)) {
             clientSecurityService.validateWhoCanSelectNonActiveClients(currentUser, userGroup);
         }
-        return ClientResponseDTO.from(client);
+        return ClientResponseWithActionsDTO.from(client);
     }
 
     @Transactional(readOnly = true)
@@ -146,7 +151,7 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public Page<ClientResponseDTO> getByGroup(Integer userGroupId, AppUserDetails currentUser, Pageable pageable,
-            Boolean isActive) {
+                                              Boolean isActive) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
 
         UserGroup userGroup = userGroupRepository.findById(userGroupId)
@@ -163,7 +168,7 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public List<ClientWithStatsDTO> getWithNumberOfTask(Integer userGroupId, AppUserDetails currentUser,
-            Boolean isActive) {
+                                                        Boolean isActive) {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
 
         UserGroup userGroup = userGroupRepository.findById(userGroupId)
@@ -199,13 +204,13 @@ public class ClientService {
         clientSecurityService.validateWhoCanSelectClients(currentUser);
         Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
         return clientRepository.filter(
-                validatedPageable,
-                dto.login(),
-                dto.phoneNumber(),
-                dto.groupId(),
-                true,
-                dto.fullName(),
-                dto.extensionNumber())
+                        validatedPageable,
+                        dto.login(),
+                        dto.phoneNumber(),
+                        dto.groupId(),
+                        true,
+                        dto.fullName(),
+                        dto.extensionNumber())
                 .map(ClientResponseDTO::from);
     }
 
@@ -214,13 +219,18 @@ public class ClientService {
 
         UserGroup userGroup = userGroupRepository.findById(dto.groupClientId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.groupClientId()));
+        if (userGroup.getGroupType() != UserGroupType.EMPLOYEE_GROUP) {
+            throw new InvalidGroupUserException("Сотрудника можно привязать только к группе типа «Группа сотрудников»");
+        }
 
         clientSecurityService.validateCanCreateClient(currentUser, userGroup);
 
         Client.ClientBuilder clientBuilder = Client.builder();
 
         String cleanLogin = loginValidator.getCleanLogin(dto.login());
-        validateLogin(dto.login());
+        validateLogin(cleanLogin);
+        String cleanEmail = emailValidator.getCleanEmail(dto.email());
+        validateEmail(cleanEmail);
         String normalizedName = fullNameValidator.getCleanFullName(dto.fullName());
         passwordValidator.validatePassword(dto.password(), true);
         String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
@@ -228,7 +238,7 @@ public class ClientService {
         if (StringUtils.hasText(dto.extensionNumber())) {
             String cleanExtensionNumber = phoneNumberValidator.getCleanExtensionNumber(dto.extensionNumber());
             clientBuilder.extensionNumber(cleanExtensionNumber);
-        } 
+        }
 
         UserRole role = UserRole.fromCode(dto.roleCode());
         clientSecurityService.canGiveRole(currentUser, role);
@@ -247,6 +257,7 @@ public class ClientService {
 
         Account account = accountBuilder
                 .login(cleanLogin)
+                .email(cleanEmail)
                 .password(passwordEncoder.encode(dto.password()))
                 .phoneNumber(cleanPhoneNumber)
                 .client(newClient)
@@ -318,7 +329,7 @@ public class ClientService {
 
     @Transactional
     public ClientResponseDTO updateClientDescription(UUID id, ClientUpdateDescriptionRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                     AppUserDetails currentUser) {
         UpdateClientResponseDTO responseDTO = updateClientDescriptionInner(id, dto, currentUser);
         Client client = responseDTO.client();
         boolean hasChange = responseDTO.hasChange();
@@ -343,7 +354,7 @@ public class ClientService {
 
     @Transactional
     public ClientResponseDTO updatePersonalProfile(ClientUpdatePersonalProfileRequestDTO dto,
-            AppUserDetails currentUser) throws IOException {
+                                                   AppUserDetails currentUser) throws IOException {
         ClientInnerResponseDTO responseDTO = updateProfile(currentUser.getInternalId(), dto, currentUser);
 
         boolean hasChange = responseDTO.hasChange();
@@ -398,8 +409,8 @@ public class ClientService {
         clientSecurityService.validateCanUpdateFullClient(currentUser, account);
 
         ClientInnerResponseDTO responseDTO = updateProfile(id, new ClientUpdatePersonalProfileRequestDTO(
-                dto.accountUpdateRequestDTO(),
-                dto.clientUpdateRequestDTO(), dto.avatar()),
+                        dto.accountUpdateRequestDTO(),
+                        dto.clientUpdateRequestDTO(), dto.avatar()),
                 currentUser);
 
         boolean hasChange = responseDTO.hasChange();
@@ -455,6 +466,13 @@ public class ClientService {
         return response;
     }
 
+    @Transactional(readOnly = true)
+    public Set<AccountActionResponseDTO> getAssignableActions(AppUserDetails currentUser) {
+        return clientSecurityService.getAssignableActions(currentUser).stream()
+                .map(AccountActionResponseDTO::from)
+                .collect(Collectors.toSet());
+    }
+
     @Transactional
     public void addActionsToClient(UUID id, Set<String> actionsCode, AppUserDetails currentUser) {
         Client client = clientRepository.findByIdWithAccount(id)
@@ -467,6 +485,10 @@ public class ClientService {
         clientSecurityService.canAddActions(actions, currentUser, account);
 
         Set<AccountAction> accountActions = account.getActions();
+        if (accountActions == null) {
+            accountActions = new HashSet<>();
+            account.setActions(accountActions);
+        }
         accountActions.addAll(actions);
         client.setAccount(account);
 
@@ -494,6 +516,10 @@ public class ClientService {
         clientSecurityService.canRemoveActions(actions, currentUser, account);
 
         Set<AccountAction> accountActions = account.getActions();
+        if (accountActions == null) {
+            accountActions = new HashSet<>();
+            account.setActions(accountActions);
+        }
         accountActions.removeAll(actions);
         client.setAccount(account);
 
@@ -560,6 +586,7 @@ public class ClientService {
 
         Integer userGroupId = account.getUserGroup().getId();
         clientRepository.delete(client);
+        accountRepository.delete(account);
         avatarClientService.deleteClientAvatarIfExists(id);
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -575,21 +602,21 @@ public class ClientService {
     }
 
     private record ClientInnerResponseDTO(Client client, boolean hasChange, boolean needsLogout,
-            boolean isOnlyForCurrent, String oldLogin) {
+                                          boolean isOnlyForCurrent, String oldLogin) {
     }
 
     private record UpdateAccountResponseWithOldLoginDTO(UpdateAccountResponseDTO accountResponseDTO, String oldLogin) {
     }
 
     private record UpdateAccountResponseDTO(Account account, boolean hasChange, boolean needsLogout,
-            boolean isOnlyForCurrent) {
+                                            boolean isOnlyForCurrent) {
     }
 
     private record UpdateClientResponseDTO(Client client, boolean hasChange) {
     }
 
     private UpdateAccountResponseWithOldLoginDTO updateAccountInner(UUID id, AccountUpdateRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                                    AppUserDetails currentUser) {
         Account account = accountRepository.findByIdWithUserGroup(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.validateCanUpdateClientAccount(currentUser, account);
@@ -607,6 +634,15 @@ public class ClientService {
                 account.setLogin(cleanLogin);
                 hasChange = true;
                 needsLogout = true;
+            }
+        }
+
+        if (StringUtils.hasText(dto.email())) {
+            String cleanEmail = emailValidator.getCleanEmail(dto.email());
+            if (!Objects.equals(cleanEmail, account.getEmail())) {
+                validateEmail(cleanEmail);
+                account.setEmail(cleanEmail);
+                hasChange = true;
             }
         }
 
@@ -633,7 +669,7 @@ public class ClientService {
     }
 
     private ClientInnerResponseDTO updateProfile(UUID id, ClientUpdatePersonalProfileRequestDTO dto,
-            AppUserDetails currentUser)
+                                                 AppUserDetails currentUser)
             throws IOException {
 
         UpdateAccountResponseWithOldLoginDTO accountResponseDTO = updateAccountInner(id,
@@ -659,7 +695,7 @@ public class ClientService {
     }
 
     private UpdateAccountResponseDTO updateUserGroup(Account account, Integer userGroupId, boolean hasChange,
-            boolean needsLogout, boolean isOnlyForCurrent) {
+                                                     boolean needsLogout, boolean isOnlyForCurrent) {
         UUID accountId = account.getId();
         boolean haveActiveTasks = taskRepository.existsByAccountIdAndStatus(accountId,
                 Set.of(TaskStatus.OPEN, TaskStatus.PROCESSED));
@@ -668,6 +704,9 @@ public class ClientService {
         }
         UserGroup userGroup = userGroupRepository.findById(userGroupId)
                 .orElseThrow(() -> new GroupUserNotFoundException(userGroupId));
+        if (userGroup.getGroupType() != UserGroupType.EMPLOYEE_GROUP) {
+            throw new InvalidGroupUserException("Сотрудника можно привязать только к группе типа «Группа сотрудников»");
+        }
         if (!Objects.equals(account.getUserGroup().getId(), userGroup.getId())) {
             account.setUserGroup(userGroup);
             hasChange = true;
@@ -679,7 +718,7 @@ public class ClientService {
     }
 
     private UpdateClientResponseDTO updateClientDescriptionInner(UUID id, ClientUpdateDescriptionRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                                 AppUserDetails currentUser) {
         Client client = clientRepository.findById(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         clientSecurityService.validateCanUpdateClientDescription(currentUser, client);
@@ -718,6 +757,12 @@ public class ClientService {
     private void validateLogin(String login) {
         if (clientRepository.existsByAccount_Login(login)) {
             throw new DuplicateClientLoginException(login);
+        }
+    }
+
+    private void validateEmail(String email) {
+        if (accountRepository.existsByEmail(email)) {
+            throw new DuplicateEmailException(email);
         }
     }
 }

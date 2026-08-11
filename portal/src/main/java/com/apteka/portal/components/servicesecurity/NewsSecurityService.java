@@ -41,7 +41,9 @@ public class NewsSecurityService {
         if (currentUser.hasRole(UserRole.ADMIN)
                 || currentUser.hasAction(AccountAction.NEWS_WORK_ALL_GROUPS)
                 || (sameGroupWithGroupWhereNews(currentUser, newsGroupId)
-                        && currentUser.hasAction(AccountAction.NEWS_WORK))) {
+                        && (currentUser.hasAction(AccountAction.NEWS_WORK)
+                                // AUDIT-FIX: аптека может читать новости только своей группы
+                                || currentUser.hasRole(UserRole.APTEKA)))) {
             return;
         }
         throw new AccessDeniedException("У вас нет прав на просмотр новостей этой группы");

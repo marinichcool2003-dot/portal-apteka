@@ -150,6 +150,6 @@ public class AppUserDetails implements UserDetails {
     public boolean isEnabled() {
         return Boolean.TRUE.equals(isActive) 
                 && userGroup != null 
-                && Boolean.TRUE.equals(userGroup.isActive());
+                && userGroup.isActive();
     }
 }

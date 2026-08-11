@@ -12,14 +12,16 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenAPI(){
-        final String accessCookieName = "Access";
-        final String refreshCookieName = "Refresh";
+        // AUDIT-FIX: имена cookie приведены к фактическим X-Access-Token / X-Refresh-Token
+        final String accessCookieName = "X-Access-Token";
+        final String refreshCookieName = "X-Refresh-Token";
 
         return new OpenAPI()
                 .info(new Info()
                         .title("API портал Социальных аптек")
                         .version("1.0.0")
-                        .description("Документация тестового проекта"))
+                        // AUDIT-FIX: уточнение описания API на русском
+                        .description("REST API портала Социальных аптек. Документация эндпоинтов, схем и перечислений на русском языке."))
                 .components(new Components()
                         // 1. Схема для Access токена в куках
                         .addSecuritySchemes("AccessCookie", new SecurityScheme()

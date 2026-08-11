@@ -118,11 +118,22 @@ public class GroupTaskSecurityService {
     }
 
     public void validateGroupVisibility(Integer firstUserGroupId, Integer secondUserGroupId) {
+        // AUDIT-FIX: ADMIN обходит проверку видимости (иначе нельзя создать category между новыми группами)
+        // вызывающая сторона передаёт currentUser отдельно — оставляем overload ниже
         boolean visibilityExists = visibilityRepository.existsRelationBidirectional(firstUserGroupId,
                 secondUserGroupId);
         if (!visibilityExists) {
             throw new AccessDeniedException("Вы не можете взаимодействовать с данной группой!");
         }
+    }
+
+    // AUDIT-FIX: вариант с currentUser — ADMIN без ограничения visibility
+    public void validateGroupVisibility(Integer firstUserGroupId, Integer secondUserGroupId,
+            AppUserDetails currentUser) {
+        if (currentUser != null && currentUser.hasRole(UserRole.ADMIN)) {
+            return;
+        }
+        validateGroupVisibility(firstUserGroupId, secondUserGroupId);
     }
 
     private boolean sameGroup(AppUserDetails currentUser, UserGroup userGroup) {

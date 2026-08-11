@@ -22,7 +22,6 @@ import com.apteka.portal.models.TaskStatus;
 
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
 
-	// AUDIT-FIX: N+1 — Fetch all account subtype data needed by filtered task list DTO mapping.
 	@EntityGraph(attributePaths = {
 			"workType",
 			"workType.groupTask",
@@ -36,7 +35,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 	@Override
 	Page<Task> findAll(Specification<Task> spec, Pageable pageable);
 
-	// AUDIT-FIX: N+1 — Fetch all account subtype data needed by task list DTO mapping.
 	@EntityGraph(attributePaths = {
 			"workType",
 			"workType.groupTask",
@@ -98,9 +96,10 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			    FROM Task t
 			    JOIN t.workType w
 			    JOIN w.groupTask gt
-			    JOIN gt.creatorGroup ug
+			    JOIN gt.intendedGroup ug
 			    GROUP BY ug.id, ug.name
 			""")
+	// AUDIT-FIX: статистика по intended/executor группе (отдел-исполнитель), не creatorGroup
 	List<DepartmentTaskStatsDTO> findGroupUserStats();
 
 	@Query("""
@@ -115,10 +114,11 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			FROM Task t
 			LEFT JOIN t.workType w
 			LEFT JOIN w.groupTask gt
-			LEFT JOIN gt.creatorGroup ug
+			LEFT JOIN gt.intendedGroup ug
 			WHERE ug.id = :userGroupId
 			GROUP BY ug.id, ug.name
 			""")
+	// AUDIT-FIX: статистика отдела по intendedGroup
 	Optional<DepartmentTaskStatsDTO> findGroupUserStatsByGroup(@Param("userGroupId") Integer userGroupId);
 
 	@Query("""
@@ -131,6 +131,16 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			WHERE t.id = :id
 			""")
 	Optional<Task> findByIdWithDetails(@Param("id") Long id);
+
+	// AUDIT-FIX: загрузка задачи с creator.apteka и assigner для оценки аптеки
+	@Query("""
+			SELECT t FROM Task t
+			LEFT JOIN FETCH t.creator c
+			LEFT JOIN FETCH c.apteka
+			LEFT JOIN FETCH t.assigner
+			WHERE t.id = :id
+			""")
+	Optional<Task> findByIdForRating(@Param("id") Long id);
 
 	@Query("""
 			SELECT t FROM Task t JOIN FETCH t.pictures WHERE t.id = :id
@@ -189,4 +199,35 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 			AND t.status IN :nonActiveStatuses
 			""")
 	boolean existsByWorkTypeAndStatusNonActive(@Param("workTypeId") Integer workTypeId, @Param("nonActiveStatuses") Set<TaskStatus> nonActiveStatuses);
+
+	// AUDIT-FIX: задачи отдела для ежедневного отчёта (очередь intendedGroup + назначенные сотрудникам группы)
+	@Query("""
+			SELECT DISTINCT t FROM Task t
+			JOIN FETCH t.workType w
+			JOIN FETCH w.groupTask gt
+			LEFT JOIN FETCH t.assigner ass
+			LEFT JOIN FETCH ass.client
+			LEFT JOIN FETCH ass.userGroup
+			LEFT JOIN FETCH t.creator cre
+			LEFT JOIN FETCH cre.client
+			WHERE (
+			    (t.assigner IS NULL AND gt.intendedGroup.id = :groupId)
+			    OR (ass.userGroup.id = :groupId)
+			)
+			AND (
+			    (t.creationDate >= :start AND t.creationDate < :end)
+			    OR (t.closingDate >= :start AND t.closingDate < :end)
+			    OR (t.updatedDate >= :start AND t.updatedDate < :end AND t.status = com.apteka.portal.models.TaskStatus.DENIED)
+			    OR (
+			        t.status IN (com.apteka.portal.models.TaskStatus.OPEN, com.apteka.portal.models.TaskStatus.PROCESSED)
+			        AND t.creationDate < :end
+			        AND (t.closingDate IS NULL OR t.closingDate >= :end)
+			    )
+			)
+			ORDER BY t.creationDate ASC
+			""")
+	List<Task> findDepartmentTasksForDailyReport(
+			@Param("groupId") Integer groupId,
+			@Param("start") java.time.Instant start,
+			@Param("end") java.time.Instant end);
 }

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS group_user (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
     updated_by VARCHAR(50),
+    group_type VARCHAR(32) NOT NULL,
     is_active BOOLEAN DEFAULT true
 );
 
@@ -63,9 +64,6 @@ CREATE TABLE IF NOT EXISTS account (
 CREATE TABLE IF NOT EXISTS account_actions (
     account_id UUID NOT NULL,
     action VARCHAR(50) NOT NULL,
-    code VARCHAR(50) NOT NULL,
-    description TEXT,
-    level_action VARCHAR(20) NOT NULL,
     PRIMARY KEY (account_id, action) 
 );
 
@@ -162,3 +160,4 @@ CREATE TABLE IF NOT EXISTS main_page_links (
     updated_by VARCHAR(50),
     is_active BOOLEAN DEFAULT true
 );
+

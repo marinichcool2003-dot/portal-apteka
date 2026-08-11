@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.StringUtils;
 
 import com.apteka.portal.components.servicesecurity.AptekaSecurityService;
+import com.apteka.portal.components.validators.EmailValidator;
 import com.apteka.portal.components.validators.LoginValidator;
 import com.apteka.portal.components.validators.PasswordValidator;
 import com.apteka.portal.components.validators.PhoneNumberValidator;
@@ -33,8 +34,10 @@ import com.apteka.portal.exceptions.AlreadyHaveThisPasswordException;
 import com.apteka.portal.exceptions.AptekaNotFoundException;
 import com.apteka.portal.exceptions.DuplicateAptekaFullNameException;
 import com.apteka.portal.exceptions.DuplicateAptekaLoginException;
+import com.apteka.portal.exceptions.DuplicateEmailException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidAptekaNumberException;
+import com.apteka.portal.exceptions.InvalidGroupUserException;
 import com.apteka.portal.repository.AccountRepository;
 import com.apteka.portal.repository.AptekaRepository;
 import com.apteka.portal.repository.UserGroupRepository;
@@ -50,6 +53,7 @@ public class AptekaService {
     private final PasswordValidator passwordValidator;
     private final AuthService authService;
     private final LoginValidator loginValidator;
+    private final EmailValidator emailValidator;
     private final PhoneNumberValidator phoneNumberValidator;
     private final AptekaSecurityService aptekaSecurityService;
     private final AccountRepository accountRepository;
@@ -90,16 +94,27 @@ public class AptekaService {
 
     @Transactional(readOnly = true)
     public Page<AptekaResponseDTO> filter(AptekaFilterRequestDTO dto, Pageable pageable, boolean isActive,
-            AppUserDetails currentUser) {
-        aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
+                                          AppUserDetails currentUser) {
+
         Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
         Integer scopeGroupId = aptekaSecurityService.canSelectAllAptekas(currentUser)
                 ? dto.groupId() : currentUser.getUserGroup().getId();
-        return aptekaRepository.filter(dto.login(),
+        String loginPattern = blankToLikePrefix(dto.login());
+        String phonePattern = blankToLikeContains(dto.phoneNumber());
+        if(!isActive) {
+            aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, false);
+            return aptekaRepository.filterNonActive(loginPattern,
+                    scopeGroupId,
+                    dto.number(),
+                    phonePattern,
+                    dto.city(),
+                    dto.street(),
+                    validatedPageable).map(AptekaResponseDTO::from);
+        }
+        return aptekaRepository.filterActive(loginPattern,
                 scopeGroupId,
                 dto.number(),
-                dto.phoneNumber(),
-                isActive,
+                phonePattern,
                 dto.city(),
                 dto.street(),
                 validatedPageable).map(AptekaResponseDTO::from);
@@ -111,9 +126,15 @@ public class AptekaService {
         aptekaSecurityService.validateCanCreateApteka(currentUser);
 
         String cleanLogin = loginValidator.getCleanLogin(dto.login());
+        validateLogin(cleanLogin);
+        String cleanEmail = emailValidator.getCleanEmail(dto.email());
+        validateEmail(cleanEmail);
         passwordValidator.validatePassword(dto.password(), false);
         UserGroup userGroup = userGroupRepository.findById(dto.groupId())
                 .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
+        if (userGroup.getGroupType() != UserGroupType.APTEKA_GROUP) {
+            throw new InvalidGroupUserException("Аптеку можно привязать только к группе типа «Группа аптек»");
+        }
         validateAptekaNumberInGroup(dto.number(), dto.groupId());
         String cleanPhoneNumber = phoneNumberValidator.getCleanPhoneNumber(dto.phoneNumber());
 
@@ -132,6 +153,7 @@ public class AptekaService {
 
         Account account = Account.builder()
                 .login(cleanLogin)
+                .email(cleanEmail)
                 .password(passwordEncoder.encode(dto.password()))
                 .userRole(UserRole.APTEKA)
                 .phoneNumber(cleanPhoneNumber)
@@ -140,7 +162,7 @@ public class AptekaService {
                 .isActive(true)
                 .build();
 
-        apteka.setAptekaName(userGroup.getName() + " " + apteka.getNumber());
+        apteka.setAptekaName(buildAptekaName(userGroup.getName(), apteka.getNumber()));
         apteka.setAccount(account);
         aptekaRepository.save(apteka);
         Integer userGroupId = account.getUserGroup().getId();
@@ -237,7 +259,7 @@ public class AptekaService {
 
     @Transactional
     public AptekaResponseDTO updateDescription(UUID id, AptekaUpdateDescriptionRequestDTO dto,
-            AppUserDetails currentUser) {
+                                               AppUserDetails currentUser) {
         aptekaSecurityService.validateCanUpdateDescriptionApteka(currentUser);
 
         Apteka apteka = aptekaRepository.findById(id)
@@ -307,11 +329,11 @@ public class AptekaService {
     }
 
     private final record UpdateAptekaAccountResponseDTO(boolean hasChange, boolean needsLogout,
-            String oldLogin) {
+                                                        String oldLogin) {
     }
 
     private UpdateAptekaAccountResponseDTO updateAptekaAccount(Account account, AccountUpdateRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                               AppUserDetails currentUser) {
         aptekaSecurityService.validateCanUpdateAccountApteka(currentUser);
         Apteka apteka = account.getApteka();
 
@@ -325,6 +347,15 @@ public class AptekaService {
                 validateLogin(newLogin);
                 account.setLogin(newLogin);
                 needsLogout = true;
+                hasChange = true;
+            }
+        }
+
+        if (StringUtils.hasText(dto.email())) {
+            String cleanEmail = emailValidator.getCleanEmail(dto.email());
+            if (!Objects.equals(cleanEmail, account.getEmail())) {
+                validateEmail(cleanEmail);
+                account.setEmail(cleanEmail);
                 hasChange = true;
             }
         }
@@ -350,6 +381,9 @@ public class AptekaService {
         if (dto.groupId() != null && dto.groupId() > 0) {
             UserGroup userGroup = userGroupRepository.findById(dto.groupId())
                     .orElseThrow(() -> new GroupUserNotFoundException(dto.groupId()));
+            if (userGroup.getGroupType() != UserGroupType.APTEKA_GROUP) {
+                throw new InvalidGroupUserException("Аптеку можно привязать только к группе типа «Группа аптек»");
+            }
             if (!Objects.equals(userGroup.getId(), account.getUserGroup().getId())) {
                 validateAptekaNumberInGroup(apteka.getNumber(), dto.groupId());
                 account.setUserGroup(userGroup);
@@ -363,8 +397,8 @@ public class AptekaService {
     }
 
     private UpdateAptekaDescriptionResponseDTO updateAptekaDescription(Apteka apteka,
-            AptekaUpdateDescriptionRequestDTO dto,
-            AppUserDetails currentUser) {
+                                                                       AptekaUpdateDescriptionRequestDTO dto,
+                                                                       AppUserDetails currentUser) {
         aptekaSecurityService.validateCanUpdateDescriptionApteka(currentUser);
 
         Account account = apteka.getAccount();
@@ -422,5 +456,35 @@ public class AptekaService {
         if (aptekaRepository.existsByAccount_Login(login)) {
             throw new DuplicateAptekaLoginException(login);
         }
+    }
+
+    private void validateEmail(String email) {
+        if (accountRepository.existsByEmail(email)) {
+            throw new DuplicateEmailException(email);
+        }
+    }
+
+    private static String blankToLikePrefix(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value + "%";
+    }
+
+    private static String blankToLikeContains(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return "%" + value + "%";
+    }
+
+    private static String buildAptekaName(String groupName, Integer number) {
+        String suffix = " " + (number == null ? "" : number);
+        String base = groupName == null ? "" : groupName;
+        int maxBase = Math.max(0, 30 - suffix.length());
+        if (base.length() > maxBase) {
+            base = base.substring(0, maxBase);
+        }
+        return base + suffix;
     }
 }

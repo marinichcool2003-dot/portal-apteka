@@ -3,6 +3,7 @@ package com.apteka.portal.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -36,5 +37,4 @@ public interface MainPageLinkRepository extends JpaRepository<MainPageLink, Inte
     List<MainPageLink> findByGroupMainPageLinksIdAndIsActive(@Param("groupMainPageLinksId") Integer groupMainPageLinksId, @Param("isActive") Boolean isActive);
 
     boolean existsByName(String name);
-    boolean existsByLink(String link);
 }

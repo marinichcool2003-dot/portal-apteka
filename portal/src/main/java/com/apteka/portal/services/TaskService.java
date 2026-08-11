@@ -20,6 +20,7 @@ import com.apteka.portal.components.servicesecurity.TaskSecurityService;
 import com.apteka.portal.components.validators.SortingValidator;
 import com.apteka.portal.components.validators.TypeNameValidator;
 import com.apteka.portal.dtos.request.DepartamentTaskWithFiltersDTO;
+import com.apteka.portal.dtos.mail.EmailContent;
 import com.apteka.portal.dtos.request.task.TaskCreateRequestDTO;
 import com.apteka.portal.dtos.request.task.TaskUpdateRequestDTO;
 import com.apteka.portal.dtos.response.DepartmentTaskStatsDTO;
@@ -43,6 +44,7 @@ import com.apteka.portal.repository.WorkTypeRepository;
 import com.apteka.portal.repository.specification.TaskSpecifications;
 import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
+import com.apteka.portal.models.NotificationEventType;
 
 import lombok.RequiredArgsConstructor;
 @Service
@@ -56,6 +58,8 @@ public class TaskService {
     private final SortingValidator sortingValidator;
     private final TaskAuditService taskAuditService;
     private final SseAfterCommitPublisher sseAfterCommitPublisher;
+    private final NotificationDispatcher notificationDispatcher;
+    private final EmailTemplateService emailTemplateService;
     private final SafeCacheService safeCacheService;
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
@@ -201,7 +205,16 @@ public class TaskService {
         Task saved = taskRepository.save(task);
 
         var event = new SseEventNames.TaskSignalsDTO(saved.getWorkType().getId(), SseSignalTypes.CREATED);
-        sseAfterCommitPublisher.publishAfterCommit(SseEventNames.REFRESH_TASKS, event);
+        Runnable ssePublish = () -> sseAfterCommitPublisher.publishAfterCommit(SseEventNames.REFRESH_TASKS, event);
+        if (assigner != null) {
+            notificationDispatcher.dispatchToUser(
+                    assigner.getId(),
+                    NotificationEventType.TASK_ASSIGNED,
+                    buildTaskEmailContent(saved, "Задача назначена", "Вам назначена новая задача"),
+                    ssePublish);
+        } else {
+            sseAfterCommitPublisher.publishAfterCommit(SseEventNames.REFRESH_TASKS, event);
+        }
         return TaskShortResponseDTO.from(saved);
     }
 
@@ -211,6 +224,9 @@ public class TaskService {
                 .orElseThrow(() -> new TaskNotFoundException(id));
 
         boolean hasChange = false;
+        boolean assignerChanged = false;
+        boolean statusChanged = false;
+        TaskStatus previousStatus = task.getStatus();
 
         if (StringUtils.hasText(dto.title())) {
             String cleanTitle = typeNameValidator.getCleanName(dto.title());
@@ -243,7 +259,6 @@ public class TaskService {
             }
 
             boolean workTypeChanged = false;
-            boolean assignerChanged = false;
 
             if (dto.workTypeId() != null) {
                 Integer currentWorkTypeId = task.getWorkType() != null ? task.getWorkType().getId() : null;
@@ -275,16 +290,42 @@ public class TaskService {
         if (StringUtils.hasText(dto.statusCode())) {
             TaskStatus newStatus = TaskStatus.fromCode(dto.statusCode());
             taskSecurityService.validateChangeStatusInTask(task, currentUser, newStatus);
-            task.changeStatus(newStatus);
-            hasChange = true;
+            if (!Objects.equals(task.getStatus(), newStatus)) {
+                task.changeStatus(newStatus);
+                statusChanged = true;
+                hasChange = true;
+            }
         }
 
         if (hasChange) {
             var event = new SseEventNames.EntityUpdateSignalDTO(task.getId(), SseSignalTypes.UPDATED);
-            sseAfterCommitPublisher.publishAfterCommit(SseEventNames.REFRESH_TASKS, event);
+            Runnable ssePublish = () -> sseAfterCommitPublisher.publishAfterCommit(SseEventNames.REFRESH_TASKS, event);
+            if (assignerChanged && task.getAssigner() != null) {
+                notificationDispatcher.dispatchToUser(
+                        task.getAssigner().getId(),
+                        NotificationEventType.TASK_ASSIGNED,
+                        buildTaskEmailContent(task, "Задача назначена", "Вам назначена задача"),
+                        ssePublish);
+            } else if (statusChanged && task.getAssigner() != null) {
+                notificationDispatcher.dispatchToUser(
+                        task.getAssigner().getId(),
+                        NotificationEventType.TASK_STATUS_CHANGED,
+                        buildTaskEmailContent(task, "Статус задачи изменён",
+                                "Статус изменён с «" + previousStatus.getName() + "» на «" + task.getStatus().getName() + "»"),
+                        ssePublish);
+            } else {
+                ssePublish.run();
+            }
         }
 
         return TaskShortResponseDTO.from(task);
+    }
+
+    private EmailContent buildTaskEmailContent(Task task, String subjectPrefix, String message) {
+        String subject = subjectPrefix + ": " + task.getTitle();
+        String details = emailTemplateService.taskDetailsHtml(
+                task.getId(), task.getTitle(), task.getStatus().getName());
+        return emailTemplateService.renderNotification(subject, message, details);
     }
 
     @Transactional

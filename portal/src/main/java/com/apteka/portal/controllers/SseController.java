@@ -17,14 +17,18 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.SseEventNames;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 
+@Tag(name = "SSE-уведомления", description = "Подписка на события портала в реальном времени (Server-Sent Events)")
 @RestController
 @RequestMapping("/api/v1/sse")
 @Slf4j
 public class SseController {
     private final Map<String, SseEmitter> emiters = new ConcurrentHashMap<>();
 
+    @Operation(summary = "Подписка на SSE", description = "Открывает SSE-поток для текущего пользователя. Предыдущее подключение того же пользователя закрывается.")
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(Authentication authentication) {
 
@@ -105,5 +109,3 @@ public class SseController {
         }
     }
 }
-
-

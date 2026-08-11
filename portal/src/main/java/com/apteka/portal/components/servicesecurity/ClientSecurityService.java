@@ -1,7 +1,10 @@
 package com.apteka.portal.components.servicesecurity;
 
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
@@ -188,11 +191,8 @@ public class ClientSecurityService {
             }
         }
 
-        LevelAction maxAllowedLevel = LevelAction.LOW;
-
-        if (currentUser.hasRole(UserRole.BOSS)) {
-            maxAllowedLevel = LevelAction.MEDIUM;
-        }
+        // AUDIT-FIX: лимит уровня через общий helper (USER→LOW, BOSS→MEDIUM)
+        LevelAction maxAllowedLevel = resolveRoleMaxActionLevel(currentUser);
 
         for (AccountAction accountAction : actions) {
             if (AccountAction.getLevelValue(accountAction) > maxAllowedLevel.level()) {
@@ -229,17 +229,48 @@ public class ClientSecurityService {
             }
         }
 
-        LevelAction maxLevel = LevelAction.LOW;
-
-        if (currentUser.hasRole(UserRole.BOSS)) {
-            maxLevel = LevelAction.MEDIUM;
-        }
+        // AUDIT-FIX: тот же лимит уровня, что и при назначении
+        LevelAction maxLevel = resolveRoleMaxActionLevel(currentUser);
 
         for (AccountAction action : actions) {
             if (AccountAction.getLevelValue(action) > maxLevel.level()) {
                 throw new AccessDeniedException("У вас нет права удалять данное действие (превышен уровень доступа)!");
             }
         }
+    }
+
+    /**
+     * AUDIT-FIX: максимальный уровень действий, которые текущий пользователь может назначать.
+     * {@code null} = без лимита (ADMIN или CAN_ADD_ACCOUNT_ACTIONS_GRAND_EXTENDED).
+     */
+    public LevelAction resolveMaxAssignableLevel(AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.ADMIN)
+                || currentUser.hasAction(AccountAction.CAN_ADD_ACCOUNT_ACTIONS_GRAND_EXTENDED)) {
+            return null;
+        }
+        return resolveRoleMaxActionLevel(currentUser);
+    }
+
+    /** AUDIT-FIX: USER → LOW, BOSS → MEDIUM (без учёта ADMIN/EXTENDED). */
+    private LevelAction resolveRoleMaxActionLevel(AppUserDetails currentUser) {
+        if (currentUser.hasRole(UserRole.BOSS)) {
+            return LevelAction.MEDIUM;
+        }
+        return LevelAction.LOW;
+    }
+
+    /**
+     * AUDIT-FIX: каталог действий, которые текущий пользователь может назначать другим
+     * (для GET /clients/assignable-actions).
+     */
+    public Set<AccountAction> getAssignableActions(AppUserDetails currentUser) {
+        LevelAction maxLevel = resolveMaxAssignableLevel(currentUser);
+        if (maxLevel == null) {
+            return EnumSet.allOf(AccountAction.class);
+        }
+        return Arrays.stream(AccountAction.values())
+                .filter(action -> AccountAction.getLevelValue(action) <= maxLevel.level())
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(AccountAction.class)));
     }
 
     public void canGiveRole(AppUserDetails currentUser, UserRole role) {

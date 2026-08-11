@@ -99,23 +99,56 @@ public class WorkTypeService {
 
     @CacheEvict(value = CacheNames.WORK_TYPES_BY_GROUP, key = "#result.taskGroup().id()")
     @Transactional
-    public WorkTypeResponseDTO create(WorkTypeRequestDTO dto, AppUserDetails currentUser) {
+    public WorkTypeResponseDTO create(WorkTypeRequestDTO dto, AppUserDetails currentUser, Boolean syncToAllIntended) {
         GroupTask groupTask = groupTaskRepository.findById(dto.groupTaskId())
                 .orElseThrow(() -> new GroupTaskNotFoundException(dto.groupTaskId()));
 
+        WorkTypeResponseDTO primary = createOnGroupTask(groupTask, dto, currentUser, false);
+
+        if (Boolean.TRUE.equals(syncToAllIntended)) {
+            String cleanName = typeNameValidator.getCleanName(dto.name());
+            List<GroupTask> siblings = groupTaskRepository.findSiblingAptekaGroupTasks(
+                    groupTask.getCreatorGroup().getId(), groupTask.getName(), true);
+            for (GroupTask sibling : siblings) {
+                if (Objects.equals(sibling.getId(), groupTask.getId())) {
+                    continue;
+                }
+                if (workTypeRepository.existsByNameAndGroupTaskId(cleanName, sibling.getId())) {
+                    continue;
+                }
+                WorkTypeRequestDTO siblingDto = new WorkTypeRequestDTO(
+                        dto.name(), sibling.getId(), dto.priorityCode(), dto.commentForCreator(), dto.wiki_link());
+                createOnGroupTask(sibling, siblingDto, currentUser, true);
+            }
+        }
+
+        return primary;
+    }
+
+    @Transactional
+    public WorkTypeResponseDTO create(WorkTypeRequestDTO dto, AppUserDetails currentUser) {
+        return create(dto, currentUser, false);
+    }
+
+    private WorkTypeResponseDTO createOnGroupTask(GroupTask groupTask, WorkTypeRequestDTO dto,
+            AppUserDetails currentUser, boolean skipIfDuplicate) {
         UserGroup userGroup = groupTask.getCreatorGroup();
         workTypeSecurityService.validateCanWorkWorkType(currentUser, userGroup);
-
-        WorkType.WorkTypeBuilder workTypeBuilder = WorkType.builder();
-
-        workTypeBuilder.groupTask(groupTask);
 
         if (!StringUtils.hasText(dto.name())) {
             throw new InvalidWorkTypeNameException();
         }
 
         String cleanWorkTypeName = typeNameValidator.getCleanName(dto.name());
-        validateWorkTypeName(cleanWorkTypeName, dto.groupTaskId());
+        if (skipIfDuplicate && workTypeRepository.existsByNameAndGroupTaskId(cleanWorkTypeName, groupTask.getId())) {
+            return workTypeRepository.findByNameAndGroupTaskId(cleanWorkTypeName, groupTask.getId())
+                    .map(WorkTypeResponseDTO::from)
+                    .orElse(null);
+        }
+        validateWorkTypeName(cleanWorkTypeName, groupTask.getId());
+
+        WorkType.WorkTypeBuilder workTypeBuilder = WorkType.builder();
+        workTypeBuilder.groupTask(groupTask);
         workTypeBuilder.name(cleanWorkTypeName);
 
         if (StringUtils.hasText(dto.priorityCode())) {
@@ -140,6 +173,7 @@ public class WorkTypeService {
                 @Override
                 public void afterCommit() {
                     safeCacheService.put(CacheNames.WORK_TYPE, newWorkType.getId(), response);
+                    safeCacheService.evict(CacheNames.WORK_TYPES_BY_GROUP, groupTask.getId());
                     var signal = new SseEventNames.WorkTypeSignalDTO(newWorkType.getGroupTask().getId(),
                             SseSignalTypes.CREATED);
                     sseController.broadcastNotification(SseEventNames.REFRESH_WORK_TYPES, signal);
@@ -151,11 +185,43 @@ public class WorkTypeService {
 
     @Transactional
     public WorkTypeResponseDTO update(Integer id, WorkTypeUpdateRequestDTO dto, AppUserDetails currentUser,
-            Boolean confirm) {
+            Boolean confirm, Boolean syncToAllIntended) {
 
         WorkType upWorkType = workTypeRepository.findByIdWithGroupTaskAndCreatorGroup(id)
                 .orElseThrow(() -> new WorkTypeNotFoundException(id));
+        String oldName = upWorkType.getName();
+        GroupTask sourceGroupTask = upWorkType.getGroupTask();
+        Integer creatorId = sourceGroupTask.getCreatorGroup().getId();
+        String groupTaskName = sourceGroupTask.getName();
 
+        WorkTypeResponseDTO primary = updateOne(upWorkType, dto, currentUser, confirm);
+
+        if (Boolean.TRUE.equals(syncToAllIntended)) {
+            List<GroupTask> siblings = groupTaskRepository.findSiblingAptekaGroupTasks(creatorId, groupTaskName, true);
+            for (GroupTask sibling : siblings) {
+                if (Objects.equals(sibling.getId(), sourceGroupTask.getId())) {
+                    continue;
+                }
+                workTypeRepository.findByNameAndGroupTaskId(oldName, sibling.getId()).ifPresent(siblingWt -> {
+                    // groupTaskId в DTO не переносим на siblings
+                    WorkTypeUpdateRequestDTO siblingDto = new WorkTypeUpdateRequestDTO(
+                            dto.name(), null, dto.priorityCode(), dto.commentForCreator(), dto.wiki_link());
+                    updateOne(siblingWt, siblingDto, currentUser, confirm);
+                });
+            }
+        }
+
+        return primary;
+    }
+
+    @Transactional
+    public WorkTypeResponseDTO update(Integer id, WorkTypeUpdateRequestDTO dto, AppUserDetails currentUser,
+            Boolean confirm) {
+        return update(id, dto, currentUser, confirm, false);
+    }
+
+    private WorkTypeResponseDTO updateOne(WorkType upWorkType, WorkTypeUpdateRequestDTO dto,
+            AppUserDetails currentUser, Boolean confirm) {
         boolean nameChanged = false;
         boolean groupsChanged = false;
         boolean anotherChanged = false;
@@ -218,6 +284,7 @@ public class WorkTypeService {
             final Integer workTypeId = upWorkType.getId();
             final boolean isActive = isActiveValidator.isWorkTypeActive(upWorkType);
             final Integer previousGroupTaskId = oldGroupTaskId;
+            final Integer id = upWorkType.getId();
 
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -241,10 +308,32 @@ public class WorkTypeService {
     }
 
     @Transactional
-    public void safeDelete(Integer id, AppUserDetails currentUser) {
+    public void safeDelete(Integer id, AppUserDetails currentUser, Boolean syncToAllIntended) {
         WorkType deletedWorkType = workTypeRepository.findByIdWithGroupTaskAndCreatorGroup(id)
                 .orElseThrow(() -> new WorkTypeNotFoundException(id));
+        String name = deletedWorkType.getName();
+        GroupTask sourceGt = deletedWorkType.getGroupTask();
 
+        safeDeleteOne(deletedWorkType, currentUser);
+
+        if (Boolean.TRUE.equals(syncToAllIntended)) {
+            for (GroupTask sibling : groupTaskRepository.findSiblingAptekaGroupTasks(
+                    sourceGt.getCreatorGroup().getId(), sourceGt.getName(), true)) {
+                if (Objects.equals(sibling.getId(), sourceGt.getId())) {
+                    continue;
+                }
+                workTypeRepository.findByNameAndGroupTaskId(name, sibling.getId())
+                        .ifPresent(wt -> safeDeleteOne(wt, currentUser));
+            }
+        }
+    }
+
+    @Transactional
+    public void safeDelete(Integer id, AppUserDetails currentUser) {
+        safeDelete(id, currentUser, false);
+    }
+
+    private void safeDeleteOne(WorkType deletedWorkType, AppUserDetails currentUser) {
         workTypeSecurityService.validateCanWorkWorkType(currentUser, deletedWorkType.getGroupTask().getCreatorGroup());
         if (isActiveValidator.isWorkTypeActive(deletedWorkType)) {
             deletedWorkType.setActive(false);
@@ -267,10 +356,32 @@ public class WorkTypeService {
     }
 
     @Transactional
-    public void restore(Integer id, AppUserDetails currentUser) {
+    public void restore(Integer id, AppUserDetails currentUser, Boolean syncToAllIntended) {
         WorkType restoredWorkType = workTypeRepository.findByIdWithGroupTaskAndCreatorGroup(id)
                 .orElseThrow(() -> new WorkTypeNotFoundException(id));
+        String name = restoredWorkType.getName();
+        GroupTask sourceGt = restoredWorkType.getGroupTask();
 
+        restoreOne(restoredWorkType, currentUser);
+
+        if (Boolean.TRUE.equals(syncToAllIntended)) {
+            for (GroupTask sibling : groupTaskRepository.findSiblingAptekaGroupTasks(
+                    sourceGt.getCreatorGroup().getId(), sourceGt.getName(), true)) {
+                if (Objects.equals(sibling.getId(), sourceGt.getId())) {
+                    continue;
+                }
+                workTypeRepository.findByNameAndGroupTaskId(name, sibling.getId())
+                        .ifPresent(wt -> restoreOne(wt, currentUser));
+            }
+        }
+    }
+
+    @Transactional
+    public void restore(Integer id, AppUserDetails currentUser) {
+        restore(id, currentUser, false);
+    }
+
+    private void restoreOne(WorkType restoredWorkType, AppUserDetails currentUser) {
         workTypeSecurityService.validateCanWorkWorkType(currentUser, restoredWorkType.getGroupTask().getCreatorGroup());
         if (!isActiveValidator.isWorkTypeActive(restoredWorkType)) {
             restoredWorkType.setActive(true);
@@ -292,13 +403,36 @@ public class WorkTypeService {
     }
 
     @Transactional
-    public void permanentDelete(Integer id, AppUserDetails currentUser, Boolean confirm) {
+    public void permanentDelete(Integer id, AppUserDetails currentUser, Boolean confirm, Boolean syncToAllIntended) {
         WorkType deletedWorkType = workTypeRepository.findByIdWithGroupTaskAndCreatorGroup(id)
                 .orElseThrow(() -> new WorkTypeNotFoundException(id));
+        String name = deletedWorkType.getName();
+        GroupTask sourceGt = deletedWorkType.getGroupTask();
 
+        if (Boolean.TRUE.equals(syncToAllIntended)) {
+            for (GroupTask sibling : groupTaskRepository.findSiblingAptekaGroupTasks(
+                    sourceGt.getCreatorGroup().getId(), sourceGt.getName(), null)) {
+                if (Objects.equals(sibling.getId(), sourceGt.getId())) {
+                    continue;
+                }
+                workTypeRepository.findByNameAndGroupTaskId(name, sibling.getId())
+                        .ifPresent(wt -> permanentDeleteOne(wt, confirm));
+            }
+        }
+
+        permanentDeleteOne(deletedWorkType, confirm);
+    }
+
+    @Transactional
+    public void permanentDelete(Integer id, AppUserDetails currentUser, Boolean confirm) {
+        permanentDelete(id, currentUser, confirm, false);
+    }
+
+    private void permanentDeleteOne(WorkType deletedWorkType, Boolean confirm) {
+        Integer id = deletedWorkType.getId();
         workTypeSecurityService.validateCanPermanentDelete(deletedWorkType, confirm);
-        workTypeRepository.delete(deletedWorkType);
         Integer groupTaskId = deletedWorkType.getGroupTask().getId();
+        workTypeRepository.delete(deletedWorkType);
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -312,7 +446,6 @@ public class WorkTypeService {
                 }
             });
         }
-
     }
 
     private void validateWorkTypeName(String name, Integer groupTaskId) {

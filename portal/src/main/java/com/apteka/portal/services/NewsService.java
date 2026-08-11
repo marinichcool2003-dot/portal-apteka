@@ -11,6 +11,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import com.apteka.portal.components.servicesecurity.NewsSecurityService;
 import com.apteka.portal.controllers.SseController;
+import com.apteka.portal.dtos.mail.EmailContent;
 import com.apteka.portal.dtos.request.news.NewsRequestDTO;
 import com.apteka.portal.dtos.request.news.NewsUpdateRequestDTO;
 import com.apteka.portal.dtos.response.news.NewsResponseDTO;
@@ -22,6 +23,7 @@ import com.apteka.portal.exceptions.NewsNotFoundException;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.News;
+import com.apteka.portal.models.NotificationEventType;
 import com.apteka.portal.models.SseEventNames;
 import com.apteka.portal.models.SseSignalTypes;
 import com.apteka.portal.models.UserGroup;
@@ -40,6 +42,8 @@ public class NewsService {
     private final UserGroupRepository userGroupRepository;
 
     private final SseController sseController;
+    private final NotificationDispatcher notificationDispatcher;
+    private final EmailTemplateService emailTemplateService;
 
     @Transactional(readOnly = true)
     public List<NewsResponseDTO> getByUserGroup(Integer userGroupId, AppUserDetails currentUser) {
@@ -75,16 +79,13 @@ public class NewsService {
 
         Integer groupId = userGroup.getId();
 
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    var signal = new SseEventNames.NewsSignalDTO(groupId,
-                            SseSignalTypes.CREATED);
-                    sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
-                }
-            });
-        }
+        Runnable ssePublish = () -> {
+            var signal = new SseEventNames.NewsSignalDTO(groupId, SseSignalTypes.CREATED);
+            sseController.broadcastNotification(SseEventNames.REFRESH_NEWS, signal);
+        };
+        EmailContent content = emailTemplateService.renderNews(savedNews.getTitle(), savedNews.getNewsText());
+        notificationDispatcher.dispatchNewsToGroup(groupId, content, ssePublish);
+
         return NewsResponseDTO.from(savedNews);
     }
 

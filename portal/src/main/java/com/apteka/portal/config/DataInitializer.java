@@ -49,6 +49,8 @@ public class DataInitializer implements ApplicationRunner {
                     UserGroup newGroup = UserGroup.builder()
                             .name(adminGroupName)
                             .isActive(true)
+                            // AUDIT-FIX: группа администраторов — группа сотрудников
+                            .groupType(com.apteka.portal.models.UserGroupType.EMPLOYEE_GROUP)
                             .build();
 
                     // Сохраняем и принудительно отправляем в БД, чтобы сгенерировался ID
@@ -72,6 +74,8 @@ public class DataInitializer implements ApplicationRunner {
 
             Account account = Account.builder()
                     .login(adminLogin)
+                    // AUDIT-FIX: email администратора по умолчанию
+                    .email("admin@farmp.ru")
                     .password(passwordEncoder.encode(adminPassword))
                     .userGroup(adminGroup)
                     .userRole(UserRole.ADMIN)

@@ -44,4 +44,30 @@ public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
     List<GroupTask> findByGroupsAndIsActive(@Param("creatorGroupId") Integer creatorGroupId, @Param("intendedGroupId") Integer intendedGroupId, @Param("isActive") boolean isActive);
 
     boolean existsByNameAndCreatorGroupIdAndIntendedGroupId(String name, Integer creatorGroupId, Integer intendedGroupId);
+
+    // AUDIT-FIX: sibling GroupTask одного отдела с intended = APTEKA_GROUP (для bulk/sync)
+    @Query("""
+            SELECT gt FROM GroupTask gt
+            JOIN FETCH gt.creatorGroup cg
+            JOIN FETCH gt.intendedGroup ig
+            WHERE cg.id = :creatorGroupId
+              AND gt.name = :name
+              AND ig.groupType = :aptekaType
+              AND (
+                  (:isActive IS NULL)
+                  OR (:isActive = true AND gt.isActive = true)
+                  OR (:isActive = false AND gt.isActive = false)
+              )
+            ORDER BY ig.id
+            """)
+    List<GroupTask> findSiblingAptekaGroupTasks(
+            @Param("creatorGroupId") Integer creatorGroupId,
+            @Param("name") String name,
+            @Param("isActive") Boolean isActive,
+            @Param("aptekaType") com.apteka.portal.models.UserGroupType aptekaType);
+
+    default List<GroupTask> findSiblingAptekaGroupTasks(Integer creatorGroupId, String name, Boolean isActive) {
+        return findSiblingAptekaGroupTasks(creatorGroupId, name, isActive,
+                com.apteka.portal.models.UserGroupType.APTEKA_GROUP);
+    }
 }

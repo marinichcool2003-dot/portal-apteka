@@ -83,30 +83,42 @@ public class TaskSecurityService {
         }
 
         GroupTask groupTask = workType.getGroupTask();
+        // AUDIT-FIX: участник creatorGroup или intendedGroup может создавать задачу без CAN_CREATE_TASK_ANOTHER_GROUP
+        // (раньше intended≠creator требовал action, а у APTEKA actions всегда пустые → вечный 403)
+        boolean inCreator = sameGroup(groupTask.getCreatorGroup(), currentUser);
+        boolean inIntended = canAddThisWorkType(workType, currentUser);
 
-        if (canAddThisWorkType(workType, currentUser)) {
-
-            if (!sameGroup(groupTask.getCreatorGroup(), currentUser)) {
-                if (assigner != null) {
-                    if (!canAssignedTo(assigner, groupTask)) {
-                        throw new AccessDeniedException(
-                                "Указанный исполнитель неактивен или его группа не связана с этим типом задач");
-                    }
-                    if (!currentUser.hasAction(AccountAction.CAN_CREATE_TASK_ANOTHER_GROUP_TO_ASSIGNER)) {
-                        throw new AccessDeniedException(
-                                "У вас нет прав создавать задачи на конкретного исполнителя в другую группу!");
-                    }
-                    return;
-                } else {
-                    if (!currentUser.hasAction(AccountAction.CAN_CREATE_TASK_ANOTHER_GROUP)) {
-                        throw new AccessDeniedException("У вас нет прав на создание задач в другие группы!");
-                    }
-                    return;
+        if (inCreator || inIntended) {
+            if (assigner != null) {
+                if (!canAssignedTo(assigner, groupTask)) {
+                    throw new AccessDeniedException(
+                            "Указанный исполнитель неактивен или его группа не связана с этим типом задач");
+                }
+                // AUDIT-FIX: назначение конкретного исполнителя при создании — по-прежнему через action
+                if (!currentUser.hasAction(AccountAction.CAN_CREATE_TASK_ANOTHER_GROUP_TO_ASSIGNER)) {
+                    throw new AccessDeniedException(
+                            "У вас нет прав создавать задачи на конкретного исполнителя в другую группу!");
                 }
             }
             return;
         }
-        throw new AccessDeniedException("У вас нет прав на создание данной задачи");
+
+        // AUDIT-FIX: чужая категория (ни creator, ни intended) — только с cross-group actions
+        if (assigner != null) {
+            if (!canAssignedTo(assigner, groupTask)) {
+                throw new AccessDeniedException(
+                        "Указанный исполнитель неактивен или его группа не связана с этим типом задач");
+            }
+        if (!currentUser.hasAction(AccountAction.CAN_CREATE_TASK_ANOTHER_GROUP_TO_ASSIGNER) &&
+                    !sameGroup(assigner.getUserGroup(), currentUser)) {
+                throw new AccessDeniedException(
+                        "У вас нет прав создавать задачи на конкретного исполнителя в другую группу!");
+            }
+            return;
+        }
+        if (!currentUser.hasAction(AccountAction.CAN_CREATE_TASK_ANOTHER_GROUP)) {
+            throw new AccessDeniedException("У вас нет прав на создание задач в другие группы!");
+        }
     }
 
     public void valdiateCanUpdateDescriptionTask(Task task, AppUserDetails currentUser) {

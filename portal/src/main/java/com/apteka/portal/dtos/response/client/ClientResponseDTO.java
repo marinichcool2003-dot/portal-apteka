@@ -7,16 +7,29 @@ import com.apteka.portal.models.Account;
 import com.apteka.portal.models.Client;
 import com.apteka.portal.models.UserGroup;
 import com.apteka.portal.models.UserRole;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description = "Ответ с данными клиента")
 public record ClientResponseDTO(
+        @Schema(description = "Идентификатор")
         UUID id,
+        @Schema(description = "Логин пользователя")
         String login,
+        @Schema(description = "Email")
+        String email,
+        @Schema(description = "Номер телефона")
         String phoneNumber,
+        @Schema(description = "Добавочный номер")
         String extensionNumber,
+        @Schema(description = "ФИО пользователя")
         String fullName,
+        @Schema(description = "Роль пользователя")
         UserRole role,
+        @Schema(description = "URL аватара")
         String avatarURL,
+        @Schema(description = "Группа пользователей")
         UserGroupShortResponseDTO userGroup,
+        @Schema(description = "Признак доступности учётной записи")
         Boolean isEnabled) {
     public static ClientResponseDTO from(Client client) {
         Account account = client.getAccount();
@@ -24,7 +37,7 @@ public record ClientResponseDTO(
         if (account == null) {
             return new ClientResponseDTO(
                     client.getId(),
-                    null, null,
+                    null, null, null,
                     client.getExtensionNumber(),
                     client.getFullName(),
                     null, null, null,
@@ -42,12 +55,13 @@ public record ClientResponseDTO(
         return new ClientResponseDTO(
                 client.getId(),
                 account.getLogin(),
+                account.getEmail(),
                 account.getPhoneNumber(),
                 client.getExtensionNumber(),
                 client.getFullName(),
                 account.getUserRole(),
                 client.getAvatarURL(),
-                group != null ? new UserGroupShortResponseDTO(group.getId(), group.getName()) : null,
+                group != null ? UserGroupShortResponseDTO.from(group) : null,
                 isEnabled);
     }
 }

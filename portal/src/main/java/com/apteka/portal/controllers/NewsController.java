@@ -21,21 +21,26 @@ import com.apteka.portal.dtos.response.news.NewsResponseDTO;
 import com.apteka.portal.models.AppUserDetails;
 import com.apteka.portal.services.NewsService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Новости", description = "Управление новостями групп пользователей")
 @RestController
 @RequestMapping("/api/v1/news")
 @RequiredArgsConstructor
 public class NewsController {
     private final NewsService newsService;
 
+    @Operation(summary = "Новости группы", description = "Возвращает список новостей указанной группы пользователей.")
     @GetMapping("/by-user-group/{id}")
     public ResponseEntity<List<NewsResponseDTO>> getByUserGroup(@PathVariable Integer id,
             @AuthenticationPrincipal AppUserDetails currentUser) {
         return ResponseEntity.ok(newsService.getByUserGroup(id, currentUser));
     }
 
+    @Operation(summary = "Получить новость по ID", description = "Возвращает одну новость по идентификатору.")
     @GetMapping("/{id}")
 
     public ResponseEntity<NewsResponseDTO> getOne(@PathVariable Integer id,
@@ -43,6 +48,7 @@ public class NewsController {
         return ResponseEntity.ok(newsService.getOne(id, currentUser));
     }
 
+    @Operation(summary = "Создать новость", description = "Создаёт новую новость. Требуется право NEWS_WORK / NEWS_WORK_ALL_GROUPS или роль ADMIN.")
     @PreAuthorize("@security.hasAction('NEWS_WORK') or @security.hasAction('NEWS_WORK_ALL_GROUPS') or @security.hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<NewsResponseDTO> create(@Valid @RequestBody NewsRequestDTO dto,
@@ -51,6 +57,7 @@ public class NewsController {
                 .body(newsService.create(dto, currentUser));
     }
 
+    @Operation(summary = "Обновить новость", description = "Обновляет существующую новость.")
     @PreAuthorize("""
             @security.hasAction('UPDATE_ALL_NEWS_IN_GROUP')
             or @security.hasAction('UPDATE_ALL_NEWS_CREATE_GROUP')
@@ -63,6 +70,7 @@ public class NewsController {
         return ResponseEntity.ok(newsService.update(id, dto, currentUser));
     }
 
+    @Operation(summary = "Удалить новость", description = "Удаляет новость по идентификатору.")
     @PreAuthorize("""
             @security.hasAction('DELETE_ALL_NEWS_CREATE_GROUP')
             or @security.hasAction('DELETE_ALL_NEWS_IN_GROUP')

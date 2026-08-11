@@ -5,6 +5,8 @@ import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -54,12 +56,16 @@ public class UserGroup {
 
     @ManyToMany
     @JoinTable(
-        name = "group_group_visibility", 
-        joinColumns = @JoinColumn(name = "first_group_id"), 
-        inverseJoinColumns = @JoinColumn(name = "second_group_id")
+            name = "group_group_visibility",
+            joinColumns = @JoinColumn(name = "first_group_id"),
+            inverseJoinColumns = @JoinColumn(name = "second_group_id")
     )
     private Set<UserGroup> visibleGroups;
 
     @Column(name = "is_active")
     private boolean isActive;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "group_type", nullable = false, length = 32)
+    private UserGroupType groupType;
 }
