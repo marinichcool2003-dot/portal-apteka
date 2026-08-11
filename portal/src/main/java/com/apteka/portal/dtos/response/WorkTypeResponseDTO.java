@@ -18,7 +18,6 @@ public record WorkTypeResponseDTO(
         PriorityResponseDTO priorityResponseDTO,
         @Schema(description = "Краткие данные группы задач")
         TaskGroupShortDTO taskGroup) {
-    // AUDIT-FIX: @Schema Swagger RU
     @Schema(description = "Приоритет типа работ")
     public record PriorityResponseDTO(
             @Schema(description = "Код приоритета")
@@ -26,17 +25,14 @@ public record WorkTypeResponseDTO(
             @Schema(description = "Описание приоритета")
             String priorityDescription) {
     }
-    // AUDIT-FIX: @Schema Swagger RU + creator/executor группы категории
     @Schema(description = "Краткие данные группы задач")
     public record TaskGroupShortDTO(
             @Schema(description = "Идентификатор")
             Integer id,
             @Schema(description = "Наименование")
             String name,
-            // AUDIT-FIX: сторона создателя категории
             @Schema(description = "Группа-создатель категории")
             UserGroupShortResponseDTO creatorGroup,
-            // AUDIT-FIX: сторона исполнителя (intendedGroup)
             @Schema(description = "Группа-исполнитель категории")
             UserGroupShortResponseDTO executorGroup) {
     }

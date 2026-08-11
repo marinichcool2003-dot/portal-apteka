@@ -21,7 +21,6 @@ public record GroupTaskResponseDTO(
         return new GroupTaskResponseDTO(
             groupTask.getId(),
             groupTask.getName(),
-            // AUDIT-FIX: краткий DTO включает groupType
             Optional.ofNullable(groupTask.getCreatorGroup()).map(UserGroupShortResponseDTO::from).orElse(null),
             Optional.ofNullable(groupTask.getIntendedGroup()).map(UserGroupShortResponseDTO::from).orElse(null)
         );
