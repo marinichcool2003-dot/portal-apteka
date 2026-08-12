@@ -2,7 +2,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- =========================================================================
 -- ТАБЛИЦЫ СТРУКТУРЫ И ГРУПП
 -- =========================================================================
-CREATE TABLE IF NOT EXISTS group_user (
+CREATE TABLE IF NOT EXISTS user_group (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL,
     phone_number VARCHAR(20),
@@ -56,15 +56,21 @@ CREATE TABLE IF NOT EXISTS account (
     login VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(100) NOT NULL,
     phone_number VARCHAR(20) UNIQUE,
-    role VARCHAR(30) NOT NULL,
-    group_id INT NOT NULL,
     is_active BOOLEAN DEFAULT true
 );
 
+CREATE TABLE IF NOT EXISTS account_user_group_relation (
+    id BIGSERIAL PRIMARY KEY,
+    account_id UUID NOT NULL REFERENCES account(id) ON DELETE CASCADE,
+    user_group_id INT NOT NULL REFERENCES user_group(id) ON DELETE CASCADE,
+    role VARCHAR(30) NOT NULL,
+    UNIQUE (account_id, user_group_id)
+);
+
 CREATE TABLE IF NOT EXISTS account_actions (
-    account_id UUID NOT NULL,
+    relation_id BIGINT NOT NULL REFERENCES account_user_group_relation(id) ON DELETE CASCADE,
     action VARCHAR(50) NOT NULL,
-    PRIMARY KEY (account_id, action) 
+    UNIQUE (relation_id, action)
 );
 
 CREATE TABLE IF NOT EXISTS apteka (
@@ -72,6 +78,7 @@ CREATE TABLE IF NOT EXISTS apteka (
     number INT NOT NULL,
     apteka_name VARCHAR(30) NOT NULL,
     address_id BIGINT,
+    territorial_id UUID REFERENCES client(id) ON DELETE SET NULL, --FIX
     created_by VARCHAR(50),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ,
@@ -126,6 +133,12 @@ CREATE TABLE IF NOT EXISTS task_comment (
     account_id UUID
 );
 
+CREATE TABLE IF NOT EXISTS spectator (
+    task_id BIGINT REFERENCES task(id),
+    account_id UUID REFERENCES account(id),
+    PRIMARY KEY (task_id, account_id)
+)
+
 -- =========================================================================
 -- ИНФОРМАЦИОННЫЕ ТАБЛИЦЫ И ССЫЛКИ
 -- =========================================================================
@@ -161,3 +174,60 @@ CREATE TABLE IF NOT EXISTS main_page_links (
     is_active BOOLEAN DEFAULT true
 );
 
+-- =========================================================================
+-- УВЕДОМЛЕНИЯ
+-- =========================================================================
+CREATE TABLE notifications_preference (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
+    channel VARCHAR(255) NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+-- =========================================================================
+-- ПОЧТА
+-- =========================================================================
+CREATE TABLE mail_outbox (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    to_email VARCHAR(255) NOT NULL,
+    subject VARCHAR(512) NOT NULL,
+    body_html TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_attempt_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    event_type VARCHAR(64) NOT NULL,
+    body_plain TEXT
+);
+
+-- =========================================================================
+-- РЕЙТИНГ
+-- =========================================================================
+CREATE TABLE apteka_task_rating (
+    id BIGSERIAL PRIMARY KEY,
+    task_id BIGINT NOT NULL ON DELETE CASCADE,
+    apteka_id UUID NOT NULL REFERENCES apteka(id) ON DELETE CASCADE,
+    rater_client_id UUID NOT NULL REFERENCES client(id) ON DELETE SET NULL,
+    stars SMALLINT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    employee_edit_count SMALLINT DEFAULT 0
+);
+
+-- =========================================================================
+-- ОБОРУДОВАНИЕ
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS equipment_type(
+    id SMALLSERIAL PRIMARY KEY,
+    name VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS equipment(
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    apteka_id UUID REFERENCES apteka(id) ON DELETE RESTRICT,
+    type_id SMALLINT NOT NULL REFERENCES equipment_type(id) ON DELETE RESTRICT
+);

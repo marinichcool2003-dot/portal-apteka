@@ -29,3 +29,7 @@ FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
 CREATE TRIGGER set_timestamp_work_type
 BEFORE UPDATE ON work_type
 FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+
+CREATE TRIGGER set_timestamp_apteka_task_rating
+BEFORE UPDATE ON apteka_task_rating
+FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();

@@ -45,8 +45,8 @@ public class AptekaTaskRating {
     private Apteka apteka;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "rater_account_id", nullable = false)
-    private Account raterAccount;
+    @JoinColumn(name = "rater_client_id", nullable = false)
+    private Client raterClient;
 
     @Column(name = "stars", nullable = false)
     private Integer stars;
