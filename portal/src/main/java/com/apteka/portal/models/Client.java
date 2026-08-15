@@ -26,7 +26,6 @@ import lombok.ToString;
 @Builder
 @Setter
 @Getter
-@ToString
 public class Client{
     @Id
     @Column(name = "id")
@@ -43,7 +42,7 @@ public class Client{
     @Column(name = "extension_number", length = 20)
     private String extensionNumber;
 
-    @Column(name = "avatar_url", length = 255)
+    @Column(name = "avatar_url")
     private String avatarURL;
 
     @Column(name = "created_by", length = 50)

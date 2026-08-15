@@ -149,7 +149,6 @@ public class Task {
         this.closingDate = null;
     }
 
-    // AUDIT-FIX: DENIED тоже фиксирует closingDate для отчётов и окна reopen
     private void denied() {
         this.status = TaskStatus.DENIED;
         this.closingDate = Instant.now();

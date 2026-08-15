@@ -1,15 +1,6 @@
 package com.apteka.portal.models;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,14 +14,22 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TaskPicture {
+public class Attachment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
     @Column(name = "path")
-    private String path;
+    private String fileName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "document_type")
+    private AttachmentType type;
+
+    @ManyToOne
+    @JoinColumn(name = "task_comment_id")
+    private TaskComment taskComment;
 
     @ManyToOne
     @JoinColumn(name = "task_id")
@@ -39,8 +38,8 @@ public class TaskPicture {
     @PrePersist
     @PreUpdate
     private void cleanPath() {
-        if (this.path != null) {
-            this.path = this.path.strip();
+        if (this.fileName != null) {
+            this.fileName = this.fileName.strip();
         }
     }
 }

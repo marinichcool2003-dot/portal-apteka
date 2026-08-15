@@ -151,7 +151,7 @@ public class AptekaRatingService {
             throw new AccessDeniedException("Пользователи аптеки не могут просматривать оценки!");
         }
 
-        if (!currentUser.hasAnyRole(UserRole.USER, UserRole.BOSS, UserRole.ADMIN)) {
+        if (!currentUser.hasRole(UserRole.APTEKA)) {
             throw new AccessDeniedException("Недостаточно прав для просмотра оценки!");
         }
     }

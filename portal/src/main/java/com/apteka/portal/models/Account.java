@@ -4,20 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -55,26 +42,8 @@ public class Account {
     @OneToOne(mappedBy = "account", fetch = FetchType.LAZY)
     private Apteka apteka;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role")
-    private UserRole userRole;
-
-    @ElementCollection
-    @Enumerated(EnumType.STRING)
-    @CollectionTable(name = "account_actions", joinColumns = @JoinColumn(name = "account_id"))
-    @Column(name = "action", nullable = false)
-    private Set<AccountAction> actions = new HashSet<>();
-
-    public Set<AccountAction> getActions() {
-        if (actions == null) {
-            actions = new HashSet<>();
-        }
-        return actions;
-    }
-
-    @ManyToOne
-    @JoinColumn(name = "group_id", nullable = false)
-    private UserGroup userGroup;
+    @OneToMany(mappedBy = "account", fetch = FetchType.LAZY)
+    Set<AccountRelation> relations;
 
     @Column(name = "is_active")
     private boolean isActive;

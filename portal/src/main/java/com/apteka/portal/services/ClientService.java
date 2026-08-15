@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.apteka.portal.dtos.response.client.ClientResponseWithActionsDTO;
+import com.apteka.portal.models.*;
 import com.apteka.portal.repository.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -52,16 +53,6 @@ import com.apteka.portal.exceptions.DuplicateEmailException;
 import com.apteka.portal.exceptions.GroupUserNotFoundException;
 import com.apteka.portal.exceptions.InvalidGroupUserException;
 import com.apteka.portal.exceptions.UserHaveActiveTasksException;
-import com.apteka.portal.models.Account;
-import com.apteka.portal.models.AccountAction;
-import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.Client;
-import com.apteka.portal.models.SseEventNames;
-import com.apteka.portal.models.SseSignalTypes;
-import com.apteka.portal.models.TaskStatus;
-import com.apteka.portal.models.UserGroup;
-import com.apteka.portal.models.UserGroupType;
-import com.apteka.portal.models.UserRole;
 
 import lombok.RequiredArgsConstructor;
 
@@ -123,9 +114,9 @@ public class ClientService {
         Client client = clientRepository.findByIdWithAccount(id)
                 .orElseThrow(() -> new ClientNotFoundException(id));
         Account account = client.getAccount();
-        UserGroup userGroup = account.getUserGroup();
+        Set<AccountRelation> relations = account.getRelations();
         if (!isActiveValidator.isAccountActive(account)) {
-            clientSecurityService.validateWhoCanSelectNonActiveClients(currentUser, userGroup);
+            clientSecurityService.validateWhoCanSelectNonActiveClients(currentUser, relations);
         }
         return ClientResponseWithActionsDTO.from(client);
     }

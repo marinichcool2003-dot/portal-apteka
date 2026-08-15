@@ -9,21 +9,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.apteka.portal.models.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import com.apteka.portal.dtos.mail.EmailContent;
-import com.apteka.portal.models.Account;
-import com.apteka.portal.models.Client;
-import com.apteka.portal.models.NotificationChannel;
-import com.apteka.portal.models.NotificationEventType;
-import com.apteka.portal.models.Task;
-import com.apteka.portal.models.TaskStatus;
-import com.apteka.portal.models.UserGroup;
-import com.apteka.portal.models.UserGroupType;
-import com.apteka.portal.models.UserRole;
 import com.apteka.portal.repository.AccountRepository;
 import com.apteka.portal.repository.NotificationPreferenceRepository;
 import com.apteka.portal.repository.TaskRepository;
@@ -99,7 +91,7 @@ public class DailyDepartmentReportService {
         return notificationPreferenceRepository
                 .findByAccountIdAndChannelAndEventType(
                         accountId, NotificationChannel.EMAIL, NotificationEventType.DAILY_DEPARTMENT_REPORT)
-                .map(p -> p.isEnabled())
+                .map(NotificationPreference::isEnabled)
                 .orElse(false);
     }
 

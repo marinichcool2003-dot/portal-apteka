@@ -49,16 +49,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 	Page<Task> findAll(Pageable pageable);
 
 	@Query("""
-			SELECT DISTINCT t FROM Task t
-			JOIN FETCH t.workType w
-			JOIN FETCH w.groupTask gt
-			LEFT JOIN FETCH t.creator
-			LEFT JOIN FETCH t.assigner
-			WHERE t.id IN :ids
-			""")
-	List<Task> findShortTasksByIds(@Param("ids") List<Long> ids);
-
-	@Query("""
 			    SELECT new com.apteka.portal.dtos.response.AssignedStatsDTO(
 			        t.assigner.id,
 			        COUNT(t),

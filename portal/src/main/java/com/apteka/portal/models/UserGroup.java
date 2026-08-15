@@ -45,7 +45,7 @@ public class UserGroup {
     @Column(name = "extension_number", length = 20)
     private String extensionNumber;
 
-    @Column(name = "avatar_url", length = 255)
+    @Column(name = "avatar_url")
     private String avatarUrl;
 
     @Column(name = "updated_at")

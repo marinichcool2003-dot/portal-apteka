@@ -32,6 +32,7 @@ import com.apteka.portal.repository.NewsRepository;
 import com.apteka.portal.repository.UserGroupRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -147,7 +148,7 @@ public class NewsService {
     }
 
     private void validateTitle(String title) {
-        if (title.isBlank() || title == null) {
+        if (!StringUtils.hasText(title)) {
             throw new InvalidNewsTitleException("Заголовок новости не может быть пустым");
         }
         if (title.length() < 3 || title.length() > 50) {

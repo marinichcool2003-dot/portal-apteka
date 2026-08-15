@@ -1,6 +1,7 @@
 package com.apteka.portal.services;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -75,20 +76,11 @@ public class AptekaService {
             Sort.Order.asc("number"));
 
     @Transactional(readOnly = true)
-    public Page<AptekaResponseDTO> getAll(Pageable pageable, boolean isActive, AppUserDetails currentUser) {
-        aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
-        Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
-        Integer scopeGroupId = aptekaSecurityService.canSelectAllAptekas(currentUser)
-                ? null : currentUser.getUserGroup().getId();
-        return aptekaRepository.findAll(isActive, scopeGroupId, validatedPageable).map(AptekaResponseDTO::from);
-    }
-
-    @Transactional(readOnly = true)
     public AptekaResponseDTO getOne(UUID id, boolean isActive, AppUserDetails currentUser) {
         aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, isActive);
         Apteka apteka = aptekaRepository.findByIdWithAccount(id, isActive)
                 .orElseThrow(() -> new AptekaNotFoundException(id));
-        aptekaSecurityService.validateCanSelectApteka(currentUser, apteka.getAccount().getUserGroup().getId());
+        aptekaSecurityService.validateCanSelectApteka(currentUser, apteka.getAccount());
         return AptekaResponseDTO.from(apteka);
     }
 
@@ -97,14 +89,16 @@ public class AptekaService {
                                           AppUserDetails currentUser) {
 
         Pageable validatedPageable = sortingValidator.validateAndFixSorting(pageable, ALLOWED_SORT_FIELDS, DEFAULT_SORT);
-        Integer scopeGroupId = aptekaSecurityService.canSelectAllAptekas(currentUser)
-                ? dto.groupId() : currentUser.getUserGroup().getId();
+
+        aptekaSecurityService.canSelectAllAptekas(currentUser, dto.userGroupsIds());
+
         String loginPattern = blankToLikePrefix(dto.login());
         String phonePattern = blankToLikeContains(dto.phoneNumber());
+
         if(!isActive) {
             aptekaSecurityService.validateCanSeeSaveDeleted(currentUser, false);
             return aptekaRepository.filterNonActive(loginPattern,
-                    scopeGroupId,
+                    dto.userGroupsIds(),
                     dto.number(),
                     phonePattern,
                     dto.city(),
@@ -112,7 +106,7 @@ public class AptekaService {
                     validatedPageable).map(AptekaResponseDTO::from);
         }
         return aptekaRepository.filterActive(loginPattern,
-                scopeGroupId,
+                dto.userGroupsIds(),
                 dto.number(),
                 phonePattern,
                 dto.city(),

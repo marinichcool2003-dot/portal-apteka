@@ -49,7 +49,7 @@ public class AptekaTaskRating {
     private Client raterClient;
 
     @Column(name = "stars", nullable = false)
-    private Integer stars;
+    private Short stars;
 
     @Column(name = "reason", nullable = false, length = 1000)
     private String reason;
@@ -64,5 +64,5 @@ public class AptekaTaskRating {
 
     @Builder.Default
     @Column(name = "employee_edit_count", nullable = false)
-    private Integer employeeEditCount = 0;
+    private short employeeEditCount = 0;
 }

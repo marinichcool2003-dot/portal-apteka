@@ -6,18 +6,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.apteka.portal.models.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
 import com.apteka.portal.components.validators.IsActiveValidator;
 import com.apteka.portal.exceptions.SelfDeleteException;
-import com.apteka.portal.models.Account;
-import com.apteka.portal.models.AccountAction;
-import com.apteka.portal.models.AppUserDetails;
-import com.apteka.portal.models.Client;
-import com.apteka.portal.models.UserGroup;
-import com.apteka.portal.models.UserRole;
-import com.apteka.portal.models.UserType;
 import com.apteka.portal.models.AccountAction.LevelAction;
 
 import lombok.AllArgsConstructor;
@@ -34,24 +28,24 @@ public class ClientSecurityService {
         }
     }
 
-    public void validateWhoCanSelectNonActiveClients(AppUserDetails currentUser, UserGroup userGroup) {
+    public void validateWhoCanSelectNonActiveClients(AppUserDetails currentUser, Account account) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
         if (currentUser.hasAction(AccountAction.CAN_SELECT_NON_ACTIVE_CLIENT_GRAND)) {
             return;
         }
-        if (userGroup == null) {
+        if (!account.isActive()) {
             throw new AccessDeniedException("Вы не можете видеть неактивных пользователей!");
         }
         if (currentUser.hasAction(AccountAction.CAN_SELECT_NON_ACTIVE_CLIENT_IN_GROUP)
-                && sameGroup(currentUser, userGroup)) {
+                && sameGroup(currentUser, account)) {
             return;
         }
         throw new AccessDeniedException("Вы не можете видеть неактивных пользователей!");
     }
 
-    public void validateWhoCanSelectClientStats(AppUserDetails currentUser, UserGroup userGroup) {
+    public void validateWhoCanSelectClientStats(AppUserDetails currentUser, Account account) {
         if (currentUser.hasRole(UserRole.ADMIN)) {
             return;
         }
@@ -59,7 +53,7 @@ public class ClientSecurityService {
             return;
         }
         if (currentUser.hasAction(AccountAction.CAN_SELECT_CLIENT_STATS_IN_GROUP)
-                && sameGroup(currentUser, userGroup)) {
+                && sameGroup(currentUser, account)) {
             return;
         }
         throw new AccessDeniedException("Вы не можете просматривать статистику пользователей!");
@@ -344,7 +338,15 @@ public class ClientSecurityService {
         }
     }
 
-    private boolean sameGroup(AppUserDetails currentUser, UserGroup targetGroup) {
-        return Objects.equals(currentUser.getUserGroup().getId(), targetGroup.getId());
+    private boolean sameGroup(AppUserDetails currentUser, Account account) {
+        Set<UserGroup> allGroups = account.getRelations().stream()
+                .map(AccountRelation::getUserGroup).collect(Collectors.toSet());
+
+        for (UserGroup userGroup : currentUser.getRelations().keySet()) {
+            if (allGroups.contains(userGroup)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

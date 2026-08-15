@@ -23,9 +23,6 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
     Optional<Account> findByLogin(String login);
 
     @EntityGraph(attributePaths = {"userGroup", "client", "apteka", "actions"})
-    Optional<Account> findByEmail(String email);
-
-    @EntityGraph(attributePaths = {"userGroup", "client", "apteka", "actions"})
     @Query("SELECT a FROM Account a WHERE a.login = :identifier OR a.email = :identifier")
     Optional<Account> findByLoginOrEmail(@Param("identifier") String identifier);
 

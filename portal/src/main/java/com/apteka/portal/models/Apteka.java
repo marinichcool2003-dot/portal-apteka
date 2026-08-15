@@ -44,13 +44,13 @@ public class Apteka {
     @JoinColumn(name = "id")
     private Account account;
 
-    public UserRole getRole() {
-        return UserRole.APTEKA;
-    }
-
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "address_id")
     private Address address;
+
+    @ManyToOne
+    @JoinColumn(name = "territorial_id")
+    private Client client;
 
     @Column(name = "created_by", length = 50)
     private String createdBy;

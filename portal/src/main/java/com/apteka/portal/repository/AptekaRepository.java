@@ -1,6 +1,8 @@
 package com.apteka.portal.repository;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -16,33 +18,36 @@ public interface AptekaRepository extends JpaRepository<Apteka, UUID> {
     @Query(value = """
             SELECT a FROM Apteka a
             JOIN FETCH a.account acc
-            JOIN FETCH acc.userGroup ug
+            JOIN FETCH acc.relations rel
+            JOIN FETCH rel.userGroup ug
             JOIN FETCH a.address add
             WHERE (
                 (:isActive = true AND acc.isActive = true AND ug.isActive = true)
                 OR
                 (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
             )
-            AND (:groupId IS NULL OR ug.id = :groupId)
+            AND (COALESCE(:groupsId, NULL) IS NULL OR ug.id IN (:groupsId))
             """, 
             countQuery = """
             SELECT count(a) FROM Apteka a
             JOIN a.account acc
-            JOIN acc.userGroup ug
+            JOIN FETCH acc.relations rel
+            JOIN FETCH rel.userGroup ug
             JOIN a.address add
             WHERE (
                 (:isActive = true AND acc.isActive = true AND ug.isActive = true)
                 OR
                 (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
             )
-            AND (:groupId IS NULL OR ug.id = :groupId)
+            AND (COALESCE(:groupsId, NULL) IS NULL OR ug.id IN (:groupsId))
             """)
-    Page<Apteka> findAll(@Param("isActive") boolean isActive, @Param("groupId") Integer groupId, Pageable pageable);
+    Page<Apteka> findAll(@Param("isActive") boolean isActive, @Param("groupsId") List<Integer> groupsId, Pageable pageable);
 
     @Query("""
             SELECT a FROM Apteka a
             JOIN FETCH a.account acc
-            JOIN FETCH acc.userGroup ug
+            JOIN FETCH acc.relations rel
+            JOIN FETCH rel.userGroup ug
             WHERE a.id = :id
             AND (
                 (:isActive = true AND acc.isActive = true AND ug.isActive = true)
@@ -56,60 +61,21 @@ public interface AptekaRepository extends JpaRepository<Apteka, UUID> {
 
     boolean existsByAccount_UserGroup_IdAndNumber(Integer userGroupName, Integer number);
 
-//    @Query(value = """
-//            SELECT a FROM Apteka a
-//            JOIN FETCH a.account acc
-//            JOIN FETCH acc.userGroup ug
-//            JOIN FETCH a.address add
-//            WHERE (
-//                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
-//                OR
-//                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
-//            )
-//            AND (:login IS NULL OR LOWER(acc.login) LIKE LOWER(CONCAT(:login, '%')))
-//            AND (:groupId IS NULL OR ug.id = :groupId)
-//            AND (:number IS NULL OR a.number = :number)
-//            AND (:phoneNumber IS NULL OR LOWER(acc.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
-//            AND (:city IS NULL OR add.city = :city)
-//            AND (:street IS NULL OR add.street = :street)
-//            """, countQuery = """
-//            SELECT count(a) FROM Apteka a
-//            JOIN a.account acc
-//            JOIN acc.userGroup ug
-//            JOIN a.address add
-//            WHERE (
-//                (:isActive = true AND acc.isActive = true AND ug.isActive = true)
-//                OR
-//                (:isActive = false AND (acc.isActive = false OR ug.isActive = false))
-//            )
-//            AND (:login IS NULL OR LOWER(acc.login) LIKE LOWER(CONCAT(:login, '%')))
-//            AND (:groupId IS NULL OR ug.id = :groupId)
-//            AND (:number IS NULL OR a.number = :number)
-//            AND (:phoneNumber IS NULL OR LOWER(acc.phoneNumber) LIKE LOWER(CONCAT('%', :phoneNumber, '%')))
-//            AND (:city IS NULL OR add.city = :city)
-//            AND (:street IS NULL OR add.street = :street)
-//            """)
-//    Page<Apteka> filter(@Param("login") String login, @Param("groupId") Integer groupId,
-//            @Param("number") Integer number, @Param("phoneNumber") String phoneNumber,
-//            @Param("isActive") boolean isActive, @Param("city") String city, @Param("street") String street,
-//            Pageable pageable);
-
-    // AUDIT-FIX: LIKE по готовым pattern из сервиса — CONCAT(:param,'%') давал varchar ~~ bytea в Postgres
     @Query("""
             SELECT a FROM Apteka a
             JOIN FETCH a.account acc
-            JOIN FETCH acc.userGroup ug
+            JOIN FETCH acc.relations rel
+            JOIN FETCH rel.userGroup ug
             JOIN FETCH a.address add
+            WHERE (COALESCE(:userGroupIds, NULL) IS NULL OR ug.id IN (:userGroupIds)
             WHERE acc.isActive = true
-            AND ug.isActive = true
             AND (:loginPattern IS NULL OR acc.login LIKE :loginPattern)
-            AND (:groupId IS NULL OR ug.id = :groupId)
             AND (:number IS NULL OR a.number = :number)
             AND (:phonePattern IS NULL OR acc.phoneNumber LIKE :phonePattern)
             AND (:city IS NULL OR add.city = :city)
             AND (:street IS NULL OR add.street = :street)
             """)
-    Page<Apteka> filterActive(@Param("loginPattern") String loginPattern, @Param("groupId") Integer groupId,
+    Page<Apteka> filterActive(@Param("loginPattern") String loginPattern, @Param("userGroupIds") Set<Integer> userGroupIds,
                               @Param("number") Integer number, @Param("phonePattern") String phonePattern,
                               @Param("city") String city, @Param("street") String street,
                               Pageable pageable);
@@ -117,17 +83,18 @@ public interface AptekaRepository extends JpaRepository<Apteka, UUID> {
     @Query("""
             SELECT a FROM Apteka a
             JOIN FETCH a.account acc
-            JOIN FETCH acc.userGroup ug
+            JOIN FETCH acc.relations rel
+            JOIN FETCH rel.userGroup ug
             JOIN FETCH a.address add
-            WHERE (acc.isActive = false OR ug.isActive = false)
+            WHERE (COALESCE(:userGroupIds, NULL) IS NULL OR ug.id IN (:userGroupIds)
+            AND acc.isActive = false
             AND (:loginPattern IS NULL OR acc.login LIKE :loginPattern)
-            AND (:groupId IS NULL OR ug.id = :groupId)
             AND (:number IS NULL OR a.number = :number)
             AND (:phonePattern IS NULL OR acc.phoneNumber LIKE :phonePattern)
             AND (:city IS NULL OR add.city = :city)
             AND (:street IS NULL OR add.street = :street)
             """)
-    Page<Apteka> filterNonActive(@Param("loginPattern") String loginPattern, @Param("groupId") Integer groupId,
+    Page<Apteka> filterNonActive(@Param("loginPattern") String loginPattern, @Param("userGroupIds") Set<Integer> userGroupIds,
                               @Param("number") Integer number, @Param("phonePattern") String phonePattern,
                               @Param("city") String city, @Param("street") String street,
                               Pageable pageable);

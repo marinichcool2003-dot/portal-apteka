@@ -55,7 +55,7 @@ public class MailOutbox {
 
     @Column(name = "attempts", nullable = false)
     @Builder.Default
-    private int attempts = 0;
+    private short attempts = 0;
 
     @Column(name = "next_attempt_at")
     private Instant nextAttemptAt;

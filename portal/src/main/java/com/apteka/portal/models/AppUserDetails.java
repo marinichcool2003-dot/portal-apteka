@@ -1,10 +1,7 @@
 package com.apteka.portal.models;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.GrantedAuthority;
@@ -16,14 +13,23 @@ import lombok.ToString;
 
 @Setter
 @Getter
-@ToString(exclude = {"password", "actions"})
 public class AppUserDetails implements UserDetails {
+
+    public record RoleAndActionsInGroup(UserRole role, Set<AccountAction> actions){
+        public static RoleAndActionsInGroup from(AccountRelation relation) {
+            if (relation == null) {
+                return null;
+            }
+            return new RoleAndActionsInGroup(
+                    relation.getUserRole(),
+                    relation.getActions()
+            );
+        }
+    }
 
     private final String login;
     private final String password;
-    private final UserRole role;
-    private final Set<AccountAction> actions;
-    private final UserGroup userGroup;
+    private final Map<UserGroup, RoleAndActionsInGroup> relations;
     private final UserType type;
     private final UUID userId;
     private final String displayName;
@@ -33,7 +39,8 @@ public class AppUserDetails implements UserDetails {
         this.userId = account.getId();
         this.login = account.getLogin();
         this.password = account.getPassword();
-        this.userGroup = account.getUserGroup();
+        this.relations = account.getRelations().stream()
+                .collect(Collectors.toMap(AccountRelation::getUserGroup, RoleAndActionsInGroup::from));
         this.isActive = account.isActive();
 
         UserType currentType = getUserTypeFromAccount(account);
@@ -41,14 +48,10 @@ public class AppUserDetails implements UserDetails {
 
         if (currentType == UserType.CLIENT) {
             Client client = account.getClient();
-            this.role = account.getUserRole();
-            this.actions = account.getActions();
             this.displayName = client.getFullName();
         } else if (currentType == UserType.APTEKA) {
             Apteka apteka = account.getApteka();
             this.displayName = apteka.getAptekaName();
-            this.role = UserRole.APTEKA;
-            this.actions = Set.of();
         } else {
             throw new AccessDeniedException("Не удалось идентифицировать тип пользователя!");
         }
@@ -77,47 +80,100 @@ public class AppUserDetails implements UserDetails {
     }
 
     public boolean hasAction(AccountAction action) {
-        return actions != null && actions.contains(action);
+        if (relations == null || relations.isEmpty()) {
+            return false;
+        }
+
+        for (RoleAndActionsInGroup roleAndActionsInGroup : relations.values()) {
+            if (roleAndActionsInGroup.actions.contains(action)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean hasAnyAction(AccountAction... checkedActions) {
-        if (actions == null) {
+        if (relations == null || relations.isEmpty()) {
             return false;
         }
+        for (RoleAndActionsInGroup roleAndActionsInGroup: relations.values()) {
+            for(AccountAction action: checkedActions) {
+                if (roleAndActionsInGroup.actions.contains(action)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean hasActionInGroup(AccountAction action, UserGroup userGroup) {
+        if (relations == null || relations.isEmpty()) {
+            return false;
+        }
+        if (!relations.containsKey(userGroup)) {
+            return false;
+        }
+
+        RoleAndActionsInGroup roleAndActionsInGroup = relations.get(userGroup);
+        return roleAndActionsInGroup.actions.contains(action);
+    }
+
+    public boolean hasAnyActionInGroup(UserGroup userGroup, AccountAction... checkedActions) {
+        if (relations == null || relations.isEmpty()) {
+            return false;
+        }
+        if (!relations.containsKey(userGroup)) {
+            return false;
+        }
+
+        RoleAndActionsInGroup roleAndActionsInGroup = relations.get(userGroup);
+
         for (AccountAction action : checkedActions) {
-            if (actions.contains(action)) {
+            if (roleAndActionsInGroup.actions.contains(action)) {
                 return true;
             }
         }
         return false;
     }
 
-    public boolean hasRole(UserRole role) {
-        return this.role == role;
+    public boolean hasRoleInGroup(UserRole role, UserGroup userGroup) {
+        if (relations == null || relations.isEmpty()) {
+            return false;
+        }
+        if (!relations.containsKey(userGroup)) {
+            return false;
+        }
+        RoleAndActionsInGroup roleAndActionsInGroup = relations.get(userGroup);
+        return roleAndActionsInGroup.role.equals(role);
     }
 
-    public boolean hasAnyRole(UserRole... roles) {
-        for (UserRole userRole : roles) {
-            if (role == userRole) {
-                return true;
-            }
+    public boolean hasRole(UserRole userRole) {
+        if (relations == null || relations.isEmpty()) {
+            return false;
         }
-        return false;
+        return relations.values().stream()
+                .map(RoleAndActionsInGroup::role)
+                .anyMatch(role -> role == userRole);
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        Set<GrantedAuthority> result = new HashSet<>();
 
-        List<GrantedAuthority> result = new ArrayList<>();
-        
-        if (role != null) {
-            result.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
-        }
-        
-        if (actions != null) {
-            actions.forEach(a -> result.add(new SimpleGrantedAuthority("ACTION_" + a.name())));
-        }
-        
+        relations.entrySet().stream()
+                .filter(entry -> entry != null && entry.getKey() != null && entry.getValue() != null)
+                .forEach(entry -> {
+                    String groupName = entry.getKey().getName();
+                    String role = entry.getValue().role.getCode();
+                    result.add(new SimpleGrantedAuthority("ROLE_" + groupName + "_" + role));
+
+                    Set<AccountAction> actions = entry.getValue().actions;
+                    if (actions != null && !actions.isEmpty()) {
+                        actions.forEach(action ->
+                                result.add(new SimpleGrantedAuthority("ACTION_" + groupName + "_" + action)));
+                    }
+                });
+
         return result;
     }
 
@@ -148,8 +204,6 @@ public class AppUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return Boolean.TRUE.equals(isActive) 
-                && userGroup != null 
-                && userGroup.isActive();
+        return Boolean.TRUE.equals(isActive);
     }
 }

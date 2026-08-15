@@ -11,18 +11,6 @@ import org.springframework.data.repository.query.Param;
 import com.apteka.portal.models.GroupTask;
 
 public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
-    @Query("""
-            SELECT EXISTS(
-                SELECT 1
-                FROM GroupTask gt
-                LEFT JOIN gt.creatorGroup cg
-                LEFT JOIN gt.intendedGroup ig
-                WHERE gt.name = :name
-                    AND ig.id = :intendedGroupId
-                    AND (gt.isActive = true AND cg.isActive = true AND ig.isActive = true)
-            )
-            """)
-    boolean existsByNameAndIntendedGroupIdAndActive(@Param("name") String name, @Param("intendedGroupId") Integer intendedGroupId);
 
     @Override
     @EntityGraph(attributePaths = { "creatorGroup", "intendedGroup" })
@@ -45,7 +33,6 @@ public interface GroupTaskRepository extends JpaRepository<GroupTask, Integer> {
 
     boolean existsByNameAndCreatorGroupIdAndIntendedGroupId(String name, Integer creatorGroupId, Integer intendedGroupId);
 
-    // AUDIT-FIX: sibling GroupTask одного отдела с intended = APTEKA_GROUP (для bulk/sync)
     @Query("""
             SELECT gt FROM GroupTask gt
             JOIN FETCH gt.creatorGroup cg

@@ -25,8 +25,6 @@ public final class SseEventNames {
 
     public static final String REFRESH_NEWS = "REFRESH_NEWS";
 
-    public static final String REFRESH_GLOBAL = "REFRESH_GLOBAL";
-
     //СИГНАЛЫ ДЛЯ ВСТАВКИ/УДАЛЕНИЯ
     public record AppUserDetailsSignalDTO(Integer userGroupId, String action) {
     }

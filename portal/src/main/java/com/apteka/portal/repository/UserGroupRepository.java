@@ -47,9 +47,6 @@ public interface UserGroupRepository extends JpaRepository<UserGroup, Integer> {
     boolean isGroupVisibleToAnother(@Param("currentUserGroupId") Integer currentUserGroupId,
                                     @Param("targetGroupId") Integer targetGroupId, @Param("isActive") boolean isActive);
 
-    @Query("SELECT g FROM UserGroup g WHERE g.id = :id")
-    Optional<UserGroup> findByIdAndCache(@Param("id") Integer id);
-
     @Query("""
             SELECT g FROM UserGroup g
             LEFT JOIN FETCH g.visibleGroups

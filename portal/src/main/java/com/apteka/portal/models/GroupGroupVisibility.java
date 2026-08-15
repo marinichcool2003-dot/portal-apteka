@@ -26,11 +26,6 @@ import lombok.Setter;
 @Setter
 @Builder
 public class GroupGroupVisibility {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private Integer id;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "first_group_id", nullable = false)
     private UserGroup firstGroup;

@@ -1,5 +1,6 @@
 package com.apteka.portal.services;
 
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -58,7 +59,6 @@ public class EmailTemplateService {
     }
 
     public EmailContent renderOtp(String purposeTitle, String code, int ttlMinutes) {
-        String spacedCode = spaceDigits(code);
         String htmlContent = """
                 <h2 style="margin:0 0 16px;font-size:20px;font-weight:600;color:%s;">%s</h2>
                 <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 20px;">
@@ -69,7 +69,7 @@ public class EmailTemplateService {
                 <p style="margin:0;color:%s;font-size:14px;">Если вы не запрашивали код — проигнорируйте это письмо.</p>
                 """.formatted(
                 textColor, HtmlUtils.escapeHtml(purposeTitle),
-                backgroundColor, accentColor, textColor, spacedCode,
+                backgroundColor, accentColor, textColor, code,
                 mutedColor, ttlMinutes, mutedColor);
 
         String plain = """
@@ -235,20 +235,6 @@ public class EmailTemplateService {
             sb.append(portalUrl.trim()).append('\n');
         }
         sb.append("© ").append(brandName);
-        return sb.toString();
-    }
-
-    private static String spaceDigits(String code) {
-        if (code == null || code.isBlank()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < code.length(); i++) {
-            if (i > 0) {
-                sb.append(' ');
-            }
-            sb.append(code.charAt(i));
-        }
         return sb.toString();
     }
 }
